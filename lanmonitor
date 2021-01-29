@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""LAN monitor
+"""
+
+__version__ = "V0.1 210129"
+
+#==========================================================
+#
+#  Chris Nelson, 2021
+#
+# V0.1 210129  Initial
+#
+# Changes pending
+#   
+#==========================================================
+
+import argparse
+import sys
+import subprocess
+import glob
+import requests
+import os.path
+import signal       # For keyboard interrupt handler
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
+from funcs3 import *
+
+
+# Configs / Constants
+PY_MIN_VERSION = 3.6
+NOTIF_SUBJ = "LAN Monitor"
+FUNCS3_MIN_VERSION = 0.5
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lanmonitor.cfg')
+LOG_FILE = "log_lanmonitor.txt"
+
+py_version = float(sys.version_info.major) + float(sys.version_info.minor)/10
+if py_version < PY_MIN_VERSION:
+    print (f"ERROR:  Current Python version {py_version} is less than minimum required version {PY_MIN_VERSION} - Aborting")
+    sys.exit(1)
+
+
+def main():
+    notifs_sent = {}
+
+    while 1:
+        loadconfig(cfgfile = CONFIG_FILE) #, cfgloglevel=10)
+        if args.once:
+            logging.getLogger().setLevel(logging.INFO)
+
+
+        def handle_item(good, key, good_message, bad_message):
+            """
+            good:  Boolean, where True means that the status is good
+            key:   Key into notifs_sent dictionary which stores notification times
+            """
+            if not good:
+                do_send = False
+                if key not in notifs_sent:
+                    do_send = True
+                else:
+                    if time.time() > notifs_sent[key]:
+                        do_send = True
+                if do_send and not args.once:
+                    snd_notif (subj=NOTIF_SUBJ, msg=bad_message, log=True)
+                    notifs_sent[key] = time.time() + getcfg("ReNotificationInterval")
+                else:
+                    logging.info(bad_message)
+            else:
+                logging.info(good_message)
+
+
+        # Check Hosts
+        for host in cfg:
+            if host.startswith("Host_"):
+                host_tag = host[5:]
+                ip = cfg[host]
+                handle_item(ping_host(ip), "HOST_" + host,
+                    good_message = f"Host OK:  {host_tag:14} at {ip}",
+                    bad_message  = f"Host system <{host_tag}> at {ip} is NOT responding" )
+
+        # Check Services
+        for service in getcfg("Services", "").split():
+            handle_item(check_service(service), "SERVICE_" + service,
+                good_message = f"Service OK:  {service}",
+                bad_message  = f"Service <{service}> is NOT running")
+
+        # Check Pages
+        for page in cfg:
+            if page.startswith("Page_"):
+                page_tag = page[5:]
+                url = cfg[page].split()[0]
+                string = cfg[page][len(url):].strip().rstrip()
+                handle_item (check_page(url, string), "PAGE_" + page_tag,
+                    good_message = f"Page OK:  {page_tag}",
+                    bad_message  = f"Page <{page_tag}> is NOT running" )
+
+        # Check Processes
+        for process in cfg:
+            if process.startswith("Process_"):
+                process_tag = process[8:]
+                full_path = cfg[process]
+                handle_item (check_process(process_tag, full_path), "PROCESS_" + process_tag,
+                    good_message = f"Process OK:  {process_tag}",
+                    bad_message  = f"Process <{process_tag}> is NOT running" )
+
+        # Check for stale directories/files
+        now = time.time()
+        for dirpath in cfg:
+            if dirpath.startswith("Activity_"):
+                dirpath_tag = dirpath[9:]
+                max_age_days = cfg[dirpath].split()[0]
+                the_path = cfg[dirpath][len(cfg[dirpath].split()[0]):].strip().rstrip()
+                if os.path.isdir(the_path):
+                    if the_path.endswith("/"):
+                        the_path += "*"
+                    else:
+                        the_path += "/*"
+                elif not os.path.isfile(the_path):
+                    logging.warning(f"WARNING:  Activity tag <{dirpath_tag}> ({the_path}) is not valid or not accessible.  Skipping")
+                    continue
+
+                latest_file_modtime = os.path.getmtime(max(glob.glob(the_path), key=os.path.getctime))
+                handle_item (latest_file_modtime > now - 60*60*24*int(max_age_days), "ACTIVITY_" + dirpath_tag,
+                    good_message = f"File activity OK:  {dirpath_tag:18}  ({the_path})",
+                    bad_message  = f"STALE FILES at Activity <{dirpath_tag}> ({the_path})" )
+
+        if args.once:
+            sys.exit(0)
+
+        time.sleep (getcfg('RecheckInterval'))
+    
+
+
+def ping_host(host_ip):
+    """Ping the supplied IP address.
+    Return True if ping successful, else False.
+    """
+    for _ in range (getcfg('nRetries')):
+        try:
+            _cmd = ["ping", host_ip, "-c", "1"]
+            host_up  = True if subprocess.run(_cmd, stdout=subprocess.DEVNULL).returncode is 0 else False
+            if host_up:
+                return True
+        except Exception as e:
+            logging.info ("Exception:\n  " + repr(e))
+    return False
+
+
+def check_service(service_name):
+    """Check the active status of a service.
+    Return True if "active (running)"
+    """
+    for _ in range (getcfg('nRetries')):
+        try:
+            _cmd = ["systemctl", "status", service_name]
+            status = subprocess.run(_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout
+            if "active (running)" in status:
+                return True
+            else:
+                return False
+        except Exception as e:
+            logging.info ("Exception:\n  " + repr(e))
+    return False
+
+
+def check_process(process_name, path):
+    """Check for running process.
+    Return True if ps response has a line containing path.
+    """
+    for _ in range (getcfg('nRetries')):
+        try:
+            _cmd = ["ps", "-Af"]
+            ps_response = subprocess.run(_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
+            for line in ps_response:
+                if path in line:
+                    return True
+        except Exception as e:
+            logging.info ("Exception:\n  " + repr(e))
+    return False
+
+
+def check_page(url, text):
+    """Check web page containing text.
+    Return True if page contains text.
+    """
+    for _ in range (getcfg('nRetries')):
+        try:
+            web_page = requests.get(url, timeout=0.5).text
+            return text in web_page
+        except requests.exceptions.ConnectionError as e:
+            msg = "ConnectionError\n  " + repr(e)
+        except requests.exceptions.Timeout as e:
+            msg = "Timeout\n  " + repr(e)
+        except Exception as e:
+            msg = "Other exception\n  " + repr(e)
+    logging.info (msg)
+    return False
+
+
+def keyboardInterruptHandler(signal, frame):
+    print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal))
+    sys.exit(0)
+signal.signal(signal.SIGINT, keyboardInterruptHandler)
+    
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-1', '--once', action='store_true',
+                        help="Single run mode.  Logging is to console rather than file.")
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
+                        help="Return version number and exit.")
+
+    args = parser.parse_args()
+
+    if args.once:
+        setuplogging(logfile=None)
+    else:
+        setuplogging(logfile=LOG_FILE)
+
+    if not funcs3_min_version_check(FUNCS3_MIN_VERSION):
+        logging.error(f"ERROR:  funcs3 module must be at least version {FUNCS3_MIN_VERSION}.  Found <{funcs3_version}>.")
+        sys.exit(1)
+
+    main()
+    sys.exit()
