@@ -5,11 +5,20 @@ A text message notification is sent for any/each monitored _item_ that's out of 
 
 ## Usage
 ```
-$ ./lanmonitor -h
+$ lanmon -h
 usage: lanmonitor [-h] [-1] [-V]
 
 LAN monitor
-V0.1 210129
+
+Monitor these local network items, and send notification when something doesn't look right:
+    Hosts ping response
+    Systemd services active and running
+    Web pages responding with expected text
+    Processes existing
+    Filesystem age
+
+Operates as a systemd service, or interactively with --once switch.
+V0.3 210226
 
 optional arguments:
   -h, --help     show this help message and exit
@@ -76,4 +85,6 @@ Items to be monitored are defined in the lanmonitor.cfg file.
 - none
 
 ## Version history
+- V0.3 200226  Bug fix for files mod time vs. create time
+- V0.2 210207  Added age info to Activity log
 - 210129 v0.1  New
