@@ -1,13 +1,24 @@
 #!/usr/bin/env python3
 """LAN monitor
+
+Monitor these local network items, and send notification when something doesn't look right:
+    Hosts ping response
+    Systemd services active and running
+    Web pages responding with expected text
+    Processes existing
+    Filesystem age
+
+Operates as a systemd service, or interactively with --once switch.
 """
 
-__version__ = "V0.1 210129"
+__version__ = "V0.3 210226"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V0.3 200226  Bug fix for files mod time vs. create time
+# V0.2 210207  Added age info to Activity log
 # V0.1 210129  Initial
 #
 # Changes pending
@@ -119,10 +130,11 @@ def main():
                     logging.warning(f"WARNING:  Activity tag <{dirpath_tag}> ({the_path}) is not valid or not accessible.  Skipping")
                     continue
 
-                latest_file_modtime = os.path.getmtime(max(glob.glob(the_path), key=os.path.getctime))
+                latest_file_modtime = os.path.getmtime(max(glob.glob(the_path), key=os.path.getmtime))
+                age = (now - latest_file_modtime) /60/60/24
                 handle_item (latest_file_modtime > now - 60*60*24*int(max_age_days), "ACTIVITY_" + dirpath_tag,
-                    good_message = f"File activity OK:  {dirpath_tag:18}  ({the_path})",
-                    bad_message  = f"STALE FILES at Activity <{dirpath_tag}> ({the_path})" )
+                    good_message = f"File activity OK:         {dirpath_tag:18}  {age:4.1f} days, max {max_age_days:>2} days  {the_path}",
+                    bad_message  = f"STALE FILES at Activity:  {dirpath_tag:18}  {age:4.1f} days, max {max_age_days:>2} days  {the_path}")
 
         if args.once:
             sys.exit(0)
