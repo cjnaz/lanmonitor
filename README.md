@@ -1,6 +1,6 @@
 # lanmonitor
 
-lanmonitor tracks the state of services, processes, web pages, and local directories in your server and local area network.  
+lanmonitor tracks the state of hosts, services, web pages, processes, and local filesystem age on your server and local area network.  
 A text message notification is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).
 
 ## Usage
@@ -44,15 +44,15 @@ STALE FILES at Activity <MyServer_backups> (/mnt/share/MyServerBackups/*)
 
 ## Monitored items setup
 Items to be monitored are defined in the lanmonitor.cfg file.  
-- **Services** specifies a list of systemd service names to be checked.  Only one `Services` line is allowed.  Each service name is checked with a `systemctl status <service name>`, checking for the response `active (running)`.
-
-      Services			plexmediaserver weewx firewalld smb sshd
-
 - **Hosts** to be monitored are listed on separate lines as below.  Each host is pinged.  The `friendly_host_name` is user defined (not the real hostname).  `<IP address or hostname>` may be internal (local LAN) or external.
 
       Host_<friendly_host_name>    <IP address or hostname>
       Host_RPi1_HP1018    192.168.1.44
       Host_Yahoo          Yahoo.com
+
+- **Services** specifies a list of systemd service names to be checked.  Only one `Services` line is allowed.  Each service name is checked with a `systemctl status <service name>`, checking for the response `active (running)`.
+
+      Services			plexmediaserver weewx firewalld smb sshd
 
 - **Web pages** to be monitored are listed on separate lines as below.  Each URL is read and checked for the `<expected text>`, which starts at the first non-white-space character after the URL and up to the end of the line or a `#` comment character.  Leading and trailing white-space is trimmed off.  The url may be on a remote server.
 
