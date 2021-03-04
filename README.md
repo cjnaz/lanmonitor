@@ -1,6 +1,6 @@
 # lanmonitor
 
-lanmonitor tracks the state of hosts, services, web pages, processes, and local filesystem age on your server and local area network.  
+lanmonitor tracks the state of SELinux, hosts, services, web pages, processes, and local filesystem age on your server and local area network.  
 A text message notification is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).
 
 ## Usage
@@ -11,6 +11,7 @@ usage: lanmonitor [-h] [-1] [-V]
 LAN monitor
 
 Monitor these local network items, and send notification when something doesn't look right:
+    SELinux status
     Hosts ping response
     Systemd services active and running
     Web pages responding with expected text
@@ -29,6 +30,7 @@ optional arguments:
 ## Example output
 ```
 $ ./lanmonitor -1
+SELinux is NOT in expected state (enforcing)
 Host OK:  Printer_Server    at 192.168.1.44
 Service OK:  plexmediaserver
 Service <weewx> is NOT running
@@ -46,8 +48,8 @@ STALE FILES at Activity <MyServer_backups> (/mnt/share/MyServerBackups/*)
 - Install the Python requests library - used for Page checks.
 - Edit the config info in the `lanmonitor.cfg` file.  Enter your mail server credentials and notification address.  See below for item settings.
   - `StartupDelay` is a wait time in seconds when starting in service mode to allow everything to come up fully at system boot before checking items.
-  - `RecheckInterval` sets how long between rechecks.
-  - `ReNotificationInterval` sets how long between repeated notifications for each monitored item.  
+  - `RecheckInterval` sets how long between rechecks in service mode.
+  - `ReNotificationInterval` sets how long between repeated notifications for each monitored item in service mode.  
 - Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect immediately.
 - A text message is sent for each monitored item that is not in a good state.  A repeated text message will be sent after the `ReNotificationInterval`.
 
@@ -56,6 +58,7 @@ STALE FILES at Activity <MyServer_backups> (/mnt/share/MyServerBackups/*)
 Items to be monitored are defined in the lanmonitor.cfg file.  
 
 - **SELinux** checks that the sestatus _Current mode:_ value matches the config file value
+
       SELinux     <enforcing or permissive>
       SELinux             enforcing
 
