@@ -2,6 +2,7 @@
 """LAN monitor
 
 Monitor these local network items, and send notification when something doesn't look right:
+    SELinux status
     Hosts ping response
     Systemd services active and running
     Web pages responding with expected text
@@ -11,12 +12,13 @@ Monitor these local network items, and send notification when something doesn't 
 Operates as a systemd service, or interactively with --once switch.
 """
 
-__version__ = "V0.3 210226"
+__version__ = "V0.4 210304"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
 # V0.3 200226  Bug fix for files mod time vs. create time
 # V0.2 210207  Added age info to Activity log
 # V0.1 210129  Initial
@@ -39,8 +41,8 @@ from funcs3 import *
 
 # Configs / Constants
 PY_MIN_VERSION = 3.6
-NOTIF_SUBJ = "LAN Monitor"
 FUNCS3_MIN_VERSION = 0.5
+NOTIF_SUBJ = "LAN Monitor"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lanmonitor.cfg')
 LOG_FILE = "log_lanmonitor.txt"
 
@@ -52,11 +54,17 @@ if py_version < PY_MIN_VERSION:
 
 def main():
     notifs_sent = {}
+    first = True
 
     while 1:
         loadconfig(cfgfile = CONFIG_FILE) #, cfgloglevel=10)
+
         if args.once:
             logging.getLogger().setLevel(logging.INFO)
+        else:
+            if first:
+                time.sleep (getcfg('StartupDelay'))
+                first = False
 
 
         def handle_item(good, key, good_message, bad_message):
@@ -79,6 +87,12 @@ def main():
             else:
                 logging.info(good_message)
 
+
+        # Check SELinux state
+        if "SELinux" in cfg:
+            handle_item (check_selinux(), "SELINUX",
+                good_message = f"SELinux OK:  {getcfg('SELinux')}",
+                bad_message  = f"SELinux is NOT in expected state ({getcfg('SELinux')})" )
 
         # Check Hosts
         for host in cfg:
@@ -143,6 +157,23 @@ def main():
     
 
 
+def check_selinux():
+    """Check that sestatus returns Current mode matching value from cfg.
+    Return True if matching.
+    """
+    for _ in range (getcfg('nRetries')):
+        try:
+            _cmd = ["sestatus"]
+            ps_response = subprocess.run(_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
+            for line in ps_response:
+                if "Current mode:" in line:
+                    if getcfg("SELinux") in line:
+                        return True
+        except Exception as e:
+            logging.info ("Exception:\n  " + repr(e))
+    return False
+
+
 def ping_host(host_ip):
     """Ping the supplied IP address.
     Return True if ping successful, else False.
@@ -150,7 +181,7 @@ def ping_host(host_ip):
     for _ in range (getcfg('nRetries')):
         try:
             _cmd = ["ping", host_ip, "-c", "1"]
-            host_up  = True if subprocess.run(_cmd, stdout=subprocess.DEVNULL).returncode is 0 else False
+            host_up  = True if subprocess.run(_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode is 0 else False
             if host_up:
                 return True
         except Exception as e:
@@ -175,22 +206,6 @@ def check_service(service_name):
     return False
 
 
-def check_process(process_name, path):
-    """Check for running process.
-    Return True if ps response has a line containing path.
-    """
-    for _ in range (getcfg('nRetries')):
-        try:
-            _cmd = ["ps", "-Af"]
-            ps_response = subprocess.run(_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
-            for line in ps_response:
-                if path in line:
-                    return True
-        except Exception as e:
-            logging.info ("Exception:\n  " + repr(e))
-    return False
-
-
 def check_page(url, text):
     """Check web page containing text.
     Return True if page contains text.
@@ -206,6 +221,22 @@ def check_page(url, text):
         except Exception as e:
             msg = "Other exception\n  " + repr(e)
     logging.info (msg)
+    return False
+
+
+def check_process(process_name, path):
+    """Check for running process.
+    Return True if ps response has a line containing path.
+    """
+    for _ in range (getcfg('nRetries')):
+        try:
+            _cmd = ["ps", "-Af"]
+            ps_response = subprocess.run(_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
+            for line in ps_response:
+                if path in line:
+                    return True
+        except Exception as e:
+            logging.info ("Exception:\n  " + repr(e))
     return False
 
 
