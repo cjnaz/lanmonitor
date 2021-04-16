@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """LAN monitor
 
-Monitor these local network items, and send notification when something doesn't look right:
+Monitor status of items on the local network, such as services, hosts, file system age, etc.
+Plugins are provided for these items, and additional plugins may easily be added:
     SELinux status
     Hosts ping response
     Systemd services active and running
@@ -9,15 +10,16 @@ Monitor these local network items, and send notification when something doesn't 
     Processes existing
     Filesystem age
 
-Operates as a systemd service, or interactively with --once switch.
+Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V0.5 210312"
+__version__ = "V0.6 210415"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V0.6 200415  Refactored to checker plugin model, many other changes
 # V0.5 200312  Added checks on other hosts via ssh.
 # V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
 # V0.3 200226  Bug fix for files mod time vs. create time
@@ -28,311 +30,96 @@ __version__ = "V0.5 210312"
 #   
 #==========================================================
 
-import argparse
 import sys
-import subprocess
+import argparse
+import time
 import datetime
 import os.path
 import signal       # For keyboard interrupt handler
 
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
-from funcs3 import *
+from funcs3 import loadconfig, getcfg, cfg, setuplogging, logging, funcs3_min_version_check, funcs3_version
+
+import lanmonfuncs
 
 
 # Configs / Constants
 PY_MIN_VERSION = 3.6
 FUNCS3_MIN_VERSION = 0.5
-NOTIF_SUBJ = "LAN Monitor"
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lanmonitor.cfg')
-LOG_FILE = "log_lanmonitor.txt"
+CONFIG_FILE =     os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lanmonitor.cfg')
+LOG_FILE =        os.path.join(os.path.dirname(os.path.realpath(__file__)), "log_lanmonitor.txt")
+SMTP_CREDS_FILE = os.path.join(os.path.expanduser("~"), "creds_SMTP")
 
 py_version = float(sys.version_info.major) + float(sys.version_info.minor)/10
 if py_version < PY_MIN_VERSION:
     print (f"ERROR:  Current Python version {py_version} is less than minimum required version {PY_MIN_VERSION} - Aborting.")
     sys.exit(1)
 
-notifs_sent = {}
-
 
 def main():
     first = True
 
-    while 1:
-        loadconfig(cfgfile = CONFIG_FILE) #, cfgloglevel=10)
+    loadconfig(cfgfile = lanmonfuncs.args.config_file) #, cfgloglevel=10)
+    notifs = lanmonfuncs.notif_handler()
 
-        if args.once:
-            if args.verbose:
+    while 1:
+        loadconfig(cfgfile = lanmonfuncs.args.config_file) #, cfgloglevel=10)
+
+        if lanmonfuncs.args.once:
+            if lanmonfuncs.args.verbose == 1:
                 logging.getLogger().setLevel(logging.INFO)
+            elif lanmonfuncs.args.verbose == 2:
+                logging.getLogger().setLevel(logging.DEBUG)
             else:
                 logging.getLogger().setLevel(logging.WARNING)
-        else:
+        else:               # In non-once mode, logging level is from config file
             if first:
-                time.sleep (getcfg('StartupDelay'))
+                time.sleep (lanmonfuncs.convert_time(getcfg('StartupDelay'))[0])
                 first = False
 
-
-        # Check SELinux state
-        def check_selinux(semode, user_host):
-            """Check that sestatus returns Current mode matching value from cfg.
-            user_host == "local" or user@host for ssh access.
-            Return True if matching.
-            """
-            cmd = ["sestatus"]
-            if user_host != "local":
-                cmd = ["ssh", user_host] + cmd
-            for _ in range (getcfg('nRetries')):
-                try:
-                    ps_response = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
-                    for line in ps_response:
-                        if "Current mode:" in line:
-                            if semode in line:
-                                return True
-                except Exception as e:
-                    logging.warning ("Exception:\n  " + repr(e))
-            return False
-
         for key in cfg:
-            if key.startswith("SELinux_"):
-                selinux_tag = key.split("_", 1)[1]
-                xx = cfg[key].split(maxsplit=1)
-                user_host, host = split_user_host(xx[0])
-                expected_mode = xx[1]
-                handle_item (check_selinux(expected_mode, user_host), "SELINUX" + selinux_tag,
-                    good_message = f"SELinux OK:  {host} - {expected_mode}",
-                    bad_message  = f"SELINUX IS NOT IN EXPECTED STATE (expecting {expected_mode})" )
+            if key.startswith("MonType_"):
+                montype_tag = key.split("_")[1]
+                montype_plugin = cfg[key]
+ 
+                plugin = __import__(montype_plugin)
 
+                keylen = 0          # Get longest len of key and host strings of this type for pretty printing
+                hostlen = 0
+                for line in cfg:
+                    if line.startswith(montype_tag + "_"):
+                        if len(line) > keylen:
+                            keylen = len(line)
+                        host = lanmonfuncs.split_user_host(cfg[line].split(maxsplit=2)[0])[1]
+                        if len(host) > hostlen:
+                            hostlen = len(host)                        
 
-        # Check (ping) Hosts
-        def ping_host(host_ip, user_host):
-            """Ping the supplied IP address.
-            user_host == "local" or user@host for ssh access.
-            Return True if ping successful, else False.
-            """
-            cmd = ["ping", host_ip, "-c", "1"]
-            if user_host != "local":
-                cmd = ["ssh", user_host] + cmd
-            for _ in range (getcfg('nRetries')):
-                try:
-                    host_up  = True if subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode is 0 else False
-                    if host_up:
-                        return True
-                except Exception as e:
-                    logging.warning ("Exception:\n  " + repr(e))
-            return False
+                for line in cfg:    # Process all lines in cfg of this type
+                    if line.startswith(montype_tag + "_"):
+                        monline = {}
+                        monline["key"] = line
+                        monline["keylen"] = keylen
+                        monline["tag"] = line.split("_", 1)[1]
+                        xx = cfg[line].split(maxsplit=1)
+                        monline["user_host"], monline["host"] = lanmonfuncs.split_user_host(xx[0])
+                        monline["hostlen"] = hostlen
+                        monline["critical"] = False
+                        monline["rest_of_line"] = xx[1]
+                        if monline["rest_of_line"].startswith("CRITICAL"):
+                            monline["critical"] = True
+                            monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
 
-        for key in cfg:
-            if key.startswith("Host_"):
-                host_tag = key.split("_", 1)[1]
-                xx = cfg[key].split(maxsplit=1)
-                user_host, host = split_user_host(xx[0])
-                ip = xx[1]
-                handle_item(ping_host(ip, user_host), "HOST_" + host_tag,
-                    good_message = f"Host OK:  {host} - {host_tag:14} at {ip}",
-                    bad_message  = f"HOST SYSTEM <{host} - {host_tag}> AT {ip} IS NOT RESPONDING" )
+                        inst = plugin.monitor()
+                        notifs.log_event(inst.eval_status(monline))
+        
+        notifs.renotif()
+        notifs.summary()
 
-
-        # Check Services
-        def check_service(service_name, user_host):
-            """Check the active status of a service.
-            user_host == "local" or user@host for ssh access.
-            Return True if "active (running)"
-            """
-            cmd = ["systemctl", "status", service_name]
-            if user_host != "local":
-                cmd = ["ssh", user_host] + cmd
-            for _ in range (getcfg('nRetries')):
-                try:
-                    status = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout
-                    if "active (running)" in status:
-                        return True
-                    else:
-                        return False
-                except Exception as e:
-                    logging.warning ("Exception:\n  " + repr(e))
-            return False
-
-        for key in cfg:
-            if key.startswith("Services_"):
-                service_tag = key.split("_", 1)[1]
-                xx = cfg[key].split(maxsplit=1)
-                user_host, host = split_user_host(xx[0])
-                for service in xx[1].split():
-                    handle_item(check_service(service, user_host), "SERVICE_" + service_tag + service,
-                        good_message = f"Service OK:  {host} - {service}",
-                        bad_message  = f"SERVICE <{host} - {service}> IS NOT RUNNING")
-
-
-        # Check Pages
-        def check_page(url, text, user_host):
-            """Check web page containing text.
-            user_host == "local" or user@host for ssh access.
-            Return True if page contains text.
-            """
-            cmd = ["curl", url, "--connect-timeout", "10", "--max-time", "10"]
-            if user_host != "local":
-                cmd = ["ssh", user_host] + cmd
-            for _ in range (getcfg('nRetries')):
-                try:
-                    page_response = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
-                    for line in page_response:
-                        if text in line:
-                            return True
-                except Exception as e:
-                    logging.warning ("Exception:\n  " + repr(e))
-            return False
-
-        for key in cfg:
-            if key.startswith("Page_"):
-                page_tag = key.split("_", 1)[1]
-                xx = cfg[key].split(maxsplit=2)
-                user_host, host = split_user_host(xx[0])
-                url = xx[1]
-                string = xx[2]
-                handle_item (check_page(url, string, user_host), "PAGE_" + page_tag,
-                    good_message = f"Page OK:  {host} - {page_tag}",
-                    bad_message  = f"PAGE <{host} - {page_tag}> IS NOT RUNNING" )
-
-
-        # Check Processes
-        def check_process(path, user_host):
-            """Check for running process.
-            user_host == "local" or user@host for ssh access.
-            Return True if ps response has a line containing path.
-            """
-            cmd = ["ps", "-Af"]
-            if user_host != "local":
-                cmd = ["ssh", user_host] + cmd
-            for _ in range (getcfg('nRetries')):
-                try:
-                    ps_response = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
-                    for line in ps_response:
-                        if path in line:
-                            return True
-                except Exception as e:
-                    logging.warning ("Exception:\n  " + repr(e))
-            return False
-
-        for key in cfg:
-            if key.startswith("Process_"):
-                process_tag = key.split("_", 1)[1]
-                xx = cfg[key].split(maxsplit=1)
-                user_host, host = split_user_host(xx[0])
-                process_path = xx[1]
-                handle_item (check_process(process_path, user_host), "PROCESS_" + process_tag + host,
-                    good_message = f"Process OK:  {host} - {process_tag}",
-                    bad_message  = f"PROCESS <{host} - {process_tag}> IS NOT RUNNING" )
-
-
-        # Check for stale directories/files
-        matchstring = re.compile(r'[drwx\-.]+\s+[\d*]\s+[\w\d]+\s+[\w\d]+\s+[\d]+\s+([\d\-]+)+\s([\d:.]+)\s([\d\-]+)')
-            # Given -rwxrw-r--. 1 cjn users     976269 2021-03-11 00:30:44.049364380 -0700 filexyz.txt
-            # group(1) == 2021-03-11, group(2) == 21:24:27.269508428, group(3) == -0700
-        epoch1970 = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)     # tz aware
-
-        def get_path_age(path, user_host):
-            """Return latest file modification time in path in sec since epoch, and conversion success status
-            user_host == "local" or user@host for ssh access.
-            """
-            cmd = ["ls", "-ltA", "--full-time", path]
-            if user_host != "local":
-                cmd = ["ssh", user_host] + cmd + ["|", "head", "-2"]    # Can pass a pipe via ssh, but not local.  Only need top 2 lines.
-            for _ in range (getcfg('nRetries')):
-                try:
-                    ls_list = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.split("\n")
-                    newest_file = ls_list[0]                # When path is to a file
-                    if newest_file.startswith("total"):
-                        newest_file = ls_list[1]            # When path is to a directory
-                    out = matchstring.match(newest_file)
-                    if out:
-                        xx = f"{out.group(1)} {out.group(2)[0:8]} {out.group(3)}"   # 2021-03-11 00:30:44 -0700
-                        epoch_time = (datetime.datetime.strptime(xx, "%Y-%m-%d %H:%M:%S %z") - epoch1970).total_seconds()
-                        return True, epoch_time
-                except Exception as e:
-                    None
-                    # logging.warning ("Exception:\n  " + repr(e))
-            logging.warning(f"WARNING:  Couldn't get age of files in <{path}>.")
-            return False, 0
-
-        def convert_max_age (age):
-            """ Given max age term such as 15m, 20h, 3d, return int seconds and units.
-            <1h> returns 3600, "hours"
-            """
-            try:
-                age_value = int(age[:-1])
-                age_unit =  age[-1:].lower()
-                if age_unit == "m":
-                    return age_value * 60, "mins "
-                if age_unit == "h":
-                    return age_value * 60*60, "hours"
-                if age_unit == "d":
-                    return age_value * 60*60*24, "days "
-                raise
-            except:
-                logging.error (f"ERROR:  Could not convert age value <{age}> - Aborting")
-                sys.exit(1)
-
-        now = time.time()
-        for key in cfg:
-            if key.startswith("Activity_"):
-                dirpath_tag = key.split("_", 1)[1]
-                xx = cfg[key].split(maxsplit=2)
-                user_host, host = split_user_host(xx[0])
-                max_age_sec, units = convert_max_age(xx[1])
-                the_path = xx[2]
-                success, latest_file_modtime = get_path_age (xx[2], user_host)
-                if success:
-                    age_sec = now - latest_file_modtime
-                    if units == "mins ":
-                        age =     age_sec / 60
-                        max_age = int(max_age_sec / 60)
-                    if units == "hours":
-                        age =     age_sec / 60/60
-                        max_age = int(max_age_sec / 60/60)
-                    if units == "days ":
-                        age =     age_sec / 60/60/24
-                        max_age = int(max_age_sec / 60/60/24)
-                    handle_item (latest_file_modtime > now - max_age_sec, "ACTIVITY_" + dirpath_tag,
-                        good_message = f"File activity OK:         {host} - {dirpath_tag:18}  {age:6.1f} {units} ({max_age:>4} {units} max)  {the_path}",
-                        bad_message  = f"STALE FILES AT ACTIVITY:  {host} - {dirpath_tag:18}  {age:6.1f} {units} ({max_age:>4} {units} max)  {the_path}")
-
-        if args.once:
+        if lanmonfuncs.args.once:
             sys.exit(0)
 
-        time.sleep (getcfg('RecheckInterval'))
-    
-
-def split_user_host(user_host):
-    """ Handle variations in passed-in user_host and return separate host and user_host values.
-    """
-    host = user_host
-    if host != "local":
-        if "@" in host:
-            host = host.split("@")[1]
-        else:
-            logging.error(f"ERROR:  Expecting <user@host> format, but found <{user_host}> - Aborting.")
-            sys.exit(1)
-    return user_host, host
-
-
-def handle_item(good, key, good_message, bad_message):
-    """
-    good:  Boolean, where True means that the status is good
-    key:   Key into notifs_sent dictionary which stores notification times
-    """
-    if not good:
-        do_send = False
-        if key not in notifs_sent:
-            do_send = True
-        else:
-            if time.time() > notifs_sent[key]:
-                do_send = True
-        if do_send and not args.once:
-            snd_notif (subj=NOTIF_SUBJ, msg=bad_message, log=True)
-            notifs_sent[key] = time.time() + getcfg("ReNotificationInterval")
-        else:
-            logging.warning(bad_message)
-    else:
-        logging.info(good_message)
+        time.sleep (lanmonfuncs.convert_time(getcfg('RecheckInterval'))[0])
 
 
 def keyboardInterruptHandler(signal, frame):
@@ -346,21 +133,28 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-1', '--once', action='store_true',
                         help="Single run mode.  Logging is to console rather than file.")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help="Display OK items in --once mode.")
+    parser.add_argument('-v', '--verbose', action='count',
+                        help="Display OK items in --once mode. (Set by LoggingLevel in config file for non --once mode.)")
+    parser.add_argument('--config-file', default=CONFIG_FILE,
+                        help=f"Path to config file (default <{CONFIG_FILE}>).")
+    parser.add_argument('--log-file', default=LOG_FILE,
+                        help=f"Path to log file (default <{LOG_FILE}>).")
+    parser.add_argument('--smtp-creds-file', default=SMTP_CREDS_FILE,
+                        help=f"Path to SMTP credentials file (default <{SMTP_CREDS_FILE}>).")
     parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
                         help="Return version number and exit.")
-
-    args = parser.parse_args()
-
-    if args.once:
+    lanmonfuncs.args = parser.parse_args()
+    
+    if lanmonfuncs.args.once:
         setuplogging(logfile=None)
     else:
-        setuplogging(logfile=LOG_FILE)
-
+        setuplogging(logfile=lanmonfuncs.args.log_file)
+    
     if not funcs3_min_version_check(FUNCS3_MIN_VERSION):
         logging.error(f"ERROR:  funcs3 module must be at least version {FUNCS3_MIN_VERSION}.  Found <{funcs3_version}> - Aborting.")
         sys.exit(1)
+    
+    loadconfig(cfgfile = lanmonfuncs.args.smtp_creds_file) #, cfgloglevel=10)
 
     main()
     sys.exit()
