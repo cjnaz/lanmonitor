@@ -13,13 +13,13 @@ Plugins are provided for these items, and additional plugins may easily be added
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V0.6 210415"
+__version__ = "V0.6a 210416"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
-# V0.6 200415  Refactored to checker plugin model, many other changes
+# V0.6a 200416  Refactored to checker plugin model, many other changes
 # V0.5 200312  Added checks on other hosts via ssh.
 # V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
 # V0.3 200226  Bug fix for files mod time vs. create time
@@ -63,6 +63,8 @@ def main():
     loadconfig(cfgfile = lanmonfuncs.args.config_file) #, cfgloglevel=10)
     notifs = lanmonfuncs.notif_handler()
 
+    next_run = datetime.datetime.now()
+
     while 1:
         loadconfig(cfgfile = lanmonfuncs.args.config_file) #, cfgloglevel=10)
 
@@ -78,40 +80,42 @@ def main():
                 time.sleep (lanmonfuncs.convert_time(getcfg('StartupDelay'))[0])
                 first = False
 
-        for key in cfg:
-            if key.startswith("MonType_"):
-                montype_tag = key.split("_")[1]
-                montype_plugin = cfg[key]
- 
-                plugin = __import__(montype_plugin)
+        if next_run < datetime.datetime.now():
+            next_run = datetime.datetime.now() + datetime.timedelta(lanmonfuncs.convert_time(getcfg("RecheckInterval"))[0])
+            for key in cfg:
+                if key.startswith("MonType_"):
+                    montype_tag = key.split("_")[1]
+                    montype_plugin = cfg[key]
+    
+                    plugin = __import__(montype_plugin)
 
-                keylen = 0          # Get longest len of key and host strings of this type for pretty printing
-                hostlen = 0
-                for line in cfg:
-                    if line.startswith(montype_tag + "_"):
-                        if len(line) > keylen:
-                            keylen = len(line)
-                        host = lanmonfuncs.split_user_host(cfg[line].split(maxsplit=2)[0])[1]
-                        if len(host) > hostlen:
-                            hostlen = len(host)                        
+                    keylen = 0          # Get longest len of key and host strings of this type for pretty printing
+                    hostlen = 0
+                    for line in cfg:
+                        if line.startswith(montype_tag + "_"):
+                            if len(line) > keylen:
+                                keylen = len(line)
+                            host = lanmonfuncs.split_user_host(cfg[line].split(maxsplit=2)[0])[1]
+                            if len(host) > hostlen:
+                                hostlen = len(host)                        
 
-                for line in cfg:    # Process all lines in cfg of this type
-                    if line.startswith(montype_tag + "_"):
-                        monline = {}
-                        monline["key"] = line
-                        monline["keylen"] = keylen
-                        monline["tag"] = line.split("_", 1)[1]
-                        xx = cfg[line].split(maxsplit=1)
-                        monline["user_host"], monline["host"] = lanmonfuncs.split_user_host(xx[0])
-                        monline["hostlen"] = hostlen
-                        monline["critical"] = False
-                        monline["rest_of_line"] = xx[1]
-                        if monline["rest_of_line"].startswith("CRITICAL"):
-                            monline["critical"] = True
-                            monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
+                    for line in cfg:    # Process all lines in cfg of this type
+                        if line.startswith(montype_tag + "_"):
+                            monline = {}
+                            monline["key"] = line
+                            monline["keylen"] = keylen
+                            monline["tag"] = line.split("_", 1)[1]
+                            xx = cfg[line].split(maxsplit=1)
+                            monline["user_host"], monline["host"] = lanmonfuncs.split_user_host(xx[0])
+                            monline["hostlen"] = hostlen
+                            monline["critical"] = False
+                            monline["rest_of_line"] = xx[1]
+                            if monline["rest_of_line"].startswith("CRITICAL"):
+                                monline["critical"] = True
+                                monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
 
-                        inst = plugin.monitor()
-                        notifs.log_event(inst.eval_status(monline))
+                            inst = plugin.monitor()
+                            notifs.log_event(inst.eval_status(monline))
         
         notifs.renotif()
         notifs.summary()
@@ -119,7 +123,7 @@ def main():
         if lanmonfuncs.args.once:
             sys.exit(0)
 
-        time.sleep (lanmonfuncs.convert_time(getcfg('RecheckInterval'))[0])
+        time.sleep (10)
 
 
 def keyboardInterruptHandler(signal, frame):
