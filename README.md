@@ -1,7 +1,8 @@
 # lanmonitor
 
-lanmonitor tracks the state of SELinux, hosts, services, web pages, processes, and local filesystem age on machines (hosts/VMs/servers...) local area network.  
-A text message notification is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).
+lanmonitor tracks the state of SELinux, hosts, services, web pages, processes, and local filesystem age on machines (hosts/VMs/servers...) on the local area network.  
+A text message notification is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).  Periodic re-notifications are sent for
+critical items, such as firewalld being down, and summary reports are generated up to daily.
 
 ## Usage
 ```
