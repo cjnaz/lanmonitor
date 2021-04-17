@@ -13,13 +13,13 @@ Plugins are provided for these items, and additional plugins may easily be added
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V0.6a 210416"
+__version__ = "V0.6b 210416"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
-# V0.6a 200416  Refactored to checker plugin model, many other changes
+# V0.6b 200416  Refactored to checker plugin model, many other changes
 # V0.5 200312  Added checks on other hosts via ssh.
 # V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
 # V0.3 200226  Bug fix for files mod time vs. create time
@@ -81,7 +81,7 @@ def main():
                 first = False
 
         if next_run < datetime.datetime.now():
-            next_run = datetime.datetime.now() + datetime.timedelta(lanmonfuncs.convert_time(getcfg("RecheckInterval"))[0])
+            next_run = datetime.datetime.now() + datetime.timedelta(seconds=lanmonfuncs.convert_time(getcfg("RecheckInterval"))[0])
             for key in cfg:
                 if key.startswith("MonType_"):
                     montype_tag = key.split("_")[1]

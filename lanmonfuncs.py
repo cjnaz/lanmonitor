@@ -2,7 +2,7 @@
 """LAN monitor support functions
 """
 
-__version__ = "V0.6 210415"
+__version__ = "V0.6b 210415"
 
 #==========================================================
 #
@@ -198,6 +198,7 @@ class notif_handler:
             logging.info(dict["message"])
             if dict["notif_key"] in self.events:
                 del self.events[dict["notif_key"]]
+                logging.warning(f"Event {dict["notif_key"]} now passing.  Removed from events log.")
         else:
             if dict["rslt"] == RTN_CRITICAL:
                 # if there are no active criticals, then set renotif time to now + renotif value
