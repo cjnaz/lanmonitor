@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - service_plugin
-"""
 
+Each service name is checked with a `systemctl status <service name>` (for systemd)
+or `service <service_name> status` (for init), checking for the active/running response.
+
+      MonType_Service		service_plugin
+      Service_<friendly_name>  <local or user@host>  [CRITICAL]  <service name>
+      Service_firewalld       local			CRITICAL  firewalld
+      Service_RPi1_HP1018     me@RPi1.mylan     cups
+"""
 __version__ = "V0.0 210415"
 
 #==========================================================

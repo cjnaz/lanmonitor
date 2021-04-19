@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - process_plugin
+
+Each process is checked by seeing if the `<executable path>` occurs in the output of a `ps -Af` call.  
+
+      MonType_Process		process_plugin
+      Process_<friendly_name>  <local or user@host>  [CRITICAL]  <executable path>
+      Process_x11vnc		local       CRITICAL  /usr/bin/x11vnc
 """
 
 __version__ = "V0.0 210415"

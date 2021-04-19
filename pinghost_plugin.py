@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - pinghost_plugin
+
+Each host is pinged.  The `friendly_name` is user defined (not the real hostname).
+<IP address or hostname> may be internal (local LAN) or external.
+
+      MonType_Host		pinghost_plugin
+      Host_<friendly_name>  <local or user@host>  [CRITICAL]  <IP address or hostname>
+      Host_RPi1_HP1018    local    CRITICAL 192.168.1.44
+      Host_Yahoo          me@RPi2.mylan    Yahoo.com
 """
 
 __version__ = "V0.0 210415"

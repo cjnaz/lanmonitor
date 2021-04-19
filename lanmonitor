@@ -19,7 +19,8 @@ __version__ = "V0.6b 210416"
 #
 #  Chris Nelson, 2021
 #
-# V0.6b 200416  Refactored to checker plugin model, many other changes
+# V0.0b 200416  Service loop bug fix
+# V0.6 200415  Refactored to checker plugin model, many other changes
 # V0.5 200312  Added checks on other hosts via ssh.
 # V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
 # V0.3 200226  Bug fix for files mod time vs. create time

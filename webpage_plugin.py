@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - webpage_plugin
+
+Each URL is read and checked for the `<expected text>`, which starts at the first non-white-space character after the URL 
+and up to the end of the line or a `#` comment character.  Leading and trailing white-space is trimmed off.  The url may be on a remote server.
+
+      MonType_Page		webpage_plugin
+      Page_<friendly_name>  <local or user@host>  [CRITICAL]  <url>  <expected text>
+      Page_WeeWX              local             http://localhost/weewx/             Current Conditions
+      Page_xBrowserSync       me@RPi2.mylan     https://www.xbrowsersync.org/       Browser syncing as it should be: secure, anonymous and free
 """
 
 __version__ = "V0.0 210415"

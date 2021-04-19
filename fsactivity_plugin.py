@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - fsactivity_plugin
+
+The age of files at the `<path to directory or file>` is checked for at least one file being more recent than `<age>` ago.
+Note that sub-directories are not recursed - only the listed top-level directory is checked for the newest file.
+
+      MonType_Activity	fsactivity_plugin
+      Activity_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <path to directory or file>
+      Activity_MyServer_backups     local       8d    /mnt/share/MyServerBackups
+      Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  5m    /mnt/RAMDRIVE/log.csv
 """
 
-__version__ = "V0.0 210415"
+__version__ = "V0.0c 210419"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V0.0c 210419  bug fix in weeks to seconds calculation
 # V0.0 210415  Initial
 #
 # Changes pending
@@ -48,7 +57,7 @@ class monitor:
             rest_of_line    Remainder of line after the 'user_host' from the config file line
 
         Returns dictionary with these keys:
-            rslt            Integer status:  RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
+            rslt            Integer status:  0=Pass/Good, 1=Warning, 2=Fail Std priority, 3=Fail Critical priority
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
         """
@@ -72,8 +81,6 @@ class monitor:
         # Process the item
         cmd = ["ls", "-ltA", "--full-time", path]
         ls_rslt = lanmonfuncs.cmd_check(cmd, user_host=item['user_host'], return_type="cmdrun")
-        # print (rslt)
-
         if not ls_rslt[0]:
             return {"rslt":RTN_WARNING, "notif_key":key, "message":f"WARNING: {key} - {host} - COULD NOT GET ls OF PATH <{path}>"}
         ls_list = ls_rslt[1].stdout.split("\n")
@@ -94,7 +101,7 @@ class monitor:
             if units == "mins ":  return time_sec /60
             if units == "hours":  return time_sec /60/60
             if units == "days ":  return time_sec /60/60/24
-            if units == "weeks":  return time_sec /60/6024/7
+            if units == "weeks":  return time_sec /60/60/24/7
 
         if newest_age < maxage_sec:
             return {"rslt":RTN_PASS, "notif_key":key, "message":f"{key_padded}  OK - {host_padded} - {retime(newest_age):6.1f} {units} ({int(retime(maxage_sec)):>4} {units} max)  {path}"}

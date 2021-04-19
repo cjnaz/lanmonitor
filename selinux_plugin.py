@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - selinux_plugin
+
+Checks that the sestatus Current mode: value matches the config file value.
+
+      MonType_SELinux		selinux_plugin
+      SELinux_<friendly_name>  <local or user@host>  [CRITICAL]  <enforcing or permissive>
+      SELinux_localhost     local             enforcing
 """
 
 __version__ = "V0.0 210415"
