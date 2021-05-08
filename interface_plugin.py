@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - selinux_plugin
+"""LAN Monitor plugin - interface_plugin
 
-Checks that the sestatus Current mode: value matches the config file value.
+Each interface is checked with a `ifconfig <interface name>`, checking for 'UP' and 'RUNNING'.
 
-      MonType_SELinux		selinux_plugin
-      SELinux_<friendly_name>  <local or user@host>  [CRITICAL]  <enforcing or permissive>
-      SELinux_localhost     local             enforcing
+      MonType_Interface		interface_plugin
+      Interface_<friendly_name>  <local or user@host>  [CRITICAL]  <interface name>
+      Interface_router_vlan0       local			CRITICAL  vlan0
 """
 
 __version__ = "V1.0 210507"
@@ -25,7 +25,6 @@ from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from funcs3 import logging
 
 # Configs / Constants
-SEMODES = ["enforcing", "permissive"]
 
 
 class monitor:
@@ -59,11 +58,8 @@ class monitor:
             self.failtype = RTN_FAIL
             self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
 
-        self.expected_mode  = item["rest_of_line"]
+        self.interface_name = item["rest_of_line"]
 
-        if self.expected_mode not in SEMODES:
-            logging.error (f"ERROR:  <{self.key}> INVALID EXPECTED sestatus MODE <{self.expected_mode}> PROVIDED - EXPECTING {SEMODES}")
-            return RTN_FAIL
         return RTN_PASS
 
 
@@ -75,14 +71,18 @@ class monitor:
             message         String with status and context details
         """
 
-        cmd = ["sestatus"]              # ssh user@host added by cmd_check if not local
-        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", check_line_text="Current mode:", expected_text=self.expected_mode)
-        # print (rslt)                  # Uncomment for debug
+        cmd = ["ifconfig", self.interface_name]     # ssh user@host added by cmd_check if not local
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
+        # print (rslt)                              # Uncomment for debug
 
         if rslt[0] == True:
-            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
+            if "UP" not in rslt[1].stdout:
+                return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - INTERFACE <{self.interface_name}> IS DOWN"}
+            if "RUNNING" not in rslt[1].stdout:
+                return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - INTERFACE <{self.interface_name}> IS NOT RUNNING"}
+            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - Interface <{self.interface_name}> is Up and Running"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting {self.expected_mode})"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - UNABLE TO READ INTERFACE <{self.interface_name}> STATE"}
 
 
 if __name__ == '__main__':
@@ -110,12 +110,10 @@ if __name__ == '__main__':
         if setup_rslt == RTN_PASS:
             print(f"  {inst.eval_status()}")
 
-    dotest ({"key":"SELinux_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"enforcing"})
+    dotest ({"key":"Interface_local_lo", "tag":"local_lo", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"lo"})
 
-    dotest ({"key":"SELinux_RPiX", "tag":"RPiX", "host":"RPiX", "user_host_port":"pi@rpiX", "critical":True, "rest_of_line":"enforcing"})
+    dotest ({"key":"Interface_router_wlan0", "tag":"router_wlan0", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "rest_of_line":"wlan0"})
 
-    dotest ({"key":"SELinux_RPi2", "tag":"RPi2", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":False, "rest_of_line":"enforcing"})
+    dotest ({"key":"Interface_bad_intf", "tag":"bad_intf", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"bad"})
 
-    dotest ({"key":"SELinux_badmode", "tag":"Shop2", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"enforcingX"})
-
-    dotest ({"key":"SELinux_RPi2_CRIT", "tag":"RPi2_CRIT", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":True, "rest_of_line":"enforcing"})
+    dotest ({"key":"Interface_no_interface", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":""})

@@ -13,19 +13,14 @@ Plugins are provided for these items, and additional plugins may easily be added
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V0.6b 210416"
+__version__ = "V1.0 210507"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
-# V0.0b 200416  Service loop bug fix
-# V0.6 200415  Refactored to checker plugin model, many other changes
-# V0.5 200312  Added checks on other hosts via ssh.
-# V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
-# V0.3 200226  Bug fix for files mod time vs. create time
-# V0.2 210207  Added age info to Activity log
-# V0.1 210129  Initial
+# V1.0  210507  Major refactor
+# V0.1  210129  Initial
 #
 # Changes pending
 #   
@@ -42,15 +37,16 @@ import signal       # For keyboard interrupt handler
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
 from funcs3 import loadconfig, getcfg, cfg, setuplogging, logging, funcs3_min_version_check, funcs3_version
 
+import globvars
 import lanmonfuncs
 
 
 # Configs / Constants
 PY_MIN_VERSION = 3.6
-FUNCS3_MIN_VERSION = 0.5
+FUNCS3_MIN_VERSION = 0.6
 CONFIG_FILE =     os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lanmonitor.cfg')
 LOG_FILE =        os.path.join(os.path.dirname(os.path.realpath(__file__)), "log_lanmonitor.txt")
-SMTP_CREDS_FILE = os.path.join(os.path.expanduser("~"), "creds_SMTP")
+
 
 py_version = float(sys.version_info.major) + float(sys.version_info.minor)/10
 if py_version < PY_MIN_VERSION:
@@ -61,74 +57,149 @@ if py_version < PY_MIN_VERSION:
 def main():
     first = True
 
-    loadconfig(cfgfile = lanmonfuncs.args.config_file) #, cfgloglevel=10)
-    notifs = lanmonfuncs.notif_handler()
+    try:
+        loadconfig(cfgfile = globvars.args.config_file) #, cfgloglevel=10)
+    except Exception:
+        logging.error(f"Cannot access config file <{globvars.args.config_file}>.  Aborting.")
+        sys.exit(1)
+
+    notif_handlers = getcfg("Notif_handlers", None)
+    notif_handlers_list = []
+    if notif_handlers is not None:
+        for handler in notif_handlers.split():
+            notif_plugin = __import__(handler)
+            notif_inst = notif_plugin.notif_class()
+            notif_handlers_list.extend([notif_inst])
 
     next_run = datetime.datetime.now()
+    inst_dict = {}
 
     while 1:
-        loadconfig(cfgfile = lanmonfuncs.args.config_file) #, cfgloglevel=10)
+        reloaded = loadconfig(cfgfile = globvars.args.config_file) #, cfgloglevel=10)
 
-        if lanmonfuncs.args.once:
-            if lanmonfuncs.args.verbose == 1:
+        if globvars.args.once:               # In non-once mode, logging level is set from config file
+            if globvars.args.verbose == 1:
                 logging.getLogger().setLevel(logging.INFO)
-            elif lanmonfuncs.args.verbose == 2:
+            elif globvars.args.verbose == 2:
                 logging.getLogger().setLevel(logging.DEBUG)
             else:
                 logging.getLogger().setLevel(logging.WARNING)
-        else:               # In non-once mode, logging level is from config file
-            if first:
+
+        if first:
+            logging.warning(f"LAN Monitor {__version__}")
+            if not globvars.args.once:
                 time.sleep (lanmonfuncs.convert_time(getcfg('StartupDelay'))[0])
-                first = False
+            first = False
+            reloaded = True     # Force calc of key and host padding lengths
 
         if next_run < datetime.datetime.now():
             next_run = datetime.datetime.now() + datetime.timedelta(seconds=lanmonfuncs.convert_time(getcfg("RecheckInterval"))[0])
-            for key in cfg:
-                if key.startswith("MonType_"):
-                    montype_tag = key.split("_")[1]
-                    montype_plugin = cfg[key]
+
+            if reloaded:
+                inst_dict = {}              # Clear out all known instances, forcing re-setup
+                globvars.keylen = 0
+                globvars.hostlen = 0
+                for key in cfg:             # Get keylen and hostlen field widths across all monitored items
+                    if key.startswith("MonType_"):
+                        montype_tag = key.split("_")[1]
+                        for line in cfg:
+                            if line.startswith(montype_tag + "_"):
+                                if len(line) > globvars.keylen:
+                                    globvars.keylen = len(line)
+                                host = lanmonfuncs.split_user_host_port(cfg[line].split(maxsplit=1)[0])[1]
+                                if len(host) > globvars.hostlen:
+                                    globvars.hostlen = len(host)
+
+            lanmonfuncs.have_access_dict = {}   # Force access check refresh on every RecheckInterval
+            for montype in cfg:
+                if montype.startswith("MonType_"):
+                    montype_tag = montype.split("_", maxsplit=1)[1]
+                    montype_plugin = cfg[montype]
     
                     plugin = __import__(montype_plugin)
 
-                    keylen = 0          # Get longest len of key and host strings of this type for pretty printing
-                    hostlen = 0
-                    for line in cfg:
-                        if line.startswith(montype_tag + "_"):
-                            if len(line) > keylen:
-                                keylen = len(line)
-                            host = lanmonfuncs.split_user_host(cfg[line].split(maxsplit=2)[0])[1]
-                            if len(host) > hostlen:
-                                hostlen = len(host)                        
+                    for key in cfg:    # Process all lines in cfg of this type
+                        if key.startswith(montype_tag + "_"):
 
-                    for line in cfg:    # Process all lines in cfg of this type
-                        if line.startswith(montype_tag + "_"):
+                            # Construct the setup and eval_status call dictionary
                             monline = {}
-                            monline["key"] = line
-                            monline["keylen"] = keylen
-                            monline["tag"] = line.split("_", 1)[1]
-                            xx = cfg[line].split(maxsplit=1)
-                            monline["user_host"], monline["host"] = lanmonfuncs.split_user_host(xx[0])
-                            monline["hostlen"] = hostlen
+                            monline["key"] = key
+                            monline["tag"] = key.split("_", maxsplit=1)[1]
+                            xx = cfg[key].split(maxsplit=1)
+                            u_h_p = xx[0]
+                            monline["user_host_port"] = u_h_p
+                            _, host, _ = lanmonfuncs.split_user_host_port(u_h_p)
+                            monline["host"] = host
                             monline["critical"] = False
                             monline["rest_of_line"] = xx[1]
                             if monline["rest_of_line"].startswith("CRITICAL"):
                                 monline["critical"] = True
                                 monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
 
-                            inst = plugin.monitor()
-                            notifs.log_event(inst.eval_status(monline))
-        
-        notifs.renotif()
-        notifs.summary()
 
-        if lanmonfuncs.args.once:
+                            # Instantiate the monitor item and call setup
+                            #   setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
+                            #   setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
+                            #   Some plugins may need to interrogate the target host during setup.
+                            #       If the interrogation fails (i.e., can't access), then the plugin.setup should return
+                            #       RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
+                            #       so that setup is retried on each iteration.
+                            if key not in inst_dict:
+                                inst = plugin.monitor()
+                                rslt = inst.setup(monline)
+                                if rslt == lanmonfuncs.RTN_PASS:
+                                    inst_dict[key] = inst
+                                elif rslt == lanmonfuncs.RTN_FAIL:
+                                    _msg = f"MONITOR SETUP FOR <{key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
+                                    logging.error(f"ERROR:  {_msg}")
+                                    for notif_handler in notif_handlers_list:
+                                        notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
+                                                    "message":f"WARNING: {key} - {host} - {_msg}"})
+                                    inst_dict[key] = False
+                                elif rslt == lanmonfuncs.RTN_WARNING:
+                                    _msg = f"MONITOR SETUP FOR <{key}> FAILED.  WILL RETRY."
+                                    logging.error(f"WARNING:  {_msg}")
+                                    for notif_handler in notif_handlers_list:
+                                        notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
+                                                    "message":f"WARNING: {key} - {host} - {_msg}"})
+                                else:
+                                    logging.critical (f"Setup for <{key}> returned illegal value {rslt}.  Fatal error, Aborting.")
+                                    sys.exit(1)
+
+
+                            # Confirm access to remote host and call eval_status
+                            inst = False
+                            if key in inst_dict:
+                                inst = inst_dict[key]
+                            if inst is not False:
+                                access_status, fail_message = lanmonfuncs.have_access(u_h_p)    # TODO - Breaks pinghost_plugin
+                                if access_status:
+                                    rslt = inst.eval_status()
+                                    for notif_handler in notif_handlers_list:
+                                        notif_handler.log_event(rslt)
+                                else:
+                                    for notif_handler in notif_handlers_list:
+                                        notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
+                                                    "message":f"WARNING: {key} - {host} - {fail_message} - skipping check"})
+
+        
+        for notif_handler in notif_handlers_list:
+            notif_handler.each_loop()
+
+        for notif_handler in notif_handlers_list:
+            notif_handler.renotif()
+
+        for notif_handler in notif_handlers_list:
+            notif_handler.summary()
+
+        if globvars.args.once:
             sys.exit(0)
 
-        time.sleep (10)
+        time.sleep (10)     # Fixed 10s service loop
 
 
 def keyboardInterruptHandler(signal, frame):
-    print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal))
+    print(f"KeyboardInterrupt (ID: {signal}) has been caught. Cleaning up...")
     sys.exit(0)
 signal.signal(signal.SIGINT, keyboardInterruptHandler)
 
@@ -144,22 +215,18 @@ if __name__ == '__main__':
                         help=f"Path to config file (default <{CONFIG_FILE}>).")
     parser.add_argument('--log-file', default=LOG_FILE,
                         help=f"Path to log file (default <{LOG_FILE}>).")
-    parser.add_argument('--smtp-creds-file', default=SMTP_CREDS_FILE,
-                        help=f"Path to SMTP credentials file (default <{SMTP_CREDS_FILE}>).")
     parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
                         help="Return version number and exit.")
-    lanmonfuncs.args = parser.parse_args()
+    globvars.args = parser.parse_args()
     
-    if lanmonfuncs.args.once:
+    if globvars.args.once:
         setuplogging(logfile=None)
     else:
-        setuplogging(logfile=lanmonfuncs.args.log_file)
+        setuplogging(logfile=globvars.args.log_file)
     
     if not funcs3_min_version_check(FUNCS3_MIN_VERSION):
         logging.error(f"ERROR:  funcs3 module must be at least version {FUNCS3_MIN_VERSION}.  Found <{funcs3_version}> - Aborting.")
         sys.exit(1)
-    
-    loadconfig(cfgfile = lanmonfuncs.args.smtp_creds_file) #, cfgloglevel=10)
 
     main()
     sys.exit()
