@@ -19,12 +19,13 @@ Globals:
         from a different pwd, such as when running from cron.
 """
 
-funcs3_version = "V0.5 201203"
+funcs3_version = "V0.6 210427"
 
 #==========================================================
 #
 #  Chris Nelson, 2018-2020
 #
+# V0.6 210427  loadconfig returns True when cfg has been (re)loaded.  loadconfig support import, flush and booleans.
 # V0.5 201203  Passing None to setuplogging logfile directs output to stdout.  Added funcs3_min_version_check().
 # V0.4 201028  Reworked loadconfig & JAM with re to support ':' and '=' delimiters.
 #   loadconfig may be re-called and will re-load if the config file mod time has changed.
@@ -48,11 +49,37 @@ import tempfile
 import re
 import __main__
 
-
-### Project globals
+# Project globals
 cfg = {}
-progdir = os.path.dirname(os.path.realpath(__main__.__file__)) + "/"
-config_epoch = 0
+PROGDIR = os.path.dirname(os.path.realpath(__main__.__file__)) + "/"
+progdir = PROGDIR           # Backward compatibility
+config_timestamp = 0
+
+
+# Module exceptions
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class ConfigError(Error):
+    """Exceptions raised for config file function errors.
+    Attributes:
+        message -- error message including item in error
+    Format:
+        ConfigError:  <function> - <message>.
+    """
+    def __init__(self, message):
+        self.message = message
+
+class SndEmailError(Error):
+    """Exceptions raised for snd_email and snd_notif errors.
+    Attributes:
+        message -- error message including item in error
+    Format:
+        SndEmailError:  <function> - <message>.
+    """
+    def __init__(self, message):
+        self.message = message
 
 
 # ***** Logging setup *****
@@ -66,12 +93,11 @@ def setuplogging (logfile= 'log.txt'):
         be specified.
         Passing None causes output to bge sent to stdout.
     """
-
     if logfile == None:
         logging.basicConfig(format='%(message)s')
     else:
         if os.path.isabs(logfile):  logpath = logfile
-        else:                       logpath = progdir + logfile
+        else:                       logpath = PROGDIR + logfile
         logging.basicConfig(filename=logpath, format='%(asctime)s/%(module)s/%(funcName)s/%(levelname)s:  %(message)s')
 
 
@@ -88,60 +114,125 @@ def funcs3_min_version_check(min_version):
 
 
 # ***** Config file functions loadconfig, JAM, getcfg *****
-cfgline = re.compile(r"([\w]+)[\s=:]+(.*)")
-def loadconfig(cfgfile= 'config.cfg', cfgloglevel= 30):
+cfgline = re.compile(r"([^\s=:]+)[\s=:]+(.+)")
+
+def __loadline__(line):     # Common code for loadconfig and JAM
+    # line = line.split("#", maxsplit=1)[0].lstrip().rstrip()
+    line = line.split("#", maxsplit=1)[0].strip()
+    if len(line) > 0:
+        out = cfgline.match(line)
+        if out:
+            key = out.group(1)
+            rol = out.group(2)  # rest of line
+            isint = False
+            try:
+                cfg[key] = int(rol)   # append int to dict
+                isint = True
+            except:
+                pass
+            if not isint:
+                if rol.lower() == "true":
+                    cfg[key] = True
+                elif rol.lower() == "false":
+                    cfg[key] = False
+                else:
+                    cfg[key] = rol    # append string to dict
+
+            # except:
+            #     if rol.lower() == "true":
+            #         cfg[key] = True
+            #     elif rol.lower() == "false":
+            #         cfg[key] = False
+            #     else:
+            #         cfg[key] = rol    # append string to dict
+            #         # print (rol)
+            logging.debug (f"Loaded {key} = <{cfg[key]}>  ({type(cfg[key])})")
+        else: logging.warning (f"loadconfig/JAM error on line <{line}>.  Line skipped.")
+
+
+def loadconfig(cfgfile='config.cfg', cfgloglevel=30, cfg_flush=False, isimport=False):
     """Read config file into dictionary cfg.
 
     Params:
     cfgfile     -- Default is 'config.cfg' in the program directory
-        Absolute or relative path (from the main program directory) may
+        Absolute path or relative path from the main program directory may
         be specified.
-    cfgloglevel -- sets logging level during config file loading.
-        Default is 30:WARNING.
+    cfgloglevel -- sets logging level during config file loading. Default is 30:WARNING.
+    cfg_flush   -- Purges / flushes the cfg dictionary before forced reloading.
+    isimport    -- Internally set True when handling imports.
 
     Notes:
     Logging module levels: 10:DEBUG, 20:INFO, 30:WARNING, 40:ERROR, 50:CRITICAL
     Optional LoggingLevel in the config file will set the logging level after
-    the config has been loaded.  The default logging level is 30:WARNING.
+    the config has been loaded.  If not specified in the config file, then 
+    the logging level is set to 30:WARNING after loading the config file.
 
     loadconfig may be called periodically by the main script.  loadconfig detects
     if the config file modification time has changed and reloads the file, as needed.
+
+    Returns True if cfg has been (re)loaded, and False if not reloaded, so that the
+    caller can do processing only if the cfg is freshly loaded.
     """
-    global config_epoch
-    xx = os.path.getmtime(cfgfile)
-    if config_epoch == xx:
-        logging.debug("loadconfig reload skipped")
-        return
-    config_epoch = xx
+    global config_timestamp
+    global cfg
 
     logging.getLogger().setLevel(cfgloglevel)
 
-    if os.path.isabs(cfgfile):  config = cfgfile
-    else:                       config = progdir + cfgfile
+    if cfg_flush:
+        logging.debug("loadconfig:  cfg dictionary flushed")
+        cfg = {}
+        config_timestamp = 0
+
+    if os.path.isabs(cfgfile):
+        config = cfgfile
+    else:
+        config = PROGDIR + cfgfile
 
     if not os.path.exists(config):
-        logging.error("loadconfig:  Config file <{}> does not exist.  Aborting.".format(config))
-        sys.exit(1)
-    
-    logging.info ('Loading {}'.format(config))
-    with io.open(config, encoding='utf8') as ifile:
-        for line in ifile:
-            line = line[0:line.find('#')].lstrip().rstrip() # throw away comment and any leading & trailing whitespace
-            if len(line) > 0:
-                out = cfgline.match(line)
-                if out:
-                    try:
-                        cfg[out.group(1)] = int(out.group(2))   # append int to dict
-                    except:
-                        cfg[out.group(1)] = out.group(2)        # append string to dict
-                    logging.debug ("Loaded {} = {}".format(out.group(1), cfg[out.group(1)]))
-                else: logging.warning ("loadconfig error on line {}.  Line skipped.".format(line))
+        _msg = f"loadconfig - Config file <{config}> not found."
+        logging.error (f"ConfigError:  {_msg}")
+        raise ConfigError (_msg)
 
-    if 'LoggingLevel' in cfg:                           # LoggingLevel from config file sets the following log level
-        ll = cfg['LoggingLevel']
-        logging.info ('Logging level set to <{}>'.format(ll))
-        logging.getLogger().setLevel(ll)
-    # else:  logging.getLogger().setLevel(30)             # INFO level is default
+    try:
+        xx = os.path.getmtime(cfgfile)
+        if config_timestamp == xx:
+            logging.debug("loadconfig:  reload skipped")
+            return False
+        config_timestamp = xx
+
+        logging.info (f"Loading {config}")
+        with io.open(config, encoding='utf8') as ifile:
+            for line in ifile:
+                if line.strip().lower().startswith("import"):
+                    line = line.split("#", maxsplit=1)[0].strip()
+                    target = os.path.expanduser(line.split()[1])
+                    if os.path.exists(target):
+                        loadconfig(target, cfgloglevel, isimport=True)
+                    else:
+                        _msg = f"loadconfig:  Could not find and import <{target}>"
+                        logging.error (f"ConfigError:  {_msg}")
+                        raise ConfigError (_msg)
+                else:
+                    __loadline__(line)
+    except Exception as e:
+        # print ("In exception")
+        _msg = f"loadconfig - Failed while attempting to open/read config file <{config}>.\n  {e}"
+        logging.error (f"ConfigError:  {_msg}")
+        raise ConfigError (_msg) from None
+
+    if not isimport:                    # Operations only for a top-level call
+        if getcfg("DontEmail", False):
+            logging.info ('DontEmail is set - Emails and Notifications will NOT be sent')
+        elif getcfg("DontNotif", False):
+            logging.info ('DontNotif is set - Notifications will NOT be sent')
+
+        if 'LoggingLevel' in cfg:
+            ll = cfg['LoggingLevel']
+            logging.info (f"Logging level set to <{ll}>")
+            logging.getLogger().setLevel(ll)
+        else:  logging.getLogger().setLevel(30)
+
+    return True
 
 
 def JAM():
@@ -151,29 +242,31 @@ def JAM():
     getting a local value, else newly jammed values wont be used.
     After the new values are loaded the JAM file is renamed to JAMed.
     The logging level may be changed by setting/changing LoggingLevel.
+
+    JAM is effectively replaced by loadconfig support for reloading the config
+    file when its timestamp changes.
     """
     
-    if os.path.exists(progdir + 'JAM'):
-        with io.open(progdir + 'JAM', encoding='utf8') as ifile:
-            for line in ifile:
-                line = line[0:line.find('#')].lstrip().rstrip() # throw away comment and any leading & trailing whitespace
-                if len(line) > 0:
-                    out = cfgline.match(line)
-                    if out:
-                        try:
-                            cfg[out.group(1)] = int(out.group(2))   # append int to dict
-                        except:
-                            cfg[out.group(1)] = out.group(2)        # append string to dict
-                        logging.warning ("JAMed {} = {}".format(out.group(1), cfg[out.group(1)]))
-                    else: logging.warning ("JAM error on line {}.  Line skipped.".format(line))
-        if os.path.exists(progdir + 'JAMed'): os.remove(progdir + 'JAMed')
-        os.rename (progdir + 'JAM', progdir + 'JAMed')
+    jamfile = PROGDIR + 'JAM'
+    try:
+        if os.path.exists(jamfile):
+            with io.open(jamfile, encoding='utf8') as ifile:
+                for line in ifile:
+                    __loadline__(line)
 
-    if 'LoggingLevel' in cfg:                           # LoggingLevel from config file sets the following log level
+            if os.path.exists(PROGDIR + 'JAMed'):
+                os.remove(PROGDIR + 'JAMed')
+            os.rename (jamfile, PROGDIR + 'JAMed')
+    except Exception as e:
+        _msg = f"JAM - Failed while attempting to open/read/rename JAM file.\n  {e}"
+        logging.error (f"ConfigError:  {_msg}")
+        raise ConfigError (_msg) from None
+
+    if 'LoggingLevel' in cfg:
         ll = cfg['LoggingLevel']
-        logging.info ('Logging level set to <{}>'.format(ll))
+        logging.info (f"Logging level set to <{ll}>")
         logging.getLogger().setLevel(ll)
-    # else:  logging.getLogger().setLevel(30)             # INFO level is default
+    else:  logging.getLogger().setLevel(30)
 
 
 def getcfg(param, default=None):
@@ -185,15 +278,17 @@ def getcfg(param, default=None):
     param   -- string name of item to be fetched from cfg
     default -- if provided, is returned if the param doesn't exist in cfg.
 
-    Error and abort if param does not exist in cfg and no default provided.
+    raise ConfigError if param does not exist in cfg and no default provided.
     """
     
     try:
         return cfg[param]
     except:
-        if default != None:  return default
-        logging.error ("Config error:  <{}> missing or invalid value.  Aborting.".format(param))
-        sys.exit(1)
+        if default != None:
+            return default
+    _msg = f"getcfg - Config parameter <{param}> not in cfg and no default."
+    logging.error (f"ConfigError:  {_msg}")
+    raise ConfigError (_msg)
 
 
 # ***** Lock file management functions *****
@@ -206,7 +301,7 @@ def requestlock(caller, lockfile=LOCKFILE_DEFAULT):
     """
     lock_file = os.path.join(tempfile.gettempdir(), lockfile)
 
-    for xx in range(5):
+    for _ in range(5):
         if os.path.exists(lock_file):
             with io.open(lock_file, encoding='utf8') as ifile:
                 lockedBy = ifile.read()
@@ -241,7 +336,7 @@ def releaselock(lockfile=LOCKFILE_DEFAULT):
 
 #***** Notification and email functions *****
 def snd_notif(subj='Notification message', msg='', log=False):
-    """Send a text message using the cfg NotifList from the config file.
+    """Send a text message using the cfg NotifList.
 
     Params:
     subj -- Subject text string
@@ -249,34 +344,39 @@ def snd_notif(subj='Notification message', msg='', log=False):
     log  -- If True, elevates log level from DEBUG to WARNING to force logging
 
     cfg NotifList is required in the config file.
-    cfg DontNotif is optional, and if == True no text message is sent.
-    Useful for debug.
+    cfg DontNotif is optional, and if == True no text message is sent. Useful for debug.
     """
 
     xx = 0
-    if getcfg('DontNotif', default='False') == 'True':
-        logging.warning ("sndNotif:  DontNotif==True - Message NOT sent <{}> <{}>".format(subj, msg))
-    else:
-        xx = snd_email (subj=subj, body=msg, to='NotifList')
+    if getcfg('DontNotif', default=False):
         if log:
-            logging.warning ("Notification message sent <{}> <{}>".format(subj, msg))
+            logging.warning (f"Notification not sent <{subj}> <{msg}>")
         else:
-            logging.debug ("Notification message sent <{}> <{}>".format(subj, msg))
+            logging.debug (f"Notification not sent <{subj}> <{msg}>")
+        return 0
+
+    xx = snd_email (subj=subj, body=msg, to='NotifList')
+    if log:
+        logging.warning (f"Notification sent <{subj}> <{msg}>")
+    else:
+        logging.debug (f"Notification sent <{subj}> <{msg}>")
     return xx
 
 
 def snd_email(subj='', body='', filename='', to='', log=False):
     """Send an email message using email account info from the config file.
-    Either body or fileName must be passed.  body takes precedence over fileName.
+    Either body or filename must be passed.  body takes precedence over filename.
 
     Params:
+    subj     -- email subject text
     body     -- is a string message to be sent.
     filename -- is a string full path to the file to be sent.
         Default path is the program directory.
         Absolute and relative paths accepted.
     to       -- to whom to send the message
-        to may be a single email address (contains an '@') string 
-        or it is assumed to be a cfg keyword with list of eamil addresses
+        to may be a single email address (contains an '@') 
+        or it is assumed to be a cfg keyword with a space separated list of email addresses
+    log  -- If True, elevates log level from DEBUG to WARNING to force logging of the email subj
 
     cfg EmailFrom, EmailServer, and EmailServerPort are required in the config file
         EmailServerPort must be one of the following:
@@ -285,15 +385,18 @@ def snd_email(subj='', body='', filename='', to='', log=False):
             P587: SMTP to port 587 without any encryption
             P587TLS:  SMTP to port 587 and with TLS encryption
     cfg EmailUser and EmailPass are optional in the config file.
-        Needed if the server requires crudentials.
+        Needed if the server requires credentials.
     cfg DontEmail is optional, and if == True no email is sent.
-        Also blocks sndNotifs.  Useful for debug.
+        Also blocks snd_notifs.  Useful for debug.
     cfg EmailVerbose = True enables the emailer debug level.
     """
 
-    if getcfg('DontEmail', default='False') == 'True':
-        logging.warning ("snd_email:  DontEmail==True - <{}> message NOT emailed.".format(subj))
-        return
+    if getcfg('DontEmail', default=False):
+        if log:
+            logging.warning (f"Email not sent <{subj}>")
+        else:
+            logging.debug (f"Email not sent <{subj}>")
+        return 0
 
     if not (body == ''):
         m = body
@@ -301,15 +404,21 @@ def snd_email(subj='', body='', filename='', to='', log=False):
         fp = io.open(filename, encoding='utf8')
         m = fp.read()
         fp.close()
-    else: logging.error ("snd_email:  No <body> and can't find file <{}>.".format(filename)); sys.exit(1)
+    else:
+        _msg = f"snd_email - No <body> and can't find file <{filename}>."
+        logging.error (f"SndEmailError:  {_msg}")
+        raise SndEmailError (_msg)
 
-    m += '\n(sent {})'.format(time.asctime(time.localtime()))
+    m += f"\n(sent {time.asctime(time.localtime())})"
 
     if '@' in to:
           To = to.split()           # To must be a list
     else: To = getcfg(to).split()
     if not (len(To) > 0):
-        logging.error ("snd_email:  <to> list is invalid: <{}>.".format(to)); sys.exit(1)
+        _msg = f"snd_email - 'to' list is invalid: <{to}>."
+        logging.error (f"SndEmailError:  {_msg}")
+        raise SndEmailError (_msg)
+
     try:
         msg = MIMEText(m)
         msg['Subject'] = subj
@@ -330,24 +439,25 @@ def snd_email(subj='', body='', filename='', to='', log=False):
 
         if 'EmailUser' in cfg:
             s.login (getcfg('EmailUser'), getcfg('EmailPass'))
-        if getcfg("EmailVerbose", default="False") == 'True':
+        if getcfg("EmailVerbose", default=False): # == True:
             s.set_debuglevel(1)
         s.sendmail(getcfg('EmailFrom'), To, msg.as_string())
         s.quit()
 
         if log:
-            logging.warning ("Sent message <{}>".format(subj))
+            logging.warning (f"Email sent <{subj}>")
         else:
-            logging.debug ("Sent message <{}>".format(subj))
+            logging.debug (f"Email sent <{subj}>")
     except Exception as e:
-        logging.warning ("snd_email:  Send failed for <{}>: <{}>".format(subj, e))
+        logging.warning (f"snd_email:  Send failed for <{subj}>:\n  <{e}>")
         return -1
     return 0
 
 
 if __name__ == '__main__':
 
-    setuplogging(logfile= 'testlogfile.txt')
+    # setuplogging(logfile= 'testlogfile.txt')
+    setuplogging(logfile= None)
     loadconfig (cfgfile='testcfg.cfg', cfgloglevel=10)
 
     # # Tests for funcs3_min_version_check
@@ -358,27 +468,38 @@ if __name__ == '__main__':
 
 
     # # Tests for loadconfig, getcfg
-    # for key in cfg:
-    #     print ("{:>15} = {}".format(key, cfg[key]))
+    # try:
+    #     loadconfig("nosuchfile.txt")
+    # except ConfigError as e:
+    #     print ("In main...", e)
+    # # loadconfig("nosuchfile.txt")      # This one exercises untrapped error caught by Python
 
-    # print ("Testing getcfg - Not in cfg with default: <{}>".format(getcfg('NotInCfg', '--default--')))
-    # print ("Testing getcfg - Not in cfg with no default... will cause an exit()")
-    # getcfg('NotInCfg-NoDef')
+    # for key in cfg:
+    #     print (f"{key:>20} = {cfg[key]}") #.format(key, cfg[key]))
+
+    # print (f"Testing getcfg - Not in cfg with default: <{getcfg('NotInCfg', 'My Default Value')}>") #.format(getcfg('NotInCfg', 'My Default Value')))
+    # try:
+    #     getcfg('NotInCfg-NoDef')
+    # except ConfigError as e:
+    #     print (e)
+    # # getcfg('NotInCfg-NoDef')          # This one exercises untrapped error caught by Python
 
 
     # # Tests for JAM
     # with io.open("JAM", 'w') as ofile:
     #     ofile.write("JammedInt 1234\n")
     #     ofile.write("JammedStr This is a text string # with a comment on the end\n")
+    #     ofile.write("JammedBool false\n")
     #     ofile.write("LoggingLevel 10\n")
     # JAM()
-    # print ("JammedInt = <{}>, {}".format(getcfg('JammedInt'), type(getcfg('JammedInt'))))
-    # print ("JammedStr = <{}>, {}".format(getcfg('JammedStr'), type(getcfg('JammedStr'))))
+    # print (f"JammedInt  = <{getcfg('JammedInt')}>, {type(getcfg('JammedInt'))}") #.format(getcfg('JammedInt'), type(getcfg('JammedInt'))))
+    # print (f"JammedStr  = <{getcfg('JammedStr')}>, {type(getcfg('JammedStr'))}") #.format(getcfg('JammedStr'), type(getcfg('JammedStr'))))
+    # print (f"JammedBool = <{getcfg('JammedBool')}>, {type(getcfg('JammedBool'))}") #.format(getcfg('JammedBool'), type(getcfg('JammedBool'))))
 
 
-    # # Tests for sndNotif and snd_email
-    # cfg['DontEmail'] = 'True'
-    # cfg['DontNotif'] = 'True'
+    # Tests for sndNotif and snd_email
+    # cfg['DontEmail'] = True
+    # cfg['DontNotif'] = True
     # snd_email (subj="Test email with body", body="To be, or not to be...", to="EmailTo")
     # snd_email (subj="Test email with body", body="To be, or not to be...", to="xyz@gmail.com")
     # snd_email (subj="Test email with filename JAMed", filename="JAMed", to="EmailTo")
@@ -389,10 +510,10 @@ if __name__ == '__main__':
 
     # # Tests for lock files
     # stat = requestlock ("try1")
-    # print ("got back from requestLock.  stat = {}".format(stat))
+    # print (f"got back from requestLock.  stat = {stat}") #.format(stat))
     # stat = requestlock ("try2")
-    # print ("got back from 2nd requestLock.  stat = {}".format(stat))
+    # print (f"got back from 2nd requestLock.  stat = {stat}") #.format(stat))
     # stat = releaselock ()
-    # print ("got back from releaseLock.  stat = {}".format(stat))
+    # print (f"got back from releaseLock.  stat = {stat}") #.format(stat))
     # stat = releaselock ()
-    # print ("got back from 2nd releaseLock.  stat = {}".format(stat))
+    # print (f"got back from 2nd releaseLock.  stat = {stat}") #.format(stat))

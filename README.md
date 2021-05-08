@@ -1,15 +1,15 @@
-# lanmonitor
+# lanmonitor - Keeping watch on the health of your network resources
 
 lanmonitor tracks the state of SELinux, hosts, services, web pages, processes, and local filesystem age on machines (hosts/VMs/servers...) on the local area network.  
 A text message notification is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).  Periodic re-notifications are sent for
 critical items, such as firewalld being down, and summary reports are generated up to daily.
 
+` `  
 ## Usage
 ```
 $ ./lanmonitor -h
 usage: lanmonitor [-h] [-1] [-v] [--config-file CONFIG_FILE]
-                  [--log-file LOG_FILE] [--smtp-creds-file SMTP_CREDS_FILE]
-                  [-V]
+                  [--log-file LOG_FILE] [-V]
 
 LAN monitor
 
@@ -23,90 +23,97 @@ Plugins are provided for these items, and additional plugins may easily be added
     Filesystem age
 
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
-V0.6 210415
+V1.0 210507
 
 optional arguments:
   -h, --help            show this help message and exit
   -1, --once            Single run mode.  Logging is to console rather than file.
   -v, --verbose         Display OK items in --once mode. (Set by LoggingLevel in config file for non --once mode.)
   --config-file CONFIG_FILE
-                        Path to config file (default </mnt/share/dev/python/lanmonitor/github/lanmonitor.cfg>).
-  --log-file LOG_FILE   Path to log file (default </mnt/share/dev/python/lanmonitor/github/log_lanmonitor.txt>).
-  --smtp-creds-file SMTP_CREDS_FILE
-                        Path to SMTP credentials file (default </home/<user>/creds_SMTP>).
+                        Path to config file (default <<path to script>/lanmonitor.cfg>).
+  --log-file LOG_FILE   Path to log file (default <<path to script>/log_lanmonitor.txt>).
   -V, --version         Return version number and exit.
 ```
 
+` `  
 ## Example output
 ```
 $ ./lanmonitor --once --verbose
-SELinux_local  OK - local - enforcing
-Host_RPi2_TempMon    OK - local - rpi2.lan
-Host_Printer_Server  OK - local - 192.168.1.44
-FAIL: Host_RPi3_from_RPi1 - rpi1.lan - HOST RPi3.lan IS NOT RESPONDING
-Service_routermonitor    OK - local    - routermonitor
-Service_wanstatus        OK - local    - wanstatus
-Service_plexmediaserver  OK - local    - plexmediaserver
-Service_firewalld        OK - local    - firewalld
+SELinux_local             OK - local    - enforcing
+Host_RPi2_TempMon         OK - local    - rpi2.lan
+Host_Printer_Server       OK - local    - 192.168.1.44
+FAIL: Host_RPi3_from_RPi1 - rpi1.lan    - HOST RPi3.lan IS NOT RESPONDING
+Service_routermonitor     OK - local    - routermonitor
+Service_wanstatus         OK - local    - wanstatus
+Service_plexmediaserver   OK - local    - plexmediaserver
+Service_firewalld         OK - local    - firewalld
 CRITICAL: Service_xxx - local - SERVICE xxx IS NOT RUNNING
-Page_WeeWX         OK - local - http://192.168.33.72/weewx/
-Page_xBrowserSync  OK - rpi2  - https://www.xbrowsersync.org/
+Page_WeeWX                OK - local    - http://192.168.33.72/weewx/
+Page_xBrowserSync         OK - rpi2     - https://www.xbrowsersync.org/
 FAIL: Page_xxx - local - WEBPAGE http://localhost/xxx/ NOT FOUND
-Process_x11vnc   OK - local    - /usr/bin/x11vnc
-Process_tempmon  OK - RPi2.lan - python TempMon.py
+Process_x11vnc            OK - local    - /usr/bin/x11vnc
+Process_tempmon           OK - RPi2.lan - python TempMon.py
 WARNING: Process_xxxPi3 - RPi3.lan - HOST CANNOT BE REACHED
-Activity_Win1_Image       OK - local -    5.8 days  (   6 days  max)  /mnt/share/backups/Win1/Image/
+Activity_Win1_Image       OK - local    -    5.8 days  (   6 days  max)  /mnt/share/backups/Win1/Image/
 FAIL: Activity_Win2_Image  STALE FILES - local -    6.7 days  (   6 days  max)  /mnt/share/backups/Win2/Image/
-Activity_CentOS_backupsd  OK - local -    0.7 days  (   8 days  max)  /mnt/share/backups/Shop2/
+Activity_CentOS_backupsd  OK - local    -    0.7 days  (   8 days  max)  /mnt/share/backups/Shop2/
 WARNING: Activity_xxx - local - COULD NOT GET ls OF PATH </mnt/share/backups/xxx/>
-Activity_TiBuScrape       OK - local -    3.9 days  (   4 days  max)  /mnt/share/backups/TiBuScrapeArchive/
-Activity_RPi2_log.csv     OK - rpi2  -    0.8 mins  (   5 mins  max)  /mnt/RAMDRIVE/log.csv
+Activity_TiBuScrape       OK - local    -    3.9 days  (   4 days  max)  /mnt/share/backups/TiBuScrapeArchive/
+Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RAMDRIVE/log.csv
 ```
 
+` `  
 ## Setup and Usage notes
 - Supported on Python3.6+ only.  Developed on Centos 7.9 with Python 3.6.8.
 - Place the files in a directory on your server.
-- Create an SMTP/email credentials file at `~/creds_SMTP`.  Change the file protections to mode `600`.  Set this up for root as well if you will be running lanmonitor as a service.
+- Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`. 
 
       EmailUser	    yourlogin@mailserver.com
       EmailPass	    yourpassword
 
-- Edit the config info in the `lanmonitor.cfg` file.  Enter your mail server address/port and notification/email addresses.  See below for item settings.
+- Edit the config info in the `lanmonitor.cfg` file.  Enter your mail server address/port and notification/email addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
+
   - `nRetries` sets how many tries will be made to accomplish each monitored item.
   - `RetryInterval` sets the time between nRetries.
-  - `StartupDelay` is a wait time when starting in service mode to allow everything to come up fully at system boot before checking items.
+  - `StartupDelay` is a wait time when starting in service mode to allow everything to come up fully (or crash) at system boot before checking items.
   - `RecheckInterval` sets how long between rechecks in service mode.
-  - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.
-  - `SummaryDays` sets the days of the week for summaries to be emailed.  Sunday =0, Monday =1, ... Saturday =6.  Multiple days may be selected.
-  - `SummaryTime` sets the time of day for summaries to be emailed.  24-clock format, for example, `13:00`.
+  - `Notif_handlers` is a whitespace separated list of Python modules (without the .py extension) that will handle monitored item event tracking, notifications, and periodic summaries.  See Notification Handlers, below.
+  - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.  (Used by the `stock_notif.py` notification handler.)
+  - `SummaryDays` sets which days of the week for summaries to be emailed.  Sunday =0, Monday =1, ... Saturday =6.  Multiple days may be selected.  (Used by the `stock_notif.py` notification handler.)
+  - `SummaryTime` sets the time of day (local time) for summaries to be emailed.  24-clock format, for example, `13:00`.  (Used by the `stock_notif.py` notification handler.)
+  - See below for monitored item settings.
 - Run the tool with `<path to>lanmonitor --once --verbose`.  Make sure that the local machine and user has ssh access to any remote machines.  (`-vv` turns on debug logging.)
-- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval or Summary.  Make sure that the user (typically root) that the service runs under has ssh access to any remotes.
-- A text message is sent for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.
+- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval.  Make sure that the user (typically root) that the service runs under has ssh access to any remotes.
+- stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages.
+- stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - NOTE:  All time values in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6h` is 6 hours.  If no suffix is provided the time value is taken as seconds.
 
-
+` `  
 ## Monitored items setup
-Items to be monitored are defined in the lanmonitor.cfg file.  "Plugin" modules provide the logic for each monitored item type.  Six plugins are initially provided, below.
+Items to be monitored are defined in the `lanmonitor.cfg` file.  "Plugin" modules provide the logic for each monitored item type.  Six plugins are described below.  See the module description at the top of each module for functional and configuration specifics.
 To activate a given plugin, a `MonType_` line is included in the configuration file using this format:
 
       MonType_<type>    <plugin_name>
 
 1. Begins with the `MonType_` prefix
-2. The `<type>` is used as the prefix on successive lines for this type
+2. The `<type>` is used as the prefix on successive lines for monitor items of this type
 3. The `<plugin_name>` is the Python module name (implied .py suffix)
 
 
 For monitored items, the general format of a line is
 
-      <type>_<friendly_name>  <local or user@host>  [CRITICAL (optional)]  <rest_of_line>
+      <type>_<friendly_name>  <local or user@host[:port]>  [CRITICAL (optional)]  <rest_of_line>
 
 1. `<type>` matches the corresponding `MonType_<type>` line.
-2. `<friendly_name>` must be unique and is used for notifications, logging, etc.  This text is arbitrary - need not match any other info.
-3. `<local or user@host>` specifies on which machine the check will be executed from.  If not local, then `user@host` specifies the ssh login on the remote machine.
-4.  `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these when failing.  (All non-passing items are listed in the periodically emailed summary.)
+2. `<friendly_name>` is arbitrary and is used for notifications, logging, etc. `<type>_<friendly_name>` must be unique.
+3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not `local`, then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line below specifies that `Yahoo.com` will be pinged from the `RPi2.mylan` host by doing an `ssh me@RPi2.mylan ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
+4.  `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these when failing by the `stock_notif.py` notification handler.
 5. `<rest_of_line>` are the monitored type-specific settings.
 
-### Supplied plugin specifics
+` `  
+### Initially supplied plugin specifics
+
+See the documentation header in each plugin for its functionality and configuration specifics.
 
 - **SELinux** checks that the sestatus _Current mode:_ value matches the config file value.
 
@@ -150,120 +157,80 @@ For monitored items, the general format of a line is
       Activity_MyServer_backups     local       8d    /mnt/share/MyServerBackups
       Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  5m    /mnt/RAMDRIVE/log.csv
 
+` `  
+## Writing Monitor Plugins
 
-## Writing Plugins
-
-New plugins may be added easily.  The core lanmonitor code provides a complete framework for configuration logging, notifications, summaries, command retries, and parsing components.  The general process for creating a new plugin is:
+New plugins may be added easily.  The core lanmonitor code provides a framework for configuration, logging, command retries, and parsing components.  The general process for creating a new plugin is:
 
 - Copy an existing plugin, such as the webpage_plug.py
-- Adjust the module comment block to have your new plugin name
-- Within the `# Construct item type specifics and check validity` section
+- Adjust the module comment block to describe the functionality and config file details
+- Within the `setup` function
   - Adjust the `rest_of_line` parsing, creating new vars as needed
-  - Add any checker code to validate these new values
-  - Within the `# Process the item` section
-    - Adjust the `cmd` for your needed subprocess call command
-    - The call to `lanmonfuncs.cmd_check` can check the returncode or return text.  It also returns the full subprocess call response.  Uncomment the `# print (rslt)` line to see what's available for building response checker code.
-    - Adjust the `if rslt[0] == True: … return` lines for the PASS, FAIL, and CRITICAL return codes.
-  - Adjust the tests at the bottom to exercise all possible good, bad, and invalid conditions.
-  - Add the `MonType_` line and specific monitor items to your config file.
+  - Add any checker code to validate these new values.  
+- Within the `eval_status` function
+  - Adjust the `cmd` for your needed subprocess call command
+  - The `cmd_check` function can check the returncode or return text.  It also returns the full subprocess call response.  _See the cmd_check function within the lanmonfuncs.py module for built-in checking features._  Uncomment the `# print (rslt)` line to see what's available for building response checker code.
+  - Adjust the `if rslt[0] == True: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
+- Adjust the tests at the bottom to exercise all possible good, bad, and invalid conditions.
+- Add the `MonType_<your_monitor_type> <your_plugin_name>` line and specific monitor items to your config file.
 
+` `  
 ### Additional plugin writing notes
-1. Your plugin will be called by the core system, passing a dictionary of data parsed from the config file.  Various provided dictionary keys are intended to help keep the plugin code relatively clean:
+1. The `setup` function of your module will be called for each `<type>_<friendly_name>` line in the config file.  Setup is called only once at initial startup and after any on-the-fly edits to the configuration file.  Setup is supplied a dictionary:
 
         """ Primary function for checking the status of this item type.
         Passed in item dictionary keys:
             key             Full 'itemtype_tag' key value from config file line
-            keylen          string length of longest key of this item type
             tag             'tag' portion only from 'itemtype_tag' from config file line
-            user_host       'local' or 'user@hostname' from config file line
+            user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
-            hostlen         string length of longest host of this item type
             critical        True if 'CRITICAL' is in the config file line
             rest_of_line    Remainder of line after the 'user_host' from the config file line
 
-2. Your plugin needs to return a dictionary with 3 keys:
+    - Setup must return RTN_PASS, RTN_WARNING, or RTN_FAIL.  If RTN_FAIL the setup failure is permanent and the item will not be monitored (retried again after a config file edit).  If RTN_WARNING the setup will be retried on the next checking iteration, allowing for intermittent issues during setup.  Warnings and Fails are logged.
+    - Within setup, commands may optionally be executed on the target machine for determining setup specifics (see the `Service_plugin` for an example).  NOTE that `have_access` (see next section) is NOT called before the setup calls, so setup failures might be due to network or ssh access issues to the target machine.
+
+2. The `eval_status` function is called on each checking iteration.  Your plugin needs to return a dictionary with 3 keys:
 
         Returns dictionary with these keys:
             rslt            Integer status:  RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
 
-3. Parsing out item type specifics
+      - `cmd_check` in lanmonfuncs provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `# print (rslt)` line to see the available response data. See the lanmonfuncs module for cmd_check feature details and the return structure.
+      - If the host is not "local" then the lanmonitor core will check that the host can be pinged and accepts the ssh login before your eval_status function is called.  This `have_access` check is performed only once per check iteration for each unique `user@host[:port]` in the config file.  Thus, your code can assume that the remote host is accessible.  
 
-        # Construct item type specifics and check validity
-        key = item["key"]
-        key_padded = key.ljust(item["keylen"])
-        host = item["host"]
-        host_padded = host.ljust(item["hostlen"])           # This and lines above generally don't need edits
-        xx = item["rest_of_line"].split(maxsplit=1)         # Modify these lines to break out the rest_of_line specifics
-        url = xx[0]
-        match_text = xx[1]
+3. The plugin module may be tested standalone by running it directly on the command line.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.
 
-4. If the check is to be run on a remote host, this section checks that the host can be accessed (with a ping, and returns RTN_WARNING if fails) before attempting to run the plugin specific checks.  This code needs no edits.
+            dotest ({"key":"SELinux_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"enforcing"})
 
-        # Check for remote access if non-local
-        if host != "local":
-            pingrslt = lanmonfuncs.cmd_check(["ping", host, "-c", "1"], user_host="local", return_type="cmdrun")
-            if not pingrslt[0]:
-                return {"rslt":RTN_WARNING, "notif_key":key, "message":f"WARNING: {key} - {host} - HOST CANNOT BE REACHED"}
+            dotest ({"key":"SELinux_RPiX", "tag":"RPiX", "host":"RPiX", "user_host_port":"pi@rpiX", "critical":True, "rest_of_line":"enforcing"})
 
-5. The call to `lanmonfuncs.cmd_check` provides a nice wrapper for error traps, retries, and convenient status return.  See the lanmonfuncs module for more details.
+            dotest ({"key":"SELinux_RPi2", "tag":"RPi2", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":False, "rest_of_line":"enforcing"})
 
-        # Process the item
-        cmd = ["curl", url, "--connect-timeout", "10", "--max-time", "10"]
-        rslt = lanmonfuncs.cmd_check(cmd, user_host=item["user_host"], return_type="check_string", expected_text=match_text)
-        # print (rslt)        # Uncomment this to see what-all is returned
+            dotest ({"key":"SELinux_badmode", "tag":"Shop2", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"enforcingX"})
 
+            dotest ({"key":"SELinux_RPi2_CRIT", "tag":"RPi2_CRIT", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":True, "rest_of_line":"enforcing"})
 
-6. The `rslt` is a tuple with the boolean first item indicating pass/fail of the cmd_check call, which may be sufficient for making your check pass/fail decision.  The second tuple item is the complete subprocess return structure which may be picked at by your code. The `keylen` and `hostlen` items from above are used for creating space-padded text for the passing result message, making the final output much more readable.  Fail messages don't use the padding, and by design are quite noticeable in the output.
+` `  
+## Writing Notification Handler Plugins
 
-        if rslt[0] == True:             # Pass condition
-            return {"rslt":RTN_PASS, "notif_key":key, "message":f"{key_padded}  OK - {host_padded} - {url}"}
-        else:
-            if item["critical"]:
-                return {"rslt":RTN_CRITICAL, "notif_key":key, "message":f"CRITICAL: {key} - {host} - WEBPAGE {url} NOT AS EXPECTED"}
-            else:
-                return {"rslt":RTN_FAIL, "notif_key":key, "message":f"FAIL: {key} - {host} - WEBPAGE {url} NOT AS EXPECTED"}
+One or more notification handlers may be specified in the configuration file line, such as:
 
-7. The plugin module may be tested standalone by running it directly on the command line.  Some items are needed from the config file (such as nRetries), thus the `--config-file` switch.
+      Notif_handlers		stock_notif   my_notif	# Space separated list of notification handlers
 
-        if __name__ == '__main__':
-            import argparse
-            from funcs3 import loadconfig
+The following functions within each listed notification handler are called.  The functionality as provided by `stock_notif` is describe here.  NOTE that the stock_notif handler module need not be used.
 
-            CONFIG_FILE = "lanmonitor.cfg"
+- `log_event` - Called after every monitored item, passing the dictionary returned by eval_status (see above) onto log_event.  The stock_notif handler sends notifications on new FAIL and CRITICAL items, and clears any fail history of now-passing items.  All current WARNING, FAIL, and CRITICAL results are logged on each checking iteration.
+- `each_loop` - Called on every lanmonitor core _service loop_ (every 10 seconds).  Place any general code here that needs to be executed on every iteration.  Unused by stock_notif.
+- `renotif` - Called on every lanmonitor core _service loop_ (every 10 seconds).  Place any code here related to sending additional notifications for items that remain broken.  stock_notif sends repeat notification messages for any critical items on every `CriticalReNotificationInterval` period.  All still-broken critical items are bundled into a single message so as to minimize text messages being sent.
+- `summary` - Called on every lanmonitor core _service loop_ (every 10 seconds).  Place any code here related to scheduling and producing a periodic report.  lanmonfuncs provides `next_summary_timestring()`, which uses `SummaryTime` and `SummaryDays` in the config file, for summary scheduling.  stock_notif's summary simply emails a list of any current WARNING, FAIL, or CRITICAL items, or an "All is well" message to provide a daily lanmonitor-is-alive update.
 
-            parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-            parser.add_argument('--config-file', default=CONFIG_FILE,
-                                    help=f"Path to config file (default <{CONFIG_FILE}>).")
-            parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                                    help="Return version number and exit.")
-
-            lanmonfuncs.args = parser.parse_args()
-            loadconfig(cfgfile=lanmonfuncs.args.config_file)
-
-            inst = monitor()
-            
-            test = {"key":"Page_WeeWX", "keylen":20, "tag":"WeeWX","host":"local", "user_host":"local", "hostlen":10, "critical":False, "rest_of_line":"http://localhost/weewx/ Current Conditions"}
-            print(f"{test}\n  {inst.eval_status(test)}\n")
-            test = {"key":"Page_WeeWX-X", "keylen":20, "tag":"WeeWX-X","host":"local", "user_host":"local", "hostlen":10, "critical":False, "rest_of_line":"http://localhost/weewx/ XCurrent Conditions"}
-            print(f"{test}\n  {inst.eval_status(test)}\n")
-            test = {"key":"Page_Bogus", "keylen":20, "tag":"Bogus","host":"local", "user_host":"local", "hostlen":10, "critical":True, "rest_of_line":"http://localhost/bogus/ whatever"}
-            print(f"{test}\n  {inst.eval_status(test)}\n")
-            test = {"key":"Page_xBrowserSync", "keylen":20, "tag":"xBrowserSync","host":"rpi1.lan", "user_host":"pi@rpi1.lan", "hostlen":10, "critical":False, "rest_of_line":"https://www.xbrowsersync.org/ Browser syncing as it should be: secure, anonymous and free!"}
-            print(f"{test}\n  {inst.eval_status(test)}\n")
-            test = {"key":"Page_WeeWX_from_badhost", "keylen":20, "tag":"WeeWX_from_badhost","host":"nonhost.lan", "user_host":"jack@nonhost.lan", "hostlen":10, "critical":False, "rest_of_line":"http://localhost/weewx/ Current Conditions"}
-            print(f"{test}\n  {inst.eval_status(test)}\n")
-
-            sys.exit()
-
+` `  
 ## Known issues:
 - none
 
+` `  
 ## Version history
-- V0.6 200415  Refactored to checker plugin model, many other changes
-- V0.5 200312  Added checks on other hosts via ssh.
-- V0.4 200304  Added StartupDelay for service mode.  Added SELinux check.
-- V0.3 200226  Bug fix for files mod time vs. create time
-- V0.2 210207  Added age info to Activity log
-- V0.1 210129  New
+- V1.0  210507  Major refactor
+- V0.1  210129  New

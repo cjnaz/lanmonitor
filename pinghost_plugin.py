@@ -10,28 +10,24 @@ Each host is pinged.  The `friendly_name` is user defined (not the real hostname
       Host_Yahoo          me@RPi2.mylan    Yahoo.com
 """
 
-__version__ = "V0.0 210415"
+__version__ = "V1.0 210507"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
-# V0.0 210415  Initial
+# V1.0 210507  Initial
 #
 # Changes pending
 #   
 #==========================================================
 
-import sys
 import re
-import lanmonfuncs
-from funcs3 import logging  #, cfg, getcfg
+import globvars
+from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from funcs3 import logging
 
 # Configs / Constants
-RTN_PASS     = 0
-RTN_WARNING  = 1
-RTN_FAIL     = 2
-RTN_CRITICAL = 3
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9.-]+$")
 
@@ -41,54 +37,56 @@ class monitor:
     def __init__ (self):
         pass
 
-    def eval_status (self, item):
-        """ Primary function for checking the status of this item type.
+    def setup (self, item):
+        """ Set up instance vars and check item values.
         Passed in item dictionary keys:
             key             Full 'itemtype_tag' key value from config file line
-            keylen          string length of longest key of this item type
             tag             'tag' portion only from 'itemtype_tag' from config file line
-            user_host       'local' or 'user@hostname' from config file line
+            user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
-            hostlen         string length of longest host of this item type
             critical        True if 'CRITICAL' is in the config file line
             rest_of_line    Remainder of line after the 'user_host' from the config file line
+        Returns True if all good, else False
+        """
 
+        # Construct item type specifics and check validity
+        self.key            = item["key"]                           # vvvv These items don't need to be modified
+        self.key_padded     = self.key.ljust(globvars.keylen)
+        self.tag            = item["tag"]
+        self.user_host_port = item["user_host_port"]
+        self.host           = item["host"]
+        self.host_padded    = self.host.ljust(globvars.hostlen)
+        if item["critical"]:
+            self.failtype = RTN_CRITICAL
+            self.failtext = "CRITICAL"
+        else:
+            self.failtype = RTN_FAIL
+            self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
+
+        self.ip_or_hostname = item["rest_of_line"]
+
+        if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
+            logging.error (f"ERROR:  <{self.key}> INVALID IP OR HOSTNAME <{self.ip_or_hostname}>")
+            return RTN_FAIL
+        return RTN_PASS
+
+
+    def eval_status (self):
+        """ Check status of this item.
         Returns dictionary with these keys:
             rslt            Integer status:  RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
         """
-        
-        # Construct item type specifics and check validity
-        key = item["key"]
-        key_padded = key.ljust(item["keylen"])
-        host = item["host"]
-        host_padded = host.ljust(item["hostlen"])
-        ip_or_hostname = item["rest_of_line"]
 
+        cmd = ["ping", self.ip_or_hostname, "-c", "1"]       # <ssh user@host> added by cmd_check if not local
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
+        # print (rslt)                                  # Uncomment for debug
 
-        if (IP_RE.match(ip_or_hostname) is None)  and  (HOSTNAME_RE.match(ip_or_hostname) is None):
-            logging.error (f"ERROR:  <{key}> Invalid IP or hostname provided <{ip_or_hostname}> - Aborting")
-            sys.exit(1)
-
-        # Check for remote access if non-local
-        if host != "local":
-            pingrslt = lanmonfuncs.cmd_check(["ping", host, "-c", "1"], user_host="local", return_type="cmdrun")
-            if not pingrslt[0]:
-                return {"rslt":RTN_WARNING, "notif_key":key, "message":f"WARNING: {key} - {host} - HOST CANNOT BE REACHED"}
-
-        # Process the item
-        cmd = ["ping", ip_or_hostname, "-c", "1"]              # <ssh user@host> added by cmd_check if not local
-        rslt = lanmonfuncs.cmd_check(cmd, user_host=item["user_host"], return_type="cmdrun")
-        # print (rslt)
-
-        if rslt[0] == True:             # Pass condition
-            return {"rslt":RTN_PASS, "notif_key":key, "message":f"{key_padded}  OK - {host_padded} - {ip_or_hostname}"}
+        if rslt[0] == True:
+            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname}"}
         else:
-            if item["critical"]:
-                return {"rslt":RTN_CRITICAL, "notif_key":key, "message":f"CRITICAL: {key} - {host} - HOST {ip_or_hostname} IS NOT RESPONDING"}
-            else:
-                return {"rslt":RTN_FAIL, "notif_key":key, "message":f"FAIL: {key} - {host} - HOST {ip_or_hostname} IS NOT RESPONDING"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - HOST {self.ip_or_hostname} IS NOT RESPONDING"}
 
 
 
@@ -104,20 +102,25 @@ if __name__ == '__main__':
     parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
                         help="Return version number and exit.")
 
-    lanmonfuncs.args = parser.parse_args()
-    loadconfig(cfgfile=lanmonfuncs.args.config_file)
+    globvars.args = parser.parse_args()
+    loadconfig(cfgfile=globvars.args.config_file)
 
     inst = monitor()
 
-    test = {"key":"Host_local_to_RPi2", "keylen":15, "tag":"local_to_RPi2", "host":"local", "user_host":"local", "hostlen":10, "critical":False, "rest_of_line":"rpi2.lan"}
-    print(f"{test}\n  {inst.eval_status(test)}\n")
-    test = {"key":"Host_local_to_IP", "keylen":15, "tag":"local_to_IP", "host":"local", "user_host":"local", "hostlen":10, "critical":False, "rest_of_line":"192.168.1.1"}
-    print(f"{test}\n  {inst.eval_status(test)}\n")
-    test = {"key":"Host_RPi2_to_Shop2", "keylen":15, "tag":"RPi2_to_Shop2", "host":"rpi2.lan", "user_host":"pi@rpi2.lan", "hostlen":10, "critical":False, "rest_of_line":"shop2.lan"}
-    print(f"{test}\n  {inst.eval_status(test)}\n")
-    test = {"key":"Host_local_to_XX", "keylen":15, "tag":"local_to_XX", "host":"local", "user_host":"local", "hostlen":10, "critical":False, "rest_of_line":"XX.lan"}
-    print(f"{test}\n  {inst.eval_status(test)}\n")
-    test = {"key":"Host_local_to_INV", "keylen":15, "tag":"local_to_INV", "host":"local", "user_host":"local", "hostlen":10, "critical":False, "rest_of_line":"invalid@hostname"}
-    print(f"{test}\n  {inst.eval_status(test)}\n")
+    def dotest (test):
+        print (f"\n{test}")
+        inst = monitor()
+        setup_rslt = inst.setup(test)
+        print (f"  {setup_rslt}")
+        if setup_rslt == RTN_PASS:
+            print(f"  {inst.eval_status()}")
 
-    sys.exit()
+    dotest ({"key":"Host_local_to_RPi2", "tag":"local_to_RPi2", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"rpi2.lan"})
+
+    dotest ({"key":"Host_local_to_IP", "tag":"local_to_IP", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"192.168.1.1"})
+
+    dotest ({"key":"Host_RPi2_to_Shop2", "tag":"RPi2_to_Shop2", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan:22", "critical":True, "rest_of_line":"shop2.lan"})
+
+    dotest ({"key":"Host_local_to_INV", "tag":"local_to_INV", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"invalid@hostname"})
+
+    dotest ({"key":"Host_local_to_XX", "tag":"local_to_XX", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"XX.lan"})
