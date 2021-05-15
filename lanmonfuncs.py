@@ -2,13 +2,14 @@
 """LAN monitor support functions
 """
 
-# __version__ = "V1.0 210507"
+# __version__ = "V1.0a 210515"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
 # V1.0  210507  V1.0
+# V1.0a 210515  Set timeouts to 1s for ping and 5s for ssh commands on remotes
 #
 # Changes pending
 #   
@@ -116,7 +117,8 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
     if user_host_port != "local":
         u_h, _, port = split_user_host_port(user_host_port)
         # cmd = ["ssh", u_h, "-p" + port, "-tt"] + cmd
-        cmd = ["ssh", u_h, "-p" + port, "-T"] + cmd
+        # cmd = ["ssh", u_h, "-p" + port, "-T"] + cmd
+        cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=5", "-T"] + cmd
 
     for nTry in range (getcfg('nRetries')):
         try:
@@ -174,6 +176,7 @@ def have_access(user_host_port):
         if access once passed then fails the plugin will be called and may flag an error
         while the actual problem is no access.
     """
+    user_host_port = user_host_port.lower()
     if user_host_port == "local":
         return (True, "")
     if user_host_port in have_access_dict:
@@ -181,7 +184,8 @@ def have_access(user_host_port):
 
     _, host, _ = split_user_host_port(user_host_port)
     if host != "local":     # Check for remote access if non-local
-        pingrslt = cmd_check(["ping", host, "-c", "1"], user_host_port="local", return_type="cmdrun")
+        # pingrslt = cmd_check(["ping", host, "-c", "1"], user_host_port="local", return_type="cmdrun")
+        pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", host], user_host_port="local", return_type="cmdrun")
         if not pingrslt[0]:
             return (False, "HOST CANNOT BE REACHED")
         else:
