@@ -8,12 +8,13 @@ Checks that the sestatus Current mode: value matches the config file value.
       SELinux_localhost     local             enforcing
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -62,7 +63,7 @@ class monitor:
         self.expected_mode  = item["rest_of_line"]
 
         if self.expected_mode not in SEMODES:
-            logging.error (f"ERROR:  <{self.key}> INVALID EXPECTED sestatus MODE <{self.expected_mode}> PROVIDED - EXPECTING {SEMODES}")
+            logging.error (f"  ERROR:  <{self.key}> INVALID EXPECTED sestatus MODE <{self.expected_mode}> PROVIDED - EXPECTING <{SEMODES}>")
             return RTN_FAIL
         return RTN_PASS
 
@@ -82,7 +83,7 @@ class monitor:
         if rslt[0] == True:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting {self.expected_mode})"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting <{self.expected_mode}>)"}
 
 
 if __name__ == '__main__':

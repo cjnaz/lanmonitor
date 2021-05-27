@@ -8,12 +8,13 @@ Each process is checked by seeing if the `<executable path>` occurs in the outpu
       Process_x11vnc		local       CRITICAL  /usr/bin/x11vnc
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -78,7 +79,7 @@ class monitor:
         if rslt[0] == True:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.process_path}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - PROCESS {self.process_path} IS NOT RUNNING"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - PROCESS <{self.process_path}> IS NOT RUNNING"}
 
 
 if __name__ == '__main__':

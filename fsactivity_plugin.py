@@ -10,12 +10,13 @@ Note that sub-directories are not recursed - only the listed top-level directory
       Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  5m    /mnt/RAMDRIVE/log.csv
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -70,7 +71,7 @@ class monitor:
             self.maxage_sec, self.units = convert_time(xx[0])
             self.path = xx[1]
         except Exception as e:
-            logging.error (f"ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
+            logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
             return RTN_FAIL
 
         return RTN_PASS
@@ -87,7 +88,7 @@ class monitor:
         cmd = ["ls", "-ltA", "--full-time", self.path]   # ssh user@host added by cmd_check if not local
         ls_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         if not ls_rslt[0]:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"WARNING: {self.key} - {self.host} - COULD NOT GET ls OF PATH <{self.path}>"}
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET ls OF PATH <{self.path}>"}
         ls_list = ls_rslt[1].stdout.split("\n")
         newest_file = ls_list[0]                # When path is to a file
         if newest_file.startswith("total"):
@@ -98,7 +99,7 @@ class monitor:
             newest_timestamp = (datetime.datetime.strptime(xx, "%Y-%m-%d %H:%M:%S %z")).timestamp()
             newest_age = datetime.datetime.now().timestamp() - newest_timestamp
         else:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"WARNING: {self.key} - {self.host} - COULD NOT GET TIMESTAMP OF NEWEST FILE <{self.path}>"}
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET TIMESTAMP OF NEWEST FILE <{self.path}>"}
 
         def retime(time_sec):
             """ Convert time value back to original units """
@@ -111,7 +112,7 @@ class monitor:
         if newest_age < self.maxage_sec:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  {self.path}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  {self.path}"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  {self.path}"}
 
 
 if __name__ == '__main__':
