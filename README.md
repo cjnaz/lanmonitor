@@ -232,5 +232,6 @@ The following functions within each listed notification handler are called.  The
 
 ` `  
 ## Version history
+- V1.1  210523  Added loadconfig flush_on_reload (funcs3.py V0.7) to purge any deleted cfg keys.  Error formatting tweaks.  Cmd timeout tweaks
 - V1.0  210507  Major refactor
 - V0.1  210129  New
