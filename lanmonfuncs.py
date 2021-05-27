@@ -8,6 +8,7 @@
 #
 #  Chris Nelson, 2021
 #
+# V1.1  210523  cmd timeout tweaks
 # V1.0  210507  V1.0
 # V1.0a 210515  Set timeouts to 1s for ping and 5s for ssh commands on remotes
 #
@@ -116,9 +117,7 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
 
     if user_host_port != "local":
         u_h, _, port = split_user_host_port(user_host_port)
-        # cmd = ["ssh", u_h, "-p" + port, "-tt"] + cmd
-        # cmd = ["ssh", u_h, "-p" + port, "-T"] + cmd
-        cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=5", "-T"] + cmd
+        cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=1", "-T"] + cmd
 
     for nTry in range (getcfg('nRetries')):
         try:
@@ -184,7 +183,6 @@ def have_access(user_host_port):
 
     _, host, _ = split_user_host_port(user_host_port)
     if host != "local":     # Check for remote access if non-local
-        # pingrslt = cmd_check(["ping", host, "-c", "1"], user_host_port="local", return_type="cmdrun")
         pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", host], user_host_port="local", return_type="cmdrun")
         if not pingrslt[0]:
             return (False, "HOST CANNOT BE REACHED")
@@ -192,6 +190,8 @@ def have_access(user_host_port):
             sshrslt = cmd_check(["echo", "hello"], user_host_port=user_host_port, return_type="cmdrun")
             if "Connection refused" in sshrslt[1].stderr:
                 return (False, f"SSH CONNECTION REFUSED <{user_host_port}>")
+            # if "The authenticity of host" in sshrslt[1].stdout:       # Never happens thru the script, only interactive
+            #     return (False, f"SSH CONNECTION NOT APPROVED.  ssh to <{user_host_port}> manually first.")
 
     have_access_dict[user_host_port] = True
     return (True, "")

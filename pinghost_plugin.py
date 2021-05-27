@@ -10,12 +10,13 @@ Each host is pinged.  The `friendly_name` is user defined (not the real hostname
       Host_Yahoo          me@RPi2.mylan    Yahoo.com
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.0 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Allow '_' in hosthame.  Added 1s timeout.  Touched fail output formatting.  Added print of IP address.
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -29,7 +30,7 @@ from funcs3 import logging
 
 # Configs / Constants
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
-HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9.-]+$")
+HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 class monitor:
@@ -66,7 +67,7 @@ class monitor:
         self.ip_or_hostname = item["rest_of_line"]
 
         if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
-            logging.error (f"ERROR:  <{self.key}> INVALID IP OR HOSTNAME <{self.ip_or_hostname}>")
+            logging.error (f"  ERROR:  <{self.key}> INVALID IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL
         return RTN_PASS
 
@@ -79,14 +80,23 @@ class monitor:
             message         String with status and context details
         """
 
-        cmd = ["ping", self.ip_or_hostname, "-c", "1"]       # <ssh user@host> added by cmd_check if not local
+        cmd = ["ping", "-c", "1", "-W", "1", self.ip_or_hostname]       # <ssh user@host> added by cmd_check if not local
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # print (rslt)                                  # Uncomment for debug
 
+        if "Name or service not known" in rslt[1].stderr:
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}> IS NOT KNOWN"}
+
+        IP_address = "(NONE)"
+        for line in rslt[1].stdout.split("\n"):
+            if line.startswith("PING"):
+                IP_address = line.split()[2].replace(":", "")   # dd-wrt ping response may include a ":" - "(192.168.1.56):"
+                break
+
         if rslt[0] == True:
-            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname}"}
+            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} {IP_address}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - HOST {self.ip_or_hostname} IS NOT RESPONDING"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {IP_address} IS NOT RESPONDING"}
 
 
 

@@ -10,12 +10,13 @@ and up to the end of the line or a `#` comment character.  Leading and trailing 
       Page_xBrowserSync       me@RPi2.mylan     https://www.xbrowsersync.org/       Browser syncing as it should be: secure, anonymous and free
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -80,12 +81,12 @@ class monitor:
         # print (rslt)                  # Uncomment for debug
 
         if "404 Not Found" in rslt[1].stdout:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - WEBPAGE {self.url} NOT FOUND"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - WEBPAGE <{self.url}> NOT FOUND"}
 
         if rslt[0] == True:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.url}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - WEBPAGE {self.url} NOT AS EXPECTED"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - WEBPAGE <{self.url}> NOT AS EXPECTED"}
 
 
 if __name__ == '__main__':

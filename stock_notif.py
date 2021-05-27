@@ -2,12 +2,13 @@
 """LAN monitor notifications handler
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1  210523  Added LogSummary switch
 # V1.0  210507  New
 #
 # Changes pending
@@ -57,27 +58,30 @@ class notif_class:
                 RTN_CRITICAL - Logged & notified, with periodic renotification
             message     - Message text from the monitor plugin
         """
+
         if dict["rslt"] == RTN_PASS:
             logging.info(dict["message"])
             if dict["notif_key"] in self.events:
                 del self.events[dict["notif_key"]]
-                logging.warning(f"Event {dict['notif_key']} now passing.  Removed from events log.")
-        else:
+                logging.warning(f"  Event {dict['notif_key']} now passing.  Removed from events log.")
+            return
+
+        if dict["rslt"] == RTN_WARNING:
+            if dict["notif_key"] not in self.events:
+                logging.warning(dict["message"])
+
+        else:       # RTN_FAIL and RTN_CRITICAL cases
             if dict["rslt"] == RTN_CRITICAL:
-                # if there are no active criticals, then set renotif time to now + renotif value
+                # if there are no prior active criticals, then set renotif time to now + renotif value
                 if self.next_renotif < datetime.datetime.now()  and  not self.are_criticals():
                     self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=convert_time(getcfg("CriticalReNotificationInterval"))[0])
                     logging.info(f"Next critical renotification:  {self.next_renotif}")
-
-            if globvars.args.once:
-                logging.warning(dict["message"])
-            else:
-                if dict["rslt"] == RTN_FAIL  or  dict["rslt"] == RTN_CRITICAL:
-                    if dict["notif_key"] not in self.events:
-                        snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
+            if dict["notif_key"] not in self.events  and  not globvars.args.once:
+                snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
+            if dict["notif_key"] not in self.events:
                 logging.warning(dict["message"])
 
-            self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}
+        self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}
 
 
     def each_loop(self):
@@ -119,13 +123,16 @@ class notif_class:
                 sum += "  No current events.  All is well."
             else:
                 for event in self.events:
-                    sum += f"  {self.events[event]['message']}\n"
+                    sum += f"{self.events[event]['message']}\n"
 
             if globvars.args.once:
                 logging.debug(f"lanmonitor status summary\n{sum}")
                 return
 
             snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
+
+            if getcfg("LogSummary", False):
+                logging.warning(f"Summary:\n{sum}")
 
             self.next_summary = next_summary_timestring()
 

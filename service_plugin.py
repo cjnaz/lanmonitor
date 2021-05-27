@@ -10,12 +10,13 @@ or `service <service_name> status` (for init), checking for the active/running r
       Service_RPi1_HP1018     me@RPi1.mylan     cups
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -65,7 +66,7 @@ class monitor:
         # Identify the system manager type - expecting systemd or init
         psp1_rslt = cmd_check(["ps", "-p1"], user_host_port=self.user_host_port, return_type="cmdrun")
         if not psp1_rslt[0]:
-            logging.error (f"WARNING:  <{self.key}> - {self.host} - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)")
+            logging.error (f"  WARNING:  <{self.key}> - {self.host} - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)")
             return RTN_WARNING
 
         if "systemd" in psp1_rslt[1].stdout:
@@ -79,7 +80,7 @@ class monitor:
             self.expected_text="running"
             self.not_text="not"
         else:
-            logging.error (f"ERROR:  <{self.key}> - {self.host} - UNKNOWN SYSTEM MANAGER TYPE")
+            logging.error (f"  ERROR:  <{self.key}> - {self.host} - UNKNOWN SYSTEM MANAGER TYPE")
             return RTN_FAIL
 
         return RTN_PASS
@@ -100,7 +101,7 @@ class monitor:
         if rslt[0] == True:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.service_name}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - SERVICE {self.service_name} IS NOT RUNNING"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - SERVICE <{self.service_name}> IS NOT RUNNING"}
 
 
 if __name__ == '__main__':

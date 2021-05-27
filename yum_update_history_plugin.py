@@ -10,12 +10,13 @@ Typical config file lines:
     YumUpdate_MyHost  local  CRITICAL  15d  update --skip-broken
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -69,7 +70,7 @@ class monitor:
             self.maxage, self.units = convert_time(xx[0])     # Exception on conversion error
             self.yum_command = xx[1]
         except Exception as e:
-            logging.error (f"ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
+            logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
             return RTN_FAIL
 
         return RTN_PASS
@@ -88,9 +89,9 @@ class monitor:
         # print (rslt)                  # Uncomment for debug
 
         if "You don't have access to the history DB." in rslt[1].stderr:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"WARNING: {self.key} - {self.host} - NO ACCESS TO THE YUM HISTORY DB"}
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO ACCESS TO THE YUM HISTORY DB"}
         if not rslt[0]:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"WARNING: {self.key} - {self.host} - COULD NOT GET YUM HISTORY"}
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET YUM HISTORY"}
 
 
         def retime(time_sec):
@@ -111,11 +112,11 @@ class monitor:
                         if last_update_age < self.maxage:
                             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(last_update_age):6.1f} {self.units} ({int(retime(self.maxage)):>4} {self.units} max)"}
                         else:
-                            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - YUM UPDATE TOO LONG AGO - {retime(last_update_age):6.1f} {self.units} ({int(retime(self.maxage)):>4} {self.units} max)"}
+                            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - YUM UPDATE TOO LONG AGO - {retime(last_update_age):6.1f} {self.units} ({int(retime(self.maxage)):>4} {self.units} max)"}
                     except Exception as e:
-                        return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"WARNING: {self.key} - {self.host} - FAILED WHILE READING THE YUM RESPONSE\n  {e}"}
+                        return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - FAILED WHILE READING THE YUM RESPONSE\n  {e}"}
 
-        return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"WARNING: {self.key} - {self.host} - NO <{self.yum_command}> UPDATES IN THE YUM HISTORY DB"}
+        return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO <{self.yum_command}> UPDATES IN THE YUM HISTORY DB"}
 
 
 if __name__ == '__main__':

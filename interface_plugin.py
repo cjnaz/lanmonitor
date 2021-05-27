@@ -8,12 +8,13 @@ Each interface is checked with a `ifconfig <interface name>`, checking for 'UP' 
       Interface_router_vlan0       local			CRITICAL  vlan0
 """
 
-__version__ = "V1.0 210507"
+__version__ = "V1.1 210523"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
 # Changes pending
@@ -77,12 +78,12 @@ class monitor:
 
         if rslt[0] == True:
             if "UP" not in rslt[1].stdout:
-                return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - INTERFACE <{self.interface_name}> IS DOWN"}
+                return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - INTERFACE <{self.interface_name}> IS DOWN"}
             if "RUNNING" not in rslt[1].stdout:
-                return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - INTERFACE <{self.interface_name}> IS NOT RUNNING"}
+                return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - INTERFACE <{self.interface_name}> IS NOT RUNNING"}
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - Interface <{self.interface_name}> is Up and Running"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"{self.failtext}: {self.key} - {self.host} - UNABLE TO READ INTERFACE <{self.interface_name}> STATE"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - UNABLE TO READ INTERFACE <{self.interface_name}> STATE"}
 
 
 if __name__ == '__main__':
@@ -112,7 +113,7 @@ if __name__ == '__main__':
 
     dotest ({"key":"Interface_local_lo", "tag":"local_lo", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"lo"})
 
-    dotest ({"key":"Interface_router_wlan0", "tag":"router_wlan0", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "rest_of_line":"wlan0"})
+    dotest ({"key":"Interface_router_wl0.1", "tag":"router_wl0.1", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "rest_of_line":"wl0.1"})
 
     dotest ({"key":"Interface_bad_intf", "tag":"bad_intf", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"bad"})
 
