@@ -2,12 +2,13 @@
 """LAN monitor notifications handler
 """
 
-__version__ = "V1.1 210523"
+__version__ = "V1.1a 210529"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1a 210529  Notification and logging fix along with funcs3 V0.7a
 # V1.1  210523  Added LogSummary switch
 # V1.0  210507  New
 #
@@ -75,10 +76,11 @@ class notif_class:
                 # if there are no prior active criticals, then set renotif time to now + renotif value
                 if self.next_renotif < datetime.datetime.now()  and  not self.are_criticals():
                     self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=convert_time(getcfg("CriticalReNotificationInterval"))[0])
-                    logging.info(f"Next critical renotification:  {self.next_renotif}")
+                    if not globvars.args.once:
+                        logging.info(f"Next critical renotification:  {self.next_renotif}")
             if dict["notif_key"] not in self.events  and  not globvars.args.once:
                 snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
-            if dict["notif_key"] not in self.events:
+            if dict["notif_key"] not in self.events  and  globvars.args.once:
                 logging.warning(dict["message"])
 
         self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}

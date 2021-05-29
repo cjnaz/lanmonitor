@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Funcs (gen 3)
-A collection of support funcs for simplifying writing basic tool scripts.
+A collection of support functions for simplifying writing tool scripts.
 
 Functions:
     setuplogging             - Set up default logger
@@ -11,29 +11,33 @@ Functions:
 
     Import this module from the main script as follows:
         from funcs3 import *
+      or
+        from funcs3 import loadconfig, getcfg, cfg, setuplogging, logging, funcs3_min_version_check, funcs3_version, snd_notif, snd_email
 
 Globals:
     cfg - Dictionary that contains the info read from the config file
-    progdir - A string var that contains the full path to the main
+    PROGDIR - A string var that contains the full path to the main
         program directory.  Useful for file IO when running the script
         from a different pwd, such as when running from cron.
 """
 
-funcs3_version = "V0.7 210523"
+funcs3_version = "V0.7a 210529"
 
 #==========================================================
 #
 #  Chris Nelson, 2018-2020
 #
-# V0.7 210523  loadconfig flush_on_reload switch added.
-# V0.6 210427  loadconfig returns True when cfg has been (re)loaded.  loadconfig support import, flush and booleans.
-# V0.5 201203  Passing None to setuplogging logfile directs output to stdout.  Added funcs3_min_version_check().
-# V0.4 201028  Reworked loadconfig & JAM with re to support ':' and '=' delimiters.
+# V0.7a 210529  Bug in snd_email & snd_notif with log switch as logging at info level, changed to warning level.
+# V0.7  210523  loadconfig flush_on_reload switch added.
+# V0.6  210512  loadconfig returns True when cfg has been (re)loaded.  loadconfig supports import, flush and booleans.
+#   ConfigError and SndEmailError exceptions now raised rather than terminating on critical error.
+# V0.5  201203  Passing None to setuplogging logfile directs output to stdout.  Added funcs3_min_version_check().
+# V0.4  201028  Reworked loadconfig & JAM with re to support ':' and '=' delimiters.
 #   loadconfig may be re-called and will re-load if the config file mod time has changed.
 #   Added '/' to progdir.  Requires Python3.
-# V0.3 200426  Updated for Python 3. Python 2 unsupported.  Using tempfile module.
-# V0.2 190319  Added email port selection and SSL/TLS support
-# V0.1 180520  New
+# V0.3  200426  Updated for Python 3. Python 2 unsupported.  Using tempfile module.
+# V0.2  190319  Added email port selection and SSL/TLS support
+# V0.1  180520  New
 #
 # Changes pending
 #   
@@ -90,9 +94,8 @@ def setuplogging (logfile= 'log.txt'):
     Param:
     logfile -- 
         The default log file is <main file path>/log.txt.
-        Absolute or relative path (from the main program directory) may
-        be specified.
-        Passing None causes output to bge sent to stdout.
+        Absolute path or relative path from the main program directory may be specified.
+        Passing None causes output to be sent to stdout.
     """
     if logfile == None:
         logging.basicConfig(format='%(message)s')
@@ -123,21 +126,20 @@ def __loadline__(line):     # Common code for loadconfig and JAM
         out = cfgline.match(line)
         if out:
             key = out.group(1)
-            rol = out.group(2)          # rest of line
+            rol = out.group(2)  # rest of line
             isint = False
             try:
-                cfg[key] = int(rol)     # append int to dict
+                cfg[key] = int(rol)         # add int to dict
                 isint = True
             except:
                 pass
             if not isint:
-                if rol.lower() == "true":
+                if rol.lower() == "true":   # add bool to dict
                     cfg[key] = True
                 elif rol.lower() == "false":
                     cfg[key] = False
                 else:
-                    cfg[key] = rol      # append string to dict
-
+                    cfg[key] = rol          # add string to dict
             logging.debug (f"Loaded {key} = <{cfg[key]}>  ({type(cfg[key])})")
         else: logging.warning (f"loadconfig:  Error on line <{line}>.  Line skipped.")
 
@@ -152,13 +154,19 @@ def loadconfig(cfgfile='config.cfg', cfgloglevel=30, cfg_flush=False, isimport=F
     """Read config file into dictionary cfg.
 
     Params:
-    cfgfile         -- Default is 'config.cfg' in the program directory
+    cfgfile     -- Default is 'config.cfg' in the program directory
         Absolute path or relative path from the main program directory may
         be specified.
-    cfgloglevel     -- sets logging level during config file loading. Default is 30:WARNING.
-    cfg_flush       -- Purges / flushes the cfg dictionary before forced reloading.
-    isimport        -- Internally set True when handling imports.
+    cfgloglevel -- sets logging level during config file loading. Default is 30:WARNING.
+    cfg_flush   -- Purges / flushes the cfg dictionary before forced reloading.
+    isimport    -- Internally set True when handling imports.
     flush_on_reload -- Initially flush/purge/empty cfg when reloading a changed config file
+
+    Config file keys will be loaded with this precedence based on the rest-of-line:
+        Int    - The first attempt is to try int(rest-of-line)
+        Bool   - If the rest-of-line is 'true' or 'false' (case insensitive) then the key is loaded as a bool
+        String - Failing Int or Bool, the rest-of-line is loaded as a string
+    rest-of-line cannot be blank or the line is skipped with a logged warning message
 
     Notes:
     Logging module levels: 10:DEBUG, 20:INFO, 30:WARNING, 40:ERROR, 50:CRITICAL
@@ -222,7 +230,6 @@ def loadconfig(cfgfile='config.cfg', cfgloglevel=30, cfg_flush=False, isimport=F
                 else:
                     __loadline__(line)
     except Exception as e:
-        # print ("In exception")
         _msg = f"loadconfig - Failed while attempting to open/read config file <{config}>.\n  {e}"
         logging.error (f"ConfigError:  {_msg}")
         raise ConfigError (_msg) from None
@@ -356,8 +363,8 @@ def snd_notif(subj='Notification message', msg='', log=False):
 
     xx = snd_email (subj=subj, body=msg, to='NotifList')
     if log:
-        # logging.warning (f"Notification sent <{subj}> <{msg}>")
-        logging.info (f"Notification sent <{subj}> <{msg}>")
+        logging.warning (f"Notification sent <{subj}> <{msg}>")
+        # logging.info (f"Notification sent <{subj}> <{msg}>")
     else:
         logging.debug (f"Notification sent <{subj}> <{msg}>")
     return xx
@@ -375,8 +382,8 @@ def snd_email(subj='', body='', filename='', to='', log=False):
         Absolute and relative paths accepted.
     to       -- to whom to send the message
         to may be a single email address (contains an '@') 
-        or it is assumed to be a cfg keyword with a space separated list of email addresses
-    log  -- If True, elevates log level from DEBUG to WARNING to force logging of the email subj
+        or it is assumed to be a cfg keyword with a whitespace separated list of email addresses
+    log      -- If True, elevates log level from DEBUG to WARNING to force logging of the email subj
 
     cfg EmailFrom, EmailServer, and EmailServerPort are required in the config file
         EmailServerPort must be one of the following:
@@ -385,7 +392,8 @@ def snd_email(subj='', body='', filename='', to='', log=False):
             P587: SMTP to port 587 without any encryption
             P587TLS:  SMTP to port 587 and with TLS encryption
     cfg EmailUser and EmailPass are optional in the config file.
-        Needed if the server requires credentials.
+        Needed if the server requires credentials.  Recommend that these params be in a secure file in 
+        one's home dir and import the file via the config file.
     cfg DontEmail is optional, and if == True no email is sent.
         Also blocks snd_notifs.  Useful for debug.
     cfg EmailVerbose = True enables the emailer debug level.
@@ -445,8 +453,8 @@ def snd_email(subj='', body='', filename='', to='', log=False):
         s.quit()
 
         if log:
-            # logging.warning (f"Email sent <{subj}>")
-            logging.info (f"Email sent <{subj}>")
+            logging.warning (f"Email sent <{subj}>")
+            # logging.info (f"Email sent <{subj}>")
         else:
             logging.debug (f"Email sent <{subj}>")
     except Exception as e:
@@ -464,7 +472,7 @@ if __name__ == '__main__':
     # # Tests for funcs3_min_version_check
     # if not funcs3_min_version_check(2.0):
     #     print(f"ERROR:  funcs3 module must be at least version 2.0.  Found <{funcs3_version}>.")
-    # if funcs3_min_version_check(0.5):
+    # if funcs3_min_version_check(0.7):
     #     print(f"funcs3_min_version_check passes.  Found <{funcs3_version}>.")
 
 
@@ -476,9 +484,9 @@ if __name__ == '__main__':
     # # loadconfig("nosuchfile.txt")      # This one exercises untrapped error caught by Python
 
     # for key in cfg:
-    #     print (f"{key:>20} = {cfg[key]}") #.format(key, cfg[key]))
+    #     print (f"{key:>20} = {cfg[key]} -- {type(cfg[key])}")
 
-    # print (f"Testing getcfg - Not in cfg with default: <{getcfg('NotInCfg', 'My Default Value')}>") #.format(getcfg('NotInCfg', 'My Default Value')))
+    # print (f"Testing getcfg - Not in cfg with default: <{getcfg('NotInCfg', 'My Default Value')}>")
     # try:
     #     getcfg('NotInCfg-NoDef')
     # except ConfigError as e:
@@ -504,12 +512,12 @@ if __name__ == '__main__':
     #     ofile.write("JammedBool false\n")
     #     ofile.write("LoggingLevel 10\n")
     # JAM()
-    # print (f"JammedInt  = <{getcfg('JammedInt')}>, {type(getcfg('JammedInt'))}") #.format(getcfg('JammedInt'), type(getcfg('JammedInt'))))
-    # print (f"JammedStr  = <{getcfg('JammedStr')}>, {type(getcfg('JammedStr'))}") #.format(getcfg('JammedStr'), type(getcfg('JammedStr'))))
-    # print (f"JammedBool = <{getcfg('JammedBool')}>, {type(getcfg('JammedBool'))}") #.format(getcfg('JammedBool'), type(getcfg('JammedBool'))))
+    # print (f"JammedInt  = <{getcfg('JammedInt')}>, {type(getcfg('JammedInt'))}")
+    # print (f"JammedStr  = <{getcfg('JammedStr')}>, {type(getcfg('JammedStr'))}")
+    # print (f"JammedBool = <{getcfg('JammedBool')}>, {type(getcfg('JammedBool'))}")
 
 
-    # Tests for sndNotif and snd_email
+    # # Tests for sndNotif and snd_email
     # cfg['DontEmail'] = True
     # cfg['DontNotif'] = True
     # snd_email (subj="Test email with body", body="To be, or not to be...", to="EmailTo")
@@ -522,10 +530,10 @@ if __name__ == '__main__':
 
     # # Tests for lock files
     # stat = requestlock ("try1")
-    # print (f"got back from requestLock.  stat = {stat}") #.format(stat))
+    # print (f"got back from requestLock.  stat = {stat}")
     # stat = requestlock ("try2")
-    # print (f"got back from 2nd requestLock.  stat = {stat}") #.format(stat))
+    # print (f"got back from 2nd requestLock.  stat = {stat}")
     # stat = releaselock ()
-    # print (f"got back from releaseLock.  stat = {stat}") #.format(stat))
+    # print (f"got back from releaseLock.  stat = {stat}")
     # stat = releaselock ()
-    # print (f"got back from 2nd releaseLock.  stat = {stat}") #.format(stat))
+    # print (f"got back from 2nd releaseLock.  stat = {stat}")
