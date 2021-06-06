@@ -23,15 +23,15 @@ Plugins are provided for these items, and additional plugins may easily be added
     Filesystem age
 
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
-V1.0 210507
+V1.2 210605
 
 optional arguments:
   -h, --help            show this help message and exit
   -1, --once            Single run mode.  Logging is to console rather than file.
   -v, --verbose         Display OK items in --once mode. (Set by LoggingLevel in config file for non --once mode.)
   --config-file CONFIG_FILE
-                        Path to config file (default <<path to script>/lanmonitor.cfg>).
-  --log-file LOG_FILE   Path to log file (default <<path to script>/log_lanmonitor.txt>).
+                        Path to config file (default </mnt/share/dev/python/lanmonitor/github/lanmonitor.cfg>).
+  --log-file LOG_FILE   Path to log file (default </mnt/share/dev/python/lanmonitor/github/log_lanmonitor.txt>).
   -V, --version         Return version number and exit.
 ```
 
@@ -66,22 +66,31 @@ Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RA
 ## Setup and Usage notes
 - Supported on Python3.6+ only.  Developed on Centos 7.9 with Python 3.6.8.
 - Place the files in a directory on your server.
-- Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`. 
 
-      EmailUser	    yourlogin@mailserver.com
-      EmailPass	    yourpassword
-
-- Edit the config info in the `lanmonitor.cfg` file.  Enter your mail server address/port and notification/email addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
-
+- Edit the config info in the `lanmonitor.cfg` file for the **Core tool parameters**:
   - `nRetries` sets how many tries will be made to accomplish each monitored item.
   - `RetryInterval` sets the time between nRetries.
   - `StartupDelay` is a wait time when starting in service mode to allow everything to come up fully (or crash) at system boot before checking items.
   - `RecheckInterval` sets how long between rechecks in service mode.
+  - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from other hosts.
+  - `LoggingLevel` controls what gets written to the log file.  At LoggingLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LoggingLevel 20 logs passing events also.
+
+- Edit the config info in the `lanmonitor.cfg` file for the **notification handler parameters**:
   - `Notif_handlers` is a whitespace separated list of Python modules (without the .py extension) that will handle monitored item event tracking, notifications, and periodic summaries.  See Notification Handlers, below.
   - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.  (Used by the `stock_notif.py` notification handler.)
   - `SummaryDays` sets which days of the week for summaries to be emailed.  Sunday =0, Monday =1, ... Saturday =6.  Multiple days may be selected.  (Used by the `stock_notif.py` notification handler.)
   - `SummaryTime` sets the time of day (local time) for summaries to be emailed.  24-clock format, for example, `13:00`.  (Used by the `stock_notif.py` notification handler.)
-  - See below for monitored item settings.
+  - `LogSummary`, if True, forces the content of the periodic summary to be sent to the log file.  (Used by the `stock_notif.py` notification handler.)
+
+- Edit the config info in the `lanmonitor.cfg` file for the **SMTP email servers parameters**.
+  - Enter your mail server address/port and notification/email addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
+  - Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`. 
+
+            EmailUser	    yourusername@mailserver.com
+            EmailPass	    yourpassword
+  
+
+- See below for monitored item settings.
 - Run the tool with `<path to>lanmonitor --once --verbose`.  Make sure that the local machine and user has ssh access to any remote machines.  (`-vv` turns on debug logging.)
 - Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval.  Make sure that the user (typically root) that the service runs under has ssh access to any remotes.
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages.
@@ -113,7 +122,7 @@ For monitored items, the general format of a line is
 ` `  
 ### Initially supplied plugin specifics
 
-See the documentation header in each plugin for its functionality and configuration specifics.
+See the documentation header in each plugin for its functionality and configuration specifics.  Not all plugins are listed here.
 
 - **SELinux** checks that the sestatus _Current mode:_ value matches the config file value.
 
@@ -232,6 +241,7 @@ The following functions within each listed notification handler are called.  The
 
 ` `  
 ## Version history
+- V1.2  210605  Reworked have_access check to check_LAN_access logic.
 - V1.1  210523  Added loadconfig flush_on_reload (funcs3.py V0.7) to purge any deleted cfg keys.  Error formatting tweaks.  Cmd timeout tweaks
 - V1.0  210507  Major refactor
 - V0.1  210129  New

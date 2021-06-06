@@ -2,12 +2,13 @@
 """LAN monitor notifications handler
 """
 
-__version__ = "V1.1a 210529"
+__version__ = "V1.1b 210604"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.1b 210604  Logging fix for logging fails in service mode and LoggingLevel 20
 # V1.1a 210529  Notification and logging fix along with funcs3 V0.7a
 # V1.1  210523  Added LogSummary switch
 # V1.0  210507  New
@@ -80,7 +81,7 @@ class notif_class:
                         logging.info(f"Next critical renotification:  {self.next_renotif}")
             if dict["notif_key"] not in self.events  and  not globvars.args.once:
                 snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
-            if dict["notif_key"] not in self.events  and  globvars.args.once:
+            if dict["notif_key"] not in self.events  or  globvars.args.once  or  getcfg("LoggingLevel", 30) < 30:
                 logging.warning(dict["message"])
 
         self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}

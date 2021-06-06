@@ -13,12 +13,13 @@ Plugins are provided for these items, and additional plugins may easily be added
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V1.1 210523"
+__version__ = "V1.2 210605"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.2  210605  Reworked have_access check to check_LAN_access logic.
 # V1.1  210523  Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formattting tweaks.
 # V1.0  210507  Major refactor
 # V0.1  210129  Initial
@@ -89,6 +90,7 @@ def main():
                 time.sleep (lanmonfuncs.convert_time(getcfg('StartupDelay'))[0])
             reloaded = True                         # Force calc of key and host padding lengths
 
+        # Every RecheckInterval
         if next_run < datetime.datetime.now():
             next_run = datetime.datetime.now() + datetime.timedelta(seconds=lanmonfuncs.convert_time(getcfg("RecheckInterval"))[0])
 
@@ -96,6 +98,7 @@ def main():
                 if not first:
                     logging.warning(f"NOTE - The config file has been reloaded.")
 
+                # Refresh the notifications handlers
                 notif_handlers_list.clear()
                 notif_handlers = getcfg("Notif_handlers", None)
                 try:
@@ -108,7 +111,8 @@ def main():
                     logging.error (f"Unable to load notification handler <{handler}> - Aborting.")
                     sys.exit(1)
 
-                inst_dict.clear()               # Clear out all current instances, forcing re-setup
+                # Clear out all current instances, forcing re-setup
+                inst_dict.clear()
                 globvars.keylen = 0
                 globvars.hostlen = 0
                 for key in cfg:                 # Get keylen and hostlen field widths across all monitored items
@@ -122,7 +126,11 @@ def main():
                                 if len(host) > globvars.hostlen:
                                     globvars.hostlen = len(host)
 
-            lanmonfuncs.have_access_dict.clear()   # Force access check refresh on every RecheckInterval
+            # Confirm LAN access on every iteration
+            have_LAN_access = lanmonfuncs.check_LAN_access()      # True if "Gateway" host can be reached
+            if not have_LAN_access:
+                logging.warning(f"WARNING:  NO ACCESS TO LAN ({getcfg('Gateway')}) - Checks on remote hosts are skipped for this iteration.")
+
             for montype in cfg:
                 if montype.startswith("MonType_"):
                     montype_tag = montype.split("_", maxsplit=1)[1]
@@ -130,16 +138,11 @@ def main():
     
                     plugin = __import__(montype_plugin)
 
-                    for key in cfg:    # Process all lines in cfg of this type
+                    # Process all lines in cfg of this MonType
+                    for key in cfg:
                         if key.startswith(montype_tag + "_"):
 
                             # Instantiate the monitor item and call setup
-                            #   setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
-                            #   setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
-                            #   Some plugins may need to interrogate the target host during setup.
-                            #       If the interrogation fails (i.e., can't access), then the plugin.setup should return
-                            #       RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
-                            #       so that setup is retried on each iteration.
                             if key not in inst_dict:
                                 monline.clear()     # Construct the setup call dictionary
                                 monline["key"] = key
@@ -156,7 +159,13 @@ def main():
                                     monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
 
                                 inst = plugin.monitor()
-                                rslt = inst.setup(monline)
+                                rslt = inst.setup(monline)          # SETUP CALL
+                                #   setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
+                                #   setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
+                                #   Some plugins may need to interrogate the target host during setup.
+                                #       If the interrogation fails (i.e., can't access), then the plugin.setup should return
+                                #       RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
+                                #       so that setup is retried on each iteration.
                                 if rslt == lanmonfuncs.RTN_PASS:
                                     inst_dict[key] = inst
                                 elif rslt == lanmonfuncs.RTN_FAIL:
@@ -177,20 +186,15 @@ def main():
                                     sys.exit(1)
 
 
-                            # Confirm access to remote host and call eval_status
+                            # Execute eval_status
                             inst = False
                             if key in inst_dict:
                                 inst = inst_dict[key]
                             if inst is not False:
-                                access_status, fail_message = lanmonfuncs.have_access(u_h_p)
-                                if access_status:
-                                    rslt = inst.eval_status()
+                                if inst.host == "local" or have_LAN_access:
+                                    rslt = inst.eval_status()       # EVAL_STATUS CALL
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event(rslt)
-                                else:
-                                    for notif_handler in notif_handlers_list:
-                                        notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
-                                                    "message":f"  WARNING: {key} - {host} - {fail_message} - skipping check"})
 
         
         for notif_handler in notif_handlers_list:
