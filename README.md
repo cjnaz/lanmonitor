@@ -72,7 +72,7 @@ Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RA
   - `RetryInterval` sets the time between nRetries.
   - `StartupDelay` is a wait time when starting in service mode to allow everything to come up fully (or crash) at system boot before checking items.
   - `RecheckInterval` sets how long between rechecks in service mode.
-  - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from other hosts.
+  - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.
   - `LoggingLevel` controls what gets written to the log file.  At LoggingLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LoggingLevel 20 logs passing events also.
 
 - Edit the config info in the `lanmonitor.cfg` file for the **notification handler parameters**:
@@ -91,8 +91,8 @@ Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RA
   
 
 - See below for monitored item settings.
-- Run the tool with `<path to>lanmonitor --once --verbose`.  Make sure that the local machine and user has ssh access to any remote machines.  (`-vv` turns on debug logging.)
-- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval.  Make sure that the user (typically root) that the service runs under has ssh access to any remotes.
+- Run the tool with `<path to>lanmonitor --once --verbose`.  Make sure that the local machine and user has password-less ssh access to any remote machines.  (`-vv` turns on debug logging.)
+- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval.  Make sure that the user (typically root) that the service runs under has ssh password-less access to any remotes.
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - NOTE:  All time values in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6h` is 6 hours.  If no suffix is provided the time value is taken as seconds.
@@ -197,7 +197,7 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
             rest_of_line    Remainder of line after the 'user_host' from the config file line
 
     - Setup must return RTN_PASS, RTN_WARNING, or RTN_FAIL.  If RTN_FAIL the setup failure is permanent and the item will not be monitored (retried again after a config file edit).  If RTN_WARNING the setup will be retried on the next checking iteration, allowing for intermittent issues during setup.  Warnings and Fails are logged.
-    - Within setup, commands may optionally be executed on the target machine for determining setup specifics (see the `Service_plugin` for an example).  NOTE that `have_access` (see next section) is NOT called before the setup calls, so setup failures might be due to network or ssh access issues to the target machine.
+    - Within setup, commands may optionally be executed on the target machine for determining setup specifics (see the `Service_plugin` for an example).  NOTE that `check_LAN_access` (see next section) is NOT called before the setup calls, so setup failures might be due to no network access, or due to ssh access issues to the target machine.
 
 2. The `eval_status` function is called on each checking iteration.  Your plugin needs to return a dictionary with 3 keys:
 
@@ -207,7 +207,7 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
             message         String with status and context details
 
       - `cmd_check` in lanmonfuncs provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `# print (rslt)` line to see the available response data. See the lanmonfuncs module for cmd_check feature details and the return structure.
-      - If the host is not "local" then the lanmonitor core will check that the host can be pinged and accepts the ssh login before your eval_status function is called.  This `have_access` check is performed only once per check iteration for each unique `user@host[:port]` in the config file.  Thus, your code can assume that the remote host is accessible.  
+      - If the host is not `local` then the lanmonitor core will check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access` check is performed only once per check iteration.  Thus, your eval_status code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check prior in the config file to limit fail ambiguity.
 
 3. The plugin module may be tested standalone by running it directly on the command line.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.
 
