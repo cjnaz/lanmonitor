@@ -2,12 +2,13 @@
 """LAN monitor support functions
 """
 
-# __version__ = "V1.0a 210515"
+# __version__ = "V1.2 210605"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.2  210605  Reworked have_access check to check_LAN_access logic.
 # V1.1  210523  cmd timeout tweaks
 # V1.0  210507  V1.0
 # V1.0a 210515  Set timeouts to 1s for ping and 5s for ssh commands on remotes
@@ -161,40 +162,32 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
         time.sleep (convert_time(getcfg('RetryInterval'))[0])
 
 
-have_access_dict = {}
+IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
+HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
-def have_access(user_host_port):
-    """If user_host_port != "local" then check ping and ssh access to the host.
-    Remember passing result and avoid redoing the ping and ssh tests on later checks.
-    If ping/ssh tests fail they will be retried if referenced in a later monitored item.
-    The dictionary is cleared on each RecheckInterval in the lanmonitor main code.
-    ping or ssh access fails return a tuple of (False, error_message_string).
-    (True, "") is returned if local or if ping and ssh tests pass for non-local host.
+def check_LAN_access():
+    """Check for basic access to another reliable host on the LAN, typically the router/gateway.
+    Used as an execution gate for all non-local items on each RecheckInterval.
 
-    NOTE that this optimization can result in confusion:
-        if access once passed then fails the plugin will be called and may flag an error
-        while the actual problem is no access.
+    Requires "Gateway <IP address or hostname>" definition in the config file.
+
+    Returns True if the "Gateway" host can be pinged, else False.
     """
-    user_host_port = user_host_port.lower()
-    if user_host_port == "local":
-        return (True, "")
-    if user_host_port in have_access_dict:
-        return (True, "")
 
-    _, host, _ = split_user_host_port(user_host_port)
-    if host != "local":     # Check for remote access if non-local
-        pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", host], user_host_port="local", return_type="cmdrun")
-        if not pingrslt[0]:
-            return (False, "HOST CANNOT BE REACHED")
-        else:
-            sshrslt = cmd_check(["echo", "hello"], user_host_port=user_host_port, return_type="cmdrun")
-            if "Connection refused" in sshrslt[1].stderr:
-                return (False, f"SSH CONNECTION REFUSED <{user_host_port}>")
-            # if "The authenticity of host" in sshrslt[1].stdout:       # Never happens thru the script, only interactive
-            #     return (False, f"SSH CONNECTION NOT APPROVED.  ssh to <{user_host_port}> manually first.")
+    ip_or_hostname = getcfg("Gateway", False)
+    if not ip_or_hostname:
+        logging.error (f"  ERROR:  PARAMETER 'Gateway' NOT DEFINED IN CONFIG FILE - Aborting.")
+        sys.exit(1)
 
-    have_access_dict[user_host_port] = True
-    return (True, "")
+    if (IP_RE.match(ip_or_hostname) is None)  and  (HOSTNAME_RE.match(ip_or_hostname) is None):
+        logging.error (f"  ERROR:  INVALID IP ADDRESS OR HOSTNAME <{ip_or_hostname}> - Aborting.")
+        sys.exit(1)
+
+    pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", getcfg("Gateway")], user_host_port="local", return_type="cmdrun")
+    if pingrslt[0]:
+        return True
+    else:
+        return False
 
 
 def next_summary_timestring():

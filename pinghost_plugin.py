@@ -10,12 +10,13 @@ Each host is pinged.  The `friendly_name` is user defined (not the real hostname
       Host_Yahoo          me@RPi2.mylan    Yahoo.com
 """
 
-__version__ = "V1.0 210523"
+__version__ = "V1.2 210605"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V1.2 210605  Removed warning HOST IS NOT KNOWN, allowing item to be a FAIL/CRITICAL.
 # V1.1 210523  Allow '_' in hosthame.  Added 1s timeout.  Touched fail output formatting.  Added print of IP address.
 # V1.0 210507  Initial
 #
@@ -83,9 +84,6 @@ class monitor:
         cmd = ["ping", "-c", "1", "-W", "1", self.ip_or_hostname]       # <ssh user@host> added by cmd_check if not local
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # print (rslt)                                  # Uncomment for debug
-
-        if "Name or service not known" in rslt[1].stderr:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}> IS NOT KNOWN"}
 
         IP_address = "(NONE)"
         for line in rslt[1].stdout.split("\n"):
