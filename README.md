@@ -176,23 +176,22 @@ See the documentation header in each plugin for its functionality and configurat
 
       MonType_Interface         interface_plugin
       Interface_<friendly_name>  <local or user@host>  [CRITICAL]  <interface name>
-      Interface_router_vlan0  local      CRITICAL  vlan0
+      Interface_router_vlan0  local       CRITICAL  vlan0
 
 - **Yum update age** on your various hosts to be monitored is listed on separate lines, as below.
 yum history output is checked for the specific <yum_command> text and the date is extracted from
 the first occurrence this line.  May require root access in order to read yum history.
 
-    MonType_YumUpdate  yum_update_history_plugin
-    YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <yum_command>
-    YumUpdate_MyHost          local       CRITICAL  15d  update --skip-broken
+      MonType_YumUpdate  yum_update_history_plugin
+      YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <yum_command>
+      YumUpdate_MyHost        local       CRITICAL  15d  update --skip-broken
 
 - **dd-wrt age** on your various routers to be monitored is listed on separate lines, as below.
 routerIP may be an IP address or hostname.  The dd-wrt hostname or IP /Info.htm page is checked for the date on the top right of the page.
 
-Typical config file lines:
-    MonType_DD-wrt_age  dd-wrt_age_plugin
-    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <routerIP>
-    DD-wrt_age_Router         local       CRITICAL  30d  192.168.1.1
+      MonType_DD-wrt_age  dd-wrt_age_plugin
+      DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <routerIP>
+      DD-wrt_age_Router       local       CRITICAL  30d  192.168.1.1
 
 ` `  
 ## Writing Monitor Plugins
