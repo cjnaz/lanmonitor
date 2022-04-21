@@ -1,0 +1,4 @@
+EmailServer	        mail.emailserver.com    # No port number attached
+EmailServerPort     P587TLS                 # Required:  P465, P587, P587TLS, or P25
+EmailUser           username@emailserver.com
+EmailPass           youremailserverpassword

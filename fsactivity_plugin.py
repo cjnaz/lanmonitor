@@ -10,14 +10,15 @@ Note that sub-directories are not recursed - only the listed top-level directory
       Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  5m    /mnt/RAMDRIVE/log.csv
 """
 
-__version__ = "V1.1 210523"
+__version__ = "V1.2 220420"
 
 #==========================================================
 #
-#  Chris Nelson, 2021
+#  Chris Nelson, 2021-2022
 #
-# V1.1 210523  Touched fail output formatting
-# V1.0 210507  Initial
+# V1.2  220420  Incorporated funcs3 timevalue and retime
+# V1.1  210523  Touched fail output formatting
+# V1.0  210507  Initial
 #
 # Changes pending
 #   
@@ -26,8 +27,8 @@ __version__ = "V1.1 210523"
 import re
 import datetime
 import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check, convert_time
-from funcs3 import logging  #, cfg, getcfg
+from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check #, convert_time
+from funcs3 import logging, timevalue, retime  #, cfg, getcfg
 
 # Configs / Constants
 LSMATCH = re.compile(r'[ldrwx\-.]+\s+[\d*]\s+[\w\d]+\s+[\w\d]+\s+[\d]+\s+([\d\-]+)+\s([\d:.]+)\s([\d\-]+)')
@@ -68,7 +69,10 @@ class monitor:
 
         xx = item["rest_of_line"].split(maxsplit=1)
         try:
-            self.maxage_sec, self.units = convert_time(xx[0])
+            maxagevar = timevalue(xx[0])
+            self.maxage_sec = maxagevar.seconds
+            self.units = maxagevar.unit_str
+            self.unitsC = maxagevar.unit_char
             self.path = xx[1]
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -101,18 +105,10 @@ class monitor:
         else:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET TIMESTAMP OF NEWEST FILE <{self.path}>"}
 
-        def retime(time_sec):
-            """ Convert time value back to original units """
-            if self.units == "secs ":  return time_sec
-            if self.units == "mins ":  return time_sec /60
-            if self.units == "hours":  return time_sec /60/60
-            if self.units == "days ":  return time_sec /60/60/24
-            if self.units == "weeks":  return time_sec /60/60/24/7
-
         if newest_age < self.maxage_sec:
-            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  {self.path}"}
+            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  {self.path}"}
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
 
 
 if __name__ == '__main__':
