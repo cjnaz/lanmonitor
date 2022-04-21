@@ -2,12 +2,14 @@
 """LAN monitor support functions
 """
 
-# __version__ = "V1.2 210605"
+# __version__ = "V1.3 220420"
 
 #==========================================================
 #
-#  Chris Nelson, 2021
+#  Chris Nelson, 2021-2022
 #
+# V1.3  220420  Incorporated funcs3 timevalue and retime (removed convert_time)
+# V1.2a 220223  Bug fix in summary day calculation
 # V1.2  210605  Reworked have_access check to check_LAN_access logic.
 # V1.1  210523  cmd timeout tweaks
 # V1.0  210507  V1.0
@@ -24,7 +26,7 @@ import datetime
 import time
 import re
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
-from funcs3 import logging, getcfg, snd_email, snd_notif
+from funcs3 import logging, getcfg, timevalue #, snd_email, snd_notif
 
 # Configs / Constants
 NOTIF_SUBJ = "LAN Monitor"
@@ -38,37 +40,6 @@ RTN_CRITICAL = 3
 args = None
 keylen = 0      # Padding vars used for pretty printing
 hostlen = 0
-
-
-def convert_time (timeX):
-    """ Given time value term such as 90s, 15m, 20h, 3d, 2w return int seconds and units.
-        <1h> returns (3600, "hours")
-    If no units suffix, the value is interpreted as secs.
-        <90> returns (90, "secs ")
-    """
-    if type(timeX) is int:
-        return timeX, "secs "           # Case Int
-    try:
-        return int(timeX), "secs "      # Case Str without units
-    except:
-        pass
-    try:                                # Case Str with units
-        time_value = int(timeX[:-1])
-        time_unit =  timeX[-1:].lower()
-        if time_unit == "s":
-            return time_value, "secs "
-        if time_unit == "m":
-            return time_value * 60, "mins "
-        if time_unit == "h":
-            return time_value * 60*60, "hours"
-        if time_unit == "d":
-            return time_value * 60*60*24, "days "
-        if time_unit == "w":
-            return time_value * 60*60*24*7, "weeks"
-        raise ValueError(f"Illegal time units <{time_unit}>")
-    except Exception as e:
-        logging.error (f"ERROR:  Could not convert time value <{timeX}>\n  {e}")
-        raise
 
 
 USER_HOST_FORMAT = re.compile(r"[\w.-]+@([\w.-]+)$")
@@ -159,7 +130,7 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
             logging.error (f"ERROR:  {_msg}")
             raise ValueError (_msg)
-        time.sleep (convert_time(getcfg('RetryInterval'))[0])
+        time.sleep (timevalue(getcfg('RetryInterval')).seconds)
 
 
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
@@ -192,18 +163,20 @@ def check_LAN_access():
 
 def next_summary_timestring():
     """Calculate timestring of next summary.
-    SummaryDays			0 1 2 3 4 5 6	# Days of week.  0 = Sunday
+    SummaryDays			1 2 3 4 5 6 7	# Days of week: 1 = Monday, 7 = Sunday.  = 0 or comment out to disable summaries
     SummaryTime			9:45		    # 24 hour clock
     NOTE:  May be off by 1 hour over a DTS changes.
     """
     try:
         target_hour   = int(getcfg("SummaryTime","").split(":")[0])
         target_minute = int(getcfg("SummaryTime","").split(":")[1])
-        today_day_num = datetime.datetime.today().isoweekday()    # Sunday = 0, Saturday = 6
+        today_day_num = datetime.datetime.today().isoweekday()
         now = datetime.datetime.now().replace(second=0, microsecond=0)
         next_summary = now + datetime.timedelta(days=30)
-        for daynum in getcfg("SummaryDays").split():
-            offset_num_days = int(daynum) - today_day_num
+        xx = getcfg("SummaryDays")
+        days = [xx]  if type(xx) is int  else [int(day) for day in xx.split()]
+        for daynum in days:
+            offset_num_days = daynum - today_day_num
             if offset_num_days < 0:
                 offset_num_days += 7
             plus_day =  now + datetime.timedelta(days=offset_num_days)

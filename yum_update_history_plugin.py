@@ -10,14 +10,15 @@ Typical config file lines:
     YumUpdate_MyHost  local  CRITICAL  15d  update --skip-broken
 """
 
-__version__ = "V1.1 210523"
+__version__ = "V1.2 220420"
 
 #==========================================================
 #
-#  Chris Nelson, 2021
+#  Chris Nelson, 2021-2022
 #
-# V1.1 210523  Touched fail output formatting
-# V1.0 210507  Initial
+# V1.2  220420  Incorporated funcs3 timevalue and retime
+# V1.1  210523  Touched fail output formatting
+# V1.0  210507  Initial
 #
 # Changes pending
 #   
@@ -26,8 +27,8 @@ __version__ = "V1.1 210523"
 import datetime
 import re
 import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check, convert_time
-from funcs3 import logging
+from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check #, convert_time
+from funcs3 import logging, timevalue, retime
 
 # Configs / Constants
 YUMLINEFORMAT=re.compile(r"[ \d]+ \| [\w -]+ \| ([\d :-]+) ")
@@ -67,7 +68,10 @@ class monitor:
 
         try:
             xx = item["rest_of_line"].split(maxsplit=1)
-            self.maxage, self.units = convert_time(xx[0])     # Exception on conversion error
+            maxagevar = timevalue(xx[0])
+            self.maxage_sec = maxagevar.seconds
+            self.units = maxagevar.unit_str
+            self.unitsC = maxagevar.unit_char
             self.yum_command = xx[1]
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -93,15 +97,6 @@ class monitor:
         if not rslt[0]:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET YUM HISTORY"}
 
-
-        def retime(time_sec):
-            """ Convert time value back to original units """
-            if self.units == "secs ":  return time_sec
-            if self.units == "mins ":  return time_sec /60
-            if self.units == "hours":  return time_sec /60/60
-            if self.units == "days ":  return time_sec /60/60/24
-            if self.units == "weeks":  return time_sec /60/60/24/7
-
         for line in rslt[1].stdout.split("\n"):
             if self.yum_command in line:
                 out = YUMLINEFORMAT.match(line)
@@ -109,10 +104,10 @@ class monitor:
                     try:
                         last_update = datetime.datetime.strptime(out.group(1), "%Y-%m-%d %H:%M").timestamp()
                         last_update_age = datetime.datetime.now().timestamp() - last_update
-                        if last_update_age < self.maxage:
-                            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(last_update_age):6.1f} {self.units} ({int(retime(self.maxage)):>4} {self.units} max)"}
+                        if last_update_age < self.maxage_sec:
+                            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(last_update_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)"}
                         else:
-                            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - YUM UPDATE TOO LONG AGO - {retime(last_update_age):6.1f} {self.units} ({int(retime(self.maxage)):>4} {self.units} max)"}
+                            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - YUM UPDATE TOO LONG AGO - {retime(last_update_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)"}
                     except Exception as e:
                         return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - FAILED WHILE READING THE YUM RESPONSE\n  {e}"}
 

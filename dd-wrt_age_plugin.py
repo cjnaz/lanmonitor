@@ -9,12 +9,13 @@ Typical config file lines:
     DD-wrt_age_Router  local  CRITICAL  30d  192.168.1.1
 """
 
-__version__ = "V1.0 210622"
+__version__ = "V1.1 220420"
 
 #==========================================================
 #
-#  Chris Nelson, 2021
+#  Chris Nelson, 2021-2022
 #
+# V1.1 220420  Incorporated funcs3 timevalue and retime
 # V1.0 210622  new
 #
 # Changes pending
@@ -24,8 +25,8 @@ __version__ = "V1.0 210622"
 import datetime
 import re
 import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check, convert_time
-from funcs3 import logging
+from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check #, convert_time
+from funcs3 import logging, timevalue, retime  #, cfg, getcfg
 
 # Configs / Constants
 LINEFORMAT=re.compile(r'.*DD-WRT v.*-r([\d]+).+\(([\d/]+)\).*', re.DOTALL)
@@ -65,7 +66,10 @@ class monitor:
 
         try:
             xx = item["rest_of_line"].split(maxsplit=1)
-            self.maxage_sec, self.units = convert_time(xx[0])       # Exception on conversion error
+            maxagevar = timevalue(xx[0])
+            self.maxage_sec = maxagevar.seconds
+            self.units = maxagevar.unit_str
+            self.unitsC = maxagevar.unit_char
             self.url = xx[1] + "/Info.htm"
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -86,14 +90,6 @@ class monitor:
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # print (rslt)                  # Uncomment for debug
 
-        def retime(time_sec):
-            """ Convert time value back to original units """
-            if self.units == "secs ":  return time_sec
-            if self.units == "mins ":  return time_sec /60
-            if self.units == "hours":  return time_sec /60/60
-            if self.units == "days ":  return time_sec /60/60/24
-            if self.units == "weeks":  return time_sec /60/60/24/7
-
         out = LINEFORMAT.match(rslt[1].stdout)
         if out:
             dd_wrt_version = out.group(1)
@@ -103,11 +99,11 @@ class monitor:
 
             if dd_wrt_age < self.maxage_sec:
                 return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - "
-                    + f"{retime(dd_wrt_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  "
+                    + f"{retime(dd_wrt_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  "
                     + f"{self.url} - r{dd_wrt_version} - {dd_wrt_date}"}
             else:
                 return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  DD-WRT STALE - {self.host} - "
-                    + f"{retime(dd_wrt_age):6.1f} {self.units} ({int(retime(self.maxage_sec)):>4} {self.units} max)  "
+                    + f"{retime(dd_wrt_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  "
                     + f"{self.url} - r{dd_wrt_version} - {dd_wrt_date}"}
 
         return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO VALID RESPONSE FROM ROUTER <{self.url}>"}

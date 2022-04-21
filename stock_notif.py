@@ -1,13 +1,16 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 
 """LAN monitor notifications handler
 """
 
-__version__ = "V1.1b 210604"
+__version__ = "V1.3 220420"
 
 #==========================================================
 #
-#  Chris Nelson, 2021
+#  Chris Nelson, 2021-2022
 #
+# V1.3  220420  Incorporated funcs3 timevalue and retime
+# V1.2  220217  Allow logging of repeat warnings when the log level is INFO or DEBUG.  Catch snd_notif/snd_email fails.
+# V1.1c 220101  Bug fix - clear prior events on config file reload (re-init of notification handlers)
 # V1.1b 210604  Logging fix for logging fails in service mode and LoggingLevel 20
 # V1.1a 210529  Notification and logging fix along with funcs3 V0.7a
 # V1.1  210523  Added LogSummary switch
@@ -22,8 +25,8 @@ import os.path
 import datetime
 import globvars
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
-from funcs3 import getcfg, snd_email, snd_notif, logging
-from lanmonfuncs import next_summary_timestring, convert_time, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
+from funcs3 import getcfg, snd_email, snd_notif, logging, timevalue
+from lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
 
 # Configs / Constants
 HANDLER_NAME = "stock_notif"
@@ -39,7 +42,7 @@ class notif_class:
     def __init__(self):
         self.next_summary = next_summary_timestring()
         self.next_renotif = datetime.datetime.now().replace(microsecond=0)
-        pass
+        self.events.clear()
 
     def are_criticals (self):
         """ Returns True if there are any critical events in the events dictionary.
@@ -68,20 +71,23 @@ class notif_class:
                 logging.warning(f"  Event {dict['notif_key']} now passing.  Removed from events log.")
             return
 
-        if dict["rslt"] == RTN_WARNING:
-            if dict["notif_key"] not in self.events:
+        if dict["rslt"] == RTN_WARNING:                 # Normally log a warning only once so as to not flood the log
+            if dict["notif_key"] not in self.events  or  logging.getLogger().level < logging.WARNING:
                 logging.warning(dict["message"])
 
         else:       # RTN_FAIL and RTN_CRITICAL cases
             if dict["rslt"] == RTN_CRITICAL:
                 # if there are no prior active criticals, then set renotif time to now + renotif value
                 if self.next_renotif < datetime.datetime.now()  and  not self.are_criticals():
-                    self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=convert_time(getcfg("CriticalReNotificationInterval"))[0])
+                    self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
                     if not globvars.args.once:
                         logging.info(f"Next critical renotification:  {self.next_renotif}")
             if dict["notif_key"] not in self.events  and  not globvars.args.once:
-                snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
-            if dict["notif_key"] not in self.events  or  globvars.args.once  or  getcfg("LoggingLevel", 30) < 30:
+                try:
+                    snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
+                except Exception as e:
+                    logging.warning(f"snd_notif failed.  Email server down?:\n        {dict['message']}\n        {e}")
+            if dict["notif_key"] not in self.events  or  globvars.args.once  or  getcfg("LogLevel", 30) < 30:
                 logging.warning(dict["message"])
 
         self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}
@@ -111,8 +117,12 @@ class notif_class:
                 for event in self.events:
                     if self.events[event]["criticality"] == RTN_CRITICAL:
                         criticals += f"  {self.events[event]['message']}\n"
-                snd_notif (subj=NOTIF_SUBJ, msg=criticals, log=True)
-                self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=convert_time(getcfg("CriticalReNotificationInterval"))[0])
+                try:
+                    snd_notif (subj=NOTIF_SUBJ, msg=criticals, log=True)
+                except Exception as e:
+                    logging.warning(f"snd_notif failed.  Email server down?:\n        {criticals}\n        {e}")
+
+                self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
                 logging.info(f"Next critical renotification:  {self.next_renotif}")
             else:
                 self.next_renotif = datetime.datetime.now().replace(microsecond=0)
@@ -129,10 +139,13 @@ class notif_class:
                     sum += f"{self.events[event]['message']}\n"
 
             if globvars.args.once:
-                logging.debug(f"lanmonitor status summary\n{sum}")
+                logging.debug(f"lanmonitor status summary:\n{sum}")
                 return
 
-            snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
+            try:
+                snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
+            except Exception as e:
+                logging.warning(f"snd_summary failed.  Email server down?:\n        {e}")
 
             if getcfg("LogSummary", False):
                 logging.warning(f"Summary:\n{sum}")

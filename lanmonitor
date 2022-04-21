@@ -13,12 +13,14 @@ Plugins are provided for these items, and additional plugins may easily be added
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V1.2 210605"
+__version__ = "V1.4 220420"
 
 #==========================================================
 #
-#  Chris Nelson, 2021
+#  Chris Nelson, 2021-2022
 #
+# V1.4  220420  Incorporated funcs3 timevalue and retime
+# V1.3  220217  Updates for funcs3 V1.0, stock_notif catch of emailer fails.
 # V1.2  210605  Reworked have_access check to check_LAN_access logic.
 # V1.1  210523  Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formattting tweaks.
 # V1.0  210507  Major refactor
@@ -37,7 +39,7 @@ import signal       # For keyboard interrupt handler
 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
-from funcs3 import loadconfig, getcfg, cfg, setuplogging, logging, funcs3_min_version_check, funcs3_version
+from funcs3 import PROGDIR, loadconfig, getcfg, cfg, logging, funcs3_min_version_check, funcs3_version, timevalue
 
 import globvars
 import lanmonfuncs
@@ -45,24 +47,13 @@ import lanmonfuncs
 
 # Configs / Constants
 PY_MIN_VERSION = 3.6
-FUNCS3_MIN_VERSION = 0.7
-CONFIG_FILE =     os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lanmonitor.cfg')
-LOG_FILE =        os.path.join(os.path.dirname(os.path.realpath(__file__)), "log_lanmonitor.txt")
+FUNCS3_MIN_VERSION = 1.1
+CONFIG_FILE =     os.path.join(PROGDIR, 'lanmonitor.cfg')
+CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
 
-
-py_version = float(sys.version_info.major) + float(sys.version_info.minor)/10
-if py_version < PY_MIN_VERSION:
-    print (f"ERROR:  Current Python version {py_version} is less than minimum required version {PY_MIN_VERSION} - Aborting.")
-    sys.exit(1)
 
 
 def main():
-
-    try:
-        loadconfig(cfgfile = globvars.args.config_file) #, cfgloglevel=10)
-    except Exception:
-        logging.error(f"Cannot access config file <{globvars.args.config_file}> - Aborting.")
-        sys.exit(1)
 
     first = True
     next_run = datetime.datetime.now()
@@ -72,7 +63,7 @@ def main():
 
 
     while 1:
-        reloaded = loadconfig(cfgfile = globvars.args.config_file, flush_on_reload=True) #, cfgloglevel=10)
+        reloaded = loadconfig(cfgfile = globvars.args.config_file, flush_on_reload=True, cfglogfile=None, cfglogfile_wins=logfile_override) #, cfgloglevel=10)
         if reloaded:
             next_run = datetime.datetime.now()      # Force immediate recheck
 
@@ -85,14 +76,13 @@ def main():
                 logging.getLogger().setLevel(logging.WARNING)
 
         if first:
-            logging.warning(f"{__file__} {__version__}")
             if not globvars.args.once:
-                time.sleep (lanmonfuncs.convert_time(getcfg('StartupDelay'))[0])
+                time.sleep (timevalue(getcfg('StartupDelay')).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
         # Every RecheckInterval
         if next_run < datetime.datetime.now():
-            next_run = datetime.datetime.now() + datetime.timedelta(seconds=lanmonfuncs.convert_time(getcfg("RecheckInterval"))[0])
+            next_run = datetime.datetime.now() + datetime.timedelta(seconds=timevalue(getcfg("RecheckInterval")).seconds)
 
             if reloaded:
                 if not first:
@@ -213,11 +203,11 @@ def main():
         time.sleep (10)     # Fixed 10s service loop
 
 
-def keyboardInterruptHandler(signal, frame):
-    print(f"KeyboardInterrupt (ID: {signal}) has been caught. Cleaning up...")
+def int_handler(signal, frame):
+    logging.warning(f"Signal {signal} received.  Exiting.")
     sys.exit(0)
-signal.signal(signal.SIGINT, keyboardInterruptHandler)
-
+signal.signal(signal.SIGINT,  int_handler)      # Ctrl-C
+signal.signal(signal.SIGTERM, int_handler)      # kill
 
 
 if __name__ == '__main__':
@@ -225,23 +215,38 @@ if __name__ == '__main__':
     parser.add_argument('-1', '--once', action='store_true',
                         help="Single run mode.  Logging is to console rather than file.")
     parser.add_argument('-v', '--verbose', action='count',
-                        help="Display OK items in --once mode. (Set by LoggingLevel in config file for non --once mode.)")
+                        help="Display OK items in --once mode. (-vv for debug logging)")
     parser.add_argument('--config-file', default=CONFIG_FILE,
                         help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('--log-file', default=LOG_FILE,
-                        help=f"Path to log file (default <{LOG_FILE}>).")
     parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
                         help="Return version number and exit.")
     globvars.args = parser.parse_args()
     
-    if globvars.args.once:
-        setuplogging(logfile=None)
-    else:
-        setuplogging(logfile=globvars.args.log_file)
-    
-    if not funcs3_min_version_check(FUNCS3_MIN_VERSION):
-        logging.error(f"ERROR:  funcs3 module must be at least version {FUNCS3_MIN_VERSION}.  Found <{funcs3_version}> - Aborting.")
+    logfile_override = True  if globvars.args.once  else False
+    try:
+        loadconfig(globvars.args.config_file, cfglogfile_wins=logfile_override)
+    except Exception as e:
+        logging.error(f"Failed loading config file <{globvars.args.config_file}> - Aborting.\n  {e}")
         sys.exit(1)
+
+
+    logging.warning (f"========== {os.path.basename(__file__)} ({__version__}) ==========")
+
+
+    # Python min version check
+    py_version = float(sys.version_info.major) + float(sys.version_info.minor)/10
+    if py_version < PY_MIN_VERSION:
+        logging.error (f"Current Python version {py_version} is less than minimum required version {PY_MIN_VERSION}.  Aborting.")
+        sys.exit(1)
+
+
+    # funcs3 min version check
+    if not funcs3_min_version_check(FUNCS3_MIN_VERSION):
+        logging.error(f"funcs3 module must be at least version <V{FUNCS3_MIN_VERSION}>.  Found <{funcs3_version}>.  Aborting.")
+        sys.exit(1)
+    else:
+        logging.debug(f"funcs3 module version <{funcs3_version}> (min required <V{FUNCS3_MIN_VERSION}>)")
+
 
     main()
     sys.exit()
