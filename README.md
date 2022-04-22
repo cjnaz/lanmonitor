@@ -1,8 +1,28 @@
 # lanmonitor - Keeping watch on the health of your network resources
 
-lanmonitor tracks the state of SELinux, hosts, services, web pages, processes, and local filesystem age on machines (hosts/VMs/servers...) on the local area network (and beyond).  
-A text message notification (and/or email) is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).  Periodic re-notifications are sent for
+lanmonitor keeps tabs on key resources in your LAN environment, and beyond.  A text message notification (and/or email) is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).  Periodic re-notifications are sent for
 critical items, such as firewalld being down, and summary reports are generated up to daily.
+
+- lanmonitor uses a plug-in architecture, and easily extensible for new items to monitor and new reporting/notification needs.
+- A configuration file is used for all setups - no coding required for use.  The config file may be modified on-th-fly while lanmonitor is running as a service.
+- Checks may be executed from the local machine, or from any remote host (with ssh access).  For example, you can check the health of a service running on another machine, or check that a webpage is accessible from another machine.
+
+
+## Several plug-ins are provided in the distribution (more details [below](#supplied-plugins)):
+
+| Monitor plugin | Description |
+|-----|-----|
+| dd-wrt_age | Checks that the dd-wrt version on the target router is more recent than a given age |
+| fsactivity | Checks that a target file or directory has at least one file newer than a given age |
+| interface | Checks that a given network interface (i.e., eth2) is up and running
+| pinghost | Checks that a given host can be pinged, as an indicator that the machine is alive on your network |
+| process | Checks that a given process is alive on a target host |
+| selinux | Checks that selinux reports the expected 'enforcing' or 'permissive' |
+| service | Checks that the given init.d or systemd service reports that it's up and running |
+| webpage | Checks that the given URL responds with an expected string of text, as an indicator that that the web page is alive |
+| yum_update | Checks that the most recent yum update operation was more recent than a given age |
+
+If you need other plug-ins, or wish to contribute, please open an issue to discuss.
 
 ` `
 ## Notable changes since prior release
@@ -128,7 +148,7 @@ For monitored items, the general format of a line is
 ` `  
 ### Supplied plugins
 
-See the documentation header in each plugin for its functionality and configuration specifics.  Not all plugins are listed here.
+See the documentation header in each plugin for its functionality and configuration specifics.
 
 - **SELinux** checks that the sestatus _Current mode:_ value matches the config file value.
 
