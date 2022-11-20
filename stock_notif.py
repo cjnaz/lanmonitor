@@ -2,12 +2,13 @@
 """LAN monitor notifications handler
 """
 
-__version__ = "V1.3 220420"
+__version__ = "V1.4 221120"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V1.4  221120  Summaries optional if SummaryDays is not defined.
 # V1.3  220420  Incorporated funcs3 timevalue and retime
 # V1.2  220217  Allow logging of repeat warnings when the log level is INFO or DEBUG.  Catch snd_notif/snd_email fails.
 # V1.1c 220101  Bug fix - clear prior events on config file reload (re-init of notification handlers)
@@ -130,25 +131,26 @@ class notif_class:
 
     def summary(self):
         logging.debug (f"Entering: {HANDLER_NAME}.summary")
-        if (self.next_summary < datetime.datetime.now())  or  globvars.args.once:
-            sum = ""
-            if len(self.events) == 0:
-                sum += "  No current events.  All is well."
-            else:
-                for event in self.events:
-                    sum += f"{self.events[event]['message']}\n"
+        if self.next_summary:       # Will be None if SummaryDays is not defined.
+            if (self.next_summary < datetime.datetime.now())  or  globvars.args.once:
+                sum = ""
+                if len(self.events) == 0:
+                    sum += "  No current events.  All is well."
+                else:
+                    for event in self.events:
+                        sum += f"{self.events[event]['message']}\n"
 
-            if globvars.args.once:
-                logging.debug(f"lanmonitor status summary:\n{sum}")
-                return
+                if globvars.args.once:
+                    logging.debug(f"lanmonitor status summary:\n{sum}")
+                    return
 
-            try:
-                snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
-            except Exception as e:
-                logging.warning(f"snd_summary failed.  Email server down?:\n        {e}")
+                try:
+                    snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
+                except Exception as e:
+                    logging.warning(f"snd_summary failed.  Email server down?:\n        {e}")
 
-            if getcfg("LogSummary", False):
-                logging.warning(f"Summary:\n{sum}")
+                if getcfg("LogSummary", False):
+                    logging.warning(f"Summary:\n{sum}")
 
-            self.next_summary = next_summary_timestring()
+                self.next_summary = next_summary_timestring()
 

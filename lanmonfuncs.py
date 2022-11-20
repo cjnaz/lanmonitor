@@ -2,12 +2,13 @@
 """LAN monitor support functions
 """
 
-# __version__ = "V1.3 220420"
+# __version__ = "V1.4 221120"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V1.4  221120  Summaries optional if SummaryDays is not defined.
 # V1.3  220420  Incorporated funcs3 timevalue and retime (removed convert_time)
 # V1.2a 220223  Bug fix in summary day calculation
 # V1.2  210605  Reworked have_access check to check_LAN_access logic.
@@ -166,7 +167,11 @@ def next_summary_timestring():
     SummaryDays			1 2 3 4 5 6 7	# Days of week: 1 = Monday, 7 = Sunday.  = 0 or comment out to disable summaries
     SummaryTime			9:45		    # 24 hour clock
     NOTE:  May be off by 1 hour over a DTS changes.
+    Don't define SummaryDays to disable summaries.
     """
+    if getcfg("SummaryDays", None) is None:
+        logging.debug(f"SummaryDays not defined.  Summaries are disabled.")
+        return None
     try:
         target_hour   = int(getcfg("SummaryTime","").split(":")[0])
         target_minute = int(getcfg("SummaryTime","").split(":")[1])

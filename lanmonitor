@@ -1,32 +1,28 @@
 #!/usr/bin/env python3
 """LAN monitor
 
-Monitor status of items on the local network, such as services, hosts, file system age, etc.
-Plugins are provided for these items, and additional plugins may easily be added:
-    SELinux status
-    Hosts ping response
-    Systemd services active and running
-    Web pages responding with expected text
-    Processes existing
-    Filesystem age
+Monitor status of network resources, such as services, hosts, file system age, system update age, etc.
+See README.md for descriptions of available plugins.
 
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V1.4 220420"
+__version__ = "V1.5 221120"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V1.5  221120  Added --print-log switch, Summaries are optional if SummaryDays is not defined.
 # V1.4  220420  Incorporated funcs3 timevalue and retime
 # V1.3  220217  Updates for funcs3 V1.0, stock_notif catch of emailer fails.
 # V1.2  210605  Reworked have_access check to check_LAN_access logic.
-# V1.1  210523  Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formattting tweaks.
+# V1.1  210523  Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formatting tweaks.
 # V1.0  210507  Major refactor
 # V0.1  210129  Initial
 #
 # Changes pending
+#   Add --service switch, drop --once
 #   
 #==========================================================
 
@@ -35,7 +31,8 @@ import argparse
 import time
 import datetime
 import os.path
-import signal       # For keyboard interrupt handler
+import subprocess
+import signal
 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
@@ -214,6 +211,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-1', '--once', action='store_true',
                         help="Single run mode.  Logging is to console rather than file.")
+    parser.add_argument('-p', '--print-log', action='store_true',
+                        help="Print the tail end of the log file (last 40 lines).")
     parser.add_argument('-v', '--verbose', action='count',
                         help="Display OK items in --once mode. (-vv for debug logging)")
     parser.add_argument('--config-file', default=CONFIG_FILE,
@@ -246,6 +245,15 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
         logging.debug(f"funcs3 module version <{funcs3_version}> (min required <V{FUNCS3_MIN_VERSION}>)")
+
+
+    # Print the tail end of the log file
+    if globvars.args.print_log:
+        _fp = getcfg("LogFile")
+        if not os.path.isabs(_fp):
+            _fp = os.path.join(PROGDIR, _fp)
+        subprocess.run(["tail", "-40", _fp])
+        sys.exit()
 
 
     main()

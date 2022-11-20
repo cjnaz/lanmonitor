@@ -1,9 +1,9 @@
 # lanmonitor - Keeping watch on the health of your network resources
 
-lanmonitor keeps tabs on key resources in your LAN environment, and beyond.  A text message notification (and/or email) is sent for any/each monitored _item_ that's out of sorts (not running, not responding, ...).  Periodic re-notifications are sent for
+lanmonitor keeps tabs on key resources in your LAN environment (not actually limted to your LAN).  A text message notification (and/or email) is sent for any monitored _item_ that's out of sorts (not running, not responding, ...).  Periodic re-notifications are sent for
 critical items, such as firewalld being down, and summary reports are generated up to daily.
 
-- lanmonitor uses a plug-in architecture, and easily extensible for new items to monitor and new reporting/notification needs.
+- lanmonitor uses a plug-in architecture, and is easily extensible for new items to monitor and new reporting/notification needs.
 - A configuration file is used for all setups - no coding required for use.  The config file may be modified on-th-fly while lanmonitor is running as a service.
 - Checks may be executed from the local machine, or from any remote host (with ssh access).  For example, you can check the health of a service running on another machine, or check that a webpage is accessible from another machine.
 
@@ -12,6 +12,7 @@ critical items, such as firewalld being down, and summary reports are generated 
 
 | Monitor plugin | Description |
 |-----|-----|
+| apt_upgrade_history | Checks that the most recent apt upgrade operation was more recent than a given age |
 | dd-wrt_age | Checks that the dd-wrt version on the target router is more recent than a given age |
 | fsactivity | Checks that a target file or directory has at least one file newer than a given age |
 | interface | Checks that a given network interface (i.e., eth2) is up and running
@@ -20,41 +21,36 @@ critical items, such as firewalld being down, and summary reports are generated 
 | selinux | Checks that selinux reports the expected 'enforcing' or 'permissive' |
 | service | Checks that the given init.d or systemd service reports that it's up and running |
 | webpage | Checks that the given URL responds with an expected string of text, as an indicator that that the web page is alive |
-| yum_update | Checks that the most recent yum update operation was more recent than a given age |
+| yum_update_history | Checks that the most recent yum update operation was more recent than a given age |
 
 If you need other plug-ins, or wish to contribute, please open an issue to discuss.
 
 ` `
-## Notable changes since prior release
-- `LoggingLevel` in the config file has been changed to `LogLevel`
-- The `--log-file` command line switch has been removed.  Now, specify `LogFile` in the config file.
-
+## Notable changes since prior release (V1.4 to V1.5)
+- Added apt_upgrade_history plugin
+- Added `--print-log` switch
+- Fixed summaries disable bug
 ` `  
 ## Usage
 ```
 $ ./lanmonitor -h
-usage: lanmonitor [-h] [-1] [-v] [--config-file CONFIG_FILE] [-V]
+usage: lanmonitor [-h] [-1] [-p] [-v] [--config-file CONFIG_FILE] [-V]
 
 LAN monitor
 
-Monitor status of items on the local network, such as services, hosts, file system age, etc.
-Plugins are provided for these items, and additional plugins may easily be added:
-    SELinux status
-    Hosts ping response
-    Systemd services active and running
-    Web pages responding with expected text
-    Processes existing
-    Filesystem age
+Monitor status of network resources, such as services, hosts, file system age, system update age, etc.
+See README.md for descriptions of available plugins.
 
 Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
-V1.4 220420
+V1.5 221120
 
 optional arguments:
   -h, --help            show this help message and exit
   -1, --once            Single run mode.  Logging is to console rather than file.
+  -p, --print-log       Print the tail end of the log file (last 40 lines).
   -v, --verbose         Display OK items in --once mode. (-vv for debug logging)
   --config-file CONFIG_FILE
-                        Path to config file (default </mnt/share/dev/python/lanmonitor/github/lanmonitor.cfg>).
+                        Path to config file (default </mnt/share/dev/python/lanmonitor/lanmonitor.cfg>).
   -V, --version         Return version number and exit.
 ```
 
@@ -62,27 +58,28 @@ optional arguments:
 ## Example output
 ```
 $ ./lanmonitor --once --verbose
-SELinux_local             OK - local    - enforcing
-Host_RPi2_TempMon         OK - local    - rpi2.lan
-Host_Printer_Server       OK - local    - 192.168.1.44
-FAIL: Host_RPi3_from_RPi1 - rpi1.lan    - HOST RPi3.lan IS NOT RESPONDING
-Service_routermonitor     OK - local    - routermonitor
-Service_wanstatus         OK - local    - wanstatus
-Service_plexmediaserver   OK - local    - plexmediaserver
-Service_firewalld         OK - local    - firewalld
-CRITICAL: Service_xxx - local - SERVICE xxx IS NOT RUNNING
-Page_WeeWX                OK - local    - http://192.168.33.72/weewx/
-Page_xBrowserSync         OK - rpi2     - https://www.xbrowsersync.org/
-FAIL: Page_xxx - local - WEBPAGE http://localhost/xxx/ NOT FOUND
-Process_x11vnc            OK - local    - /usr/bin/x11vnc
-Process_tempmon           OK - RPi2.lan - python TempMon.py
-WARNING: Process_xxxPi3 - RPi3.lan - HOST CANNOT BE REACHED
-Activity_Win1_Image       OK - local    -    5.8 days  (   6 days  max)  /mnt/share/backups/Win1/Image/
-FAIL: Activity_Win2_Image  STALE FILES - local -    6.7 days  (   6 days  max)  /mnt/share/backups/Win2/Image/
-Activity_CentOS_backupsd  OK - local    -    0.7 days  (   8 days  max)  /mnt/share/backups/Shop2/
-WARNING: Activity_xxx - local - COULD NOT GET ls OF PATH </mnt/share/backups/xxx/>
-Activity_TiBuScrape       OK - local    -    3.9 days  (   4 days  max)  /mnt/share/backups/TiBuScrapeArchive/
-Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RAMDRIVE/log.csv
+ WARNING:  ========== lanmonitor (V1.5 221120) ==========
+    INFO:  SELinux_local             OK - local    - enforcing
+    INFO:  Host_RPi2_TempMon         OK - local    - rpi2.lan
+    INFO:  Host_Printer_Server       OK - local    - 192.168.1.44
+ WARNING:    FAIL: Host_RPi3_from_RPi1 - rpi1.lan    - HOST RPi3.lan IS NOT RESPONDING
+    INFO:  Service_routermonitor     OK - local    - routermonitor
+    INFO:  Service_wanstatus         OK - local    - wanstatus
+    INFO:  Service_plexmediaserver   OK - local    - plexmediaserver
+    INFO:  Service_firewalld         OK - local    - firewalld
+ WARNING:    CRITICAL: Service_xxx - local - SERVICE xxx IS NOT RUNNING
+    INFO:  Page_WeeWX                OK - local    - http://192.168.33.72/weewx/
+    INFO:  Page_xBrowserSync         OK - rpi2     - https://www.xbrowsersync.org/
+ WARNING:    FAIL: Page_xxx - local - WEBPAGE http://localhost/xxx/ NOT FOUND
+    INFO:  Process_x11vnc            OK - local    - /usr/bin/x11vnc
+    INFO:  Process_tempmon           OK - RPi2.lan - python TempMon.py
+ WARNING:    WARNING: Process_xxxPi3 - RPi3.lan - HOST CANNOT BE REACHED
+    INFO:  Activity_Win1_Image       OK - local    -    5.8 days  (   6 days  max)  /mnt/share/backups/Win1/Image/
+ WARNING:    FAIL: Activity_Win2_Image  STALE FILES - local -    6.7 days  (   6 days  max)  /mnt/share/backups/Win2/Image/
+    INFO:  Activity_CentOS_backupsd  OK - local    -    0.7 days  (   8 days  max)  /mnt/share/backups/Shop2/
+ WARNING:    WARNING: Activity_xxx - local - COULD NOT GET ls OF PATH </mnt/share/backups/xxx/>
+    INFO:  Activity_TiBuScrape       OK - local    -    3.9 days  (   4 days  max)  /mnt/share/backups/TiBuScrapeArchive/
+    INFO:  Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RAMDRIVE/log.csv
 ```
 
 ` `  
@@ -107,18 +104,18 @@ Activity_RPi2_log.csv     OK - rpi2     -    0.8 mins  (   5 mins  max)  /mnt/RA
   - `LogSummary`, if True, forces the content of the periodic summary to be sent to the log file.  (Used by the `stock_notif.py` notification handler.)
 
 - Edit the config info in the `lanmonitor.cfg` file for the **SMTP email parameters**.
-  - Enter your mail `EmailFrom` and `NotifList`, and `EmailTo` addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
+  - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
   - Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`, containing:
 
             EmailServer       mail.mailserver.com
             EmailServerPort   P587TLS                 # One of: P465, P587, P587TLS, or P25   
             EmailUser	      yourusername@mailserver.com
             EmailPass	      yourpassword
-  
+            EmailFrom         yourfromaddress@mailserver.com
 
 - See below for monitored item settings.
 - Run the tool with `<path to>lanmonitor --once --verbose`.  Make sure that the local machine and user has password-less ssh access to any remote machines.  (`-vv` turns on debug logging.)
-- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.
+- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next RecheckInterval.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.  Also note that a copy of the creds_SMTP file may be needed in the root user home dir.
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - NOTE:  All time values in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6h` is 6 hours.  If no suffix is provided the time value is taken as seconds.
@@ -206,6 +203,14 @@ the first occurrence this line.  May require root access in order to read yum hi
       YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <yum_command>
       YumUpdate_MyHost        local       CRITICAL  15d  update --skip-broken
 
+- **apt upgrade age** on your various hosts to be monitored is listed on separate lines, as below.
+apt history files at /var/log/apt/* are checked for the specific <apt_command> text and the date is extracted from
+the most recent occurrence of this text.  May require root access in order to read apt history.
+
+      MonType_AptUpgrade  apt_upgrade_history_plugin
+      AptUpgrade_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <apt_command>
+      AptUpgrade_MyHost  local  CRITICAL  15d  apt full-upgrade
+
 - **dd-wrt age** on your various routers to be monitored is listed on separate lines, as below.
 routerIP may be an IP address or hostname.  The dd-wrt hostname or IP /Info.htm page is checked for the date on the top right of the page.
 
@@ -288,6 +293,7 @@ The following functions within each listed notification handler are called.  The
 
 ` `  
 ## Version history
+- V1.5  221120  Added apt_upgrade_history plugin, Added `--print-log` switch, Fixed summaries disable bug.
 - V1.4  220420  Updated for funcs3.py V1.1 - Log file setup now in config file, timevalue & retime moved to funcs3.  SummaryDays bug and doc fix.  A couple corner case bug fixes.
 - V1.2  210605  Reworked have_access check to check_LAN_access logic.
 - V1.1  210523  Added loadconfig flush_on_reload (funcs3.py V0.7) to purge any deleted cfg keys.  Error formatting tweaks.  Cmd timeout tweaks
