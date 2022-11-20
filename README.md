@@ -119,6 +119,7 @@ $ ./lanmonitor --once --verbose
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - NOTE:  All time values in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6h` is 6 hours.  If no suffix is provided the time value is taken as seconds.
+- NOTE:  You may wish to set static leases for hosts that you will be accessing by name, or you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router reboot.
 
 ` `  
 ## Monitored items setup
