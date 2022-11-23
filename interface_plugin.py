@@ -4,16 +4,17 @@
 Each interface is checked with a `ifconfig <interface name>`, checking for 'UP' and 'RUNNING'.
 
       MonType_Interface		interface_plugin
-      Interface_<friendly_name>  <local or user@host>  [CRITICAL]  <interface name>
-      Interface_router_vlan0       local			CRITICAL  vlan0
+      Interface_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <interface name>
+      Interface_router_vlan0       local			CRITICAL  1m  vlan0
 """
 
-__version__ = "V1.1 210523"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021
 #
+# V2.0 221130  Update for V2.0 changes
 # V1.1 210523  Touched fail output formatting
 # V1.0 210507  Initial
 #
@@ -21,6 +22,7 @@ __version__ = "V1.1 210523"
 #   
 #==========================================================
 
+import datetime
 import globvars
 from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from funcs3 import logging
@@ -41,11 +43,13 @@ class monitor:
             user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
+            check_interval  Time in seconds between rechecks
             rest_of_line    Remainder of line after the 'user_host' from the config file line
         Returns True if all good, else False
         """
 
-        # Construct item type specifics and check validity
+        logging.debug (f"{__name__}.setup()  called for  {item['key']}:\n  {item}")
+
         self.key            = item["key"]                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
         self.tag            = item["tag"]
@@ -57,7 +61,9 @@ class monitor:
             self.failtext = "CRITICAL"
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
+            self.failtext = "FAIL"
+        self.next_run       = datetime.datetime.now()
+        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
 
         self.interface_name = item["rest_of_line"]
 
@@ -71,6 +77,8 @@ class monitor:
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
         """
+
+        logging.debug (f"{__name__}.eval_status()  called for  {self.key}")
 
         cmd = ["ifconfig", self.interface_name]     # ssh user@host added by cmd_check if not local
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
@@ -101,20 +109,19 @@ if __name__ == '__main__':
     globvars.args = parser.parse_args()
     loadconfig(cfgfile=globvars.args.config_file)
 
-    inst = monitor()
 
     def dotest (test):
-        print (f"\n{test}")
+        print ()
         inst = monitor()
         setup_rslt = inst.setup(test)
-        print (f"  {setup_rslt}")
+        print (f"  setup():  {setup_rslt}")
         if setup_rslt == RTN_PASS:
-            print(f"  {inst.eval_status()}")
+            print(f"  eval_status():  {inst.eval_status()}")
 
-    dotest ({"key":"Interface_local_lo", "tag":"local_lo", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"lo"})
+    dotest ({"key":"Interface_local_lo", "tag":"local_lo", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"lo"})
 
-    dotest ({"key":"Interface_router_wl0.1", "tag":"router_wl0.1", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "rest_of_line":"wl0.1"})
+    dotest ({"key":"Interface_router_wl0.1", "tag":"router_wl0.1", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "check_interval":1, "rest_of_line":"wl0.1"})
 
-    dotest ({"key":"Interface_bad_intf", "tag":"bad_intf", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"bad"})
+    dotest ({"key":"Interface_bad_intf", "tag":"bad_intf", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"bad"})
 
-    dotest ({"key":"Interface_no_interface", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":""})
+    dotest ({"key":"Interface_no_interface", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":""})

@@ -4,15 +4,16 @@
 Monitor status of network resources, such as services, hosts, file system age, system update age, etc.
 See README.md for descriptions of available plugins.
 
-Operates interactively with --once switch, or as a service (loop forever and controlled via systemd or other).
+Operates interactively or as a service (loop forever and controlled via systemd or other).
 """
 
-__version__ = "V1.5 221120"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V2.0  221130  Recheck period per item, dropped --once, added --service 
 # V1.5  221120  Added --print-log switch, Summaries are optional if SummaryDays is not defined.
 # V1.4  220420  Incorporated funcs3 timevalue and retime
 # V1.3  220217  Updates for funcs3 V1.0, stock_notif catch of emailer fails.
@@ -22,7 +23,6 @@ __version__ = "V1.5 221120"
 # V0.1  210129  Initial
 #
 # Changes pending
-#   Add --service switch, drop --once
 #   
 #==========================================================
 
@@ -64,7 +64,7 @@ def main():
         if reloaded:
             next_run = datetime.datetime.now()      # Force immediate recheck
 
-        if globvars.args.once:                      # In non-once mode, logging level is set from config file
+        if not globvars.args.service:               # In service mode, logging level is set from config file
             if globvars.args.verbose == 1:
                 logging.getLogger().setLevel(logging.INFO)
             elif globvars.args.verbose == 2:
@@ -73,13 +73,14 @@ def main():
                 logging.getLogger().setLevel(logging.WARNING)
 
         if first:
-            if not globvars.args.once:
+            if globvars.args.service:
                 time.sleep (timevalue(getcfg('StartupDelay')).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
         # Every RecheckInterval
         if next_run < datetime.datetime.now():
-            next_run = datetime.datetime.now() + datetime.timedelta(seconds=timevalue(getcfg("RecheckInterval")).seconds)
+            # next_run = datetime.datetime.now() + datetime.timedelta(seconds=timevalue(getcfg("RecheckInterval")).seconds)
+            next_run += datetime.timedelta(seconds=timevalue(getcfg("RecheckInterval")).seconds)
 
             if reloaded:
                 if not first:
@@ -118,18 +119,31 @@ def main():
             if not have_LAN_access:
                 logging.warning(f"WARNING:  NO ACCESS TO LAN ({getcfg('Gateway')}) - Checks on remote hosts are skipped for this iteration.")
 
-            for montype in cfg:
-                if montype.startswith("MonType_"):
-                    montype_tag = montype.split("_", maxsplit=1)[1]
-                    montype_plugin = cfg[montype]
+            # for montype in cfg:
+            #     if montype.startswith("MonType_"):
+            #         montype_tag = montype.split("_", maxsplit=1)[1]
+                    # montype_plugin = cfg[montype]
+            for line in cfg:
+                if line.startswith("MonType_"):
+                    montype_tag = line.split("_", maxsplit=1)[1]
+                    montype_plugin = cfg[line]
     
                     plugin = __import__(montype_plugin)
 
                     # Process all lines in cfg of this MonType
                     for key in cfg:
                         if key.startswith(montype_tag + "_"):
-
                             # Instantiate the monitor item and call setup
+                            # Line parsing (monline dict keys):
+                            #   montype_xyz   pi@rpi3:80 CRITICAL  5m  xyz config specific
+                            #   ^^^^^^^^^^^  key
+                            #           ^^^  tag
+                            #                 ^^^^^^^^^^ user_host_port
+                            #                    ^^^^      host
+                            #                            ^^^^^^^^  critical  (optional, case insensitive, boolean)
+                            #                                      ^^  check_interval (converted to sec)
+                            #                                          ^^^^^^^^^^^^^^^^^^^  rest_of_line (parsed by plugin)
+
                             if key not in inst_dict:
                                 monline.clear()     # Construct the setup call dictionary
                                 monline["key"] = key
@@ -139,65 +153,97 @@ def main():
                                 monline["user_host_port"] = u_h_p
                                 _, host, _ = lanmonfuncs.split_user_host_port(u_h_p)
                                 monline["host"] = host
+                                # monline["critical"] = False
+                                # monline["rest_of_line"] = xx[1]
+                                # # if monline["rest_of_line"].startswith("CRITICAL"):
+                                # if monline["rest_of_line"].lower().startswith("critical"):
+                                #     monline["critical"] = True
+                                #     monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
                                 monline["critical"] = False
-                                monline["rest_of_line"] = xx[1]
-                                if monline["rest_of_line"].startswith("CRITICAL"):
+                                yy = xx[1]
+                                if yy.lower().startswith("critical"):
                                     monline["critical"] = True
-                                    monline["rest_of_line"] = monline["rest_of_line"].split(maxsplit=1)[1]
+                                    yy = yy.split(maxsplit=1)[1]
+                                monline["check_interval"] = timevalue(yy.split(maxsplit=1)[0]).seconds
+                                monline["rest_of_line"] = yy.split(maxsplit=1)[1]
 
+                                logging.debug("")
+                                # logging.debug (f"Config item:  {key}  {cfg[key]}\n           {monline}")
                                 inst = plugin.monitor()
                                 rslt = inst.setup(monline)          # SETUP CALL
-                                #   setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
-                                #   setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
-                                #   Some plugins may need to interrogate the target host during setup.
-                                #       If the interrogation fails (i.e., can't access), then the plugin.setup should return
-                                #       RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
-                                #       so that setup is retried on each iteration.
+                            #   setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
+                            #   setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
+                            #   Some plugins may need to interrogate the target host during setup.
+                            #       If the interrogation fails (i.e., can't access), then the plugin.setup should return
+                            #       RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
+                            #       so that setup is retried on each iteration.
                                 if rslt == lanmonfuncs.RTN_PASS:
                                     inst_dict[key] = inst
                                 elif rslt == lanmonfuncs.RTN_FAIL:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
-                                    logging.error(f"  ERROR:  {_msg}")
+                                    # logging.error(f"  ERROR:  {_msg}")
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
                                                     "message":f"  WARNING: {key} - {host} - {_msg}"})
                                     inst_dict[key] = False
                                 elif rslt == lanmonfuncs.RTN_WARNING:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  WILL RETRY."
-                                    logging.error(f"  WARNING:  {_msg}")
+                                    # logging.error(f"  WARNING:  {_msg}")
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
                                                     "message":f"  WARNING: {key} - {host} - {_msg}"})
                                 else:
                                     logging.critical (f"Setup for <{key}> returned illegal value {rslt} - Aborting.")
                                     sys.exit(1)
+                            # except Exception as e:
+                            #     logging.warning (f"Malformed monitor instance line in config - skipped:\n  {key}")
+                            #     continue
+
 
 
                             # Execute eval_status
                             inst = False
                             if key in inst_dict:
                                 inst = inst_dict[key]
-                            if inst is not False:
-                                if inst.host == "local" or have_LAN_access:
-                                    rslt = inst.eval_status()       # EVAL_STATUS CALL
-                                    for notif_handler in notif_handlers_list:
-                                        notif_handler.log_event(rslt)
+                            if inst is not False:       # See above setup() call note
+                                if inst.next_run > datetime.datetime.now():
+                                    logging.debug (f"<{key}> not due - skipped")
+                                else:
+                                    inst.next_run += datetime.timedelta(seconds=inst.check_interval)
+
+                                    if inst.host == "local" or have_LAN_access: 
+                                        # print (inst.next_run)
+                                        rslt = inst.eval_status()       # EVAL_STATUS CALL
+                                        # if type(rslt) == dict:          # will be "no run" if not due
+                                        for notif_handler in notif_handlers_list:
+                                            notif_handler.log_event(rslt)
+                                        # else:
+
+
+                                    # if inst.host == "local" or have_LAN_access: 
+                                    #     print (inst.next_run)
+                                    #     rslt = inst.eval_status()       # EVAL_STATUS CALL
+                                    #     if type(rslt) == dict:          # will be "no run" if not due
+                                    #         for notif_handler in notif_handlers_list:
+                                    #             notif_handler.log_event(rslt)
+                                    #     else:
+                                    #         logging.debug (f"<{key}> not due - skipped")
 
         
-        for notif_handler in notif_handlers_list:
-            notif_handler.each_loop()
+            for notif_handler in notif_handlers_list:
+                notif_handler.each_loop()
 
-        for notif_handler in notif_handlers_list:
-            notif_handler.renotif()
+            for notif_handler in notif_handlers_list:
+                notif_handler.renotif()
 
-        for notif_handler in notif_handlers_list:
-            notif_handler.summary()
+            for notif_handler in notif_handlers_list:
+                notif_handler.summary()
 
-        if globvars.args.once:
-            sys.exit(0)
+            if not globvars.args.service:
+                sys.exit(0)
 
-        first = False
-        time.sleep (10)     # Fixed 10s service loop
+            first = False
+        time.sleep (1)
 
 
 def int_handler(signal, frame):
@@ -209,19 +255,21 @@ signal.signal(signal.SIGTERM, int_handler)      # kill
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-1', '--once', action='store_true',
-                        help="Single run mode.  Logging is to console rather than file.")
+    # parser.add_argument('-1', '--once', action='store_true',
+    #                     help="Single run mode.  Logging is to console rather than file.")
     parser.add_argument('-p', '--print-log', action='store_true',
                         help="Print the tail end of the log file (last 40 lines).")
     parser.add_argument('-v', '--verbose', action='count',
-                        help="Display OK items in --once mode. (-vv for debug logging)")
+                        help="Display OK items in non-service mode. (-vv for debug logging)")
     parser.add_argument('--config-file', default=CONFIG_FILE,
                         help=f"Path to config file (default <{CONFIG_FILE}>).")
+    parser.add_argument('--service', action='store_true',
+                        help="Enter endless loop for use as a systemd service.")
     parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
                         help="Return version number and exit.")
     globvars.args = parser.parse_args()
     
-    logfile_override = True  if globvars.args.once  else False
+    logfile_override = True  if not globvars.args.service  else False
     try:
         loadconfig(globvars.args.config_file, cfglogfile_wins=logfile_override)
     except Exception as e:

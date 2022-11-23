@@ -5,16 +5,17 @@ Check the age of the dd-wrt version on the specified router.  The routerIP may b
 
 Typical config file lines:
     MonType_DD-wrt_age  dd-wrt_age_plugin
-    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <routerIP>
-    DD-wrt_age_Router  local  CRITICAL  30d  192.168.1.1
+    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
+    DD-wrt_age_Router  local  CRITICAL  1d  30d  192.168.1.1
 """
 
-__version__ = "V1.1 220420"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V2.0 221130  Update for V2.0 changes
 # V1.1 220420  Incorporated funcs3 timevalue and retime
 # V1.0 210622  new
 #
@@ -46,11 +47,13 @@ class monitor:
             user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
+            check_interval  Time in seconds between rechecks
             rest_of_line    Remainder of line after the 'user_host' from the config file line
         Returns True if all good, else False
         """
 
-        # Construct item type specifics and check validity
+        logging.debug (f"{__name__}.setup()  called for  {item['key']}:\n  {item}")
+
         self.key            = item["key"]                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
         self.tag            = item["tag"]
@@ -62,7 +65,9 @@ class monitor:
             self.failtext = "CRITICAL"
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
+            self.failtext = "FAIL"
+        self.next_run       = datetime.datetime.now()
+        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
 
         try:
             xx = item["rest_of_line"].split(maxsplit=1)
@@ -86,6 +91,8 @@ class monitor:
             message         String with status and context details
         """
         
+        logging.debug (f"{__name__}.eval_status()  called for  {self.key}")
+
         cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]      # ssh user@host added by cmd_check if not local
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # print (rslt)                  # Uncomment for debug
@@ -126,17 +133,17 @@ if __name__ == '__main__':
 
 
     def dotest (test):
-        print (f"\n{test}")
+        print ()
         inst = monitor()
         setup_rslt = inst.setup(test)
-        print (f"  {setup_rslt}")
+        print (f"  setup():  {setup_rslt}")
         if setup_rslt == RTN_PASS:
-            print(f"  {inst.eval_status()}")
+            print(f"  eval_status():  {inst.eval_status()}")
 
-    dotest ({"key":"DD-wrt_age_Pass", "tag":"Pass", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"90d 192.168.1.1"})
+    dotest ({"key":"DD-wrt_age_Pass", "tag":"Pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"90d 192.168.1.1"})
 
-    dotest ({"key":"DD-wrt_age_Fail", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"0d 192.168.1.1"})
+    dotest ({"key":"DD-wrt_age_Fail", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0d 192.168.1.1"})
 
-    dotest ({"key":"DD-wrt_age_noreply", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"0d 192.168.1.99"})
+    dotest ({"key":"DD-wrt_age_noreply", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0d 192.168.1.99"})
 
-    dotest ({"key":"DD-wrt_age_badline", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"0y 192.168.1.99"})
+    dotest ({"key":"DD-wrt_age_badline", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0y 192.168.1.99"})

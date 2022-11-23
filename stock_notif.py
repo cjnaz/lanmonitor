@@ -2,12 +2,13 @@
 """LAN monitor notifications handler
 """
 
-__version__ = "V1.4 221120"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V2.0  221130  Dropped --once, added --service
 # V1.4  221120  Summaries optional if SummaryDays is not defined.
 # V1.3  220420  Incorporated funcs3 timevalue and retime
 # V1.2  220217  Allow logging of repeat warnings when the log level is INFO or DEBUG.  Catch snd_notif/snd_email fails.
@@ -41,8 +42,11 @@ class notif_class:
     next_renotif = None
 
     def __init__(self):
+        logging.debug (f"Notif handler <{__name__}> initialized.")
         self.next_summary = next_summary_timestring()
-        self.next_renotif = datetime.datetime.now().replace(microsecond=0)
+        if not globvars.args.service:
+            self.next_summary = datetime.datetime.now()     # force summary in interactive debug level logging 
+        self.next_renotif = datetime.datetime.now().replace(microsecond=0)  # forcing int keeps logging value prettier
         self.events.clear()
 
     def are_criticals (self):
@@ -80,24 +84,24 @@ class notif_class:
             if dict["rslt"] == RTN_CRITICAL:
                 # if there are no prior active criticals, then set renotif time to now + renotif value
                 if self.next_renotif < datetime.datetime.now()  and  not self.are_criticals():
-                    self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
-                    if not globvars.args.once:
+                    self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
+                    if globvars.args.service:
                         logging.info(f"Next critical renotification:  {self.next_renotif}")
-            if dict["notif_key"] not in self.events  and  not globvars.args.once:
+            if dict["notif_key"] not in self.events  and  globvars.args.service:
                 try:
                     snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
                 except Exception as e:
                     logging.warning(f"snd_notif failed.  Email server down?:\n        {dict['message']}\n        {e}")
-            if dict["notif_key"] not in self.events  or  globvars.args.once  or  getcfg("LogLevel", 30) < 30:
+            if dict["notif_key"] not in self.events  or  not globvars.args.service  or  getcfg("LogLevel", 30) < 30:
                 logging.warning(dict["message"])
 
         self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}
 
 
     def each_loop(self):
-        """ Called every service loop (10 seconds)
+        """ Called every service loop
         """
-        logging.debug (f"Entering: {HANDLER_NAME}.each_loop")
+        logging.debug (f"Entering: {HANDLER_NAME}.each_loop()")
 
 
     def renotif(self):
@@ -108,10 +112,8 @@ class notif_class:
             else
                 set renotif time = now, which allows next critical to be notified immediately
         """
-        logging.debug (f"Entering: {HANDLER_NAME}.renotif")
+        logging.debug (f"Entering: {HANDLER_NAME}.renotif()")
         if (self.next_renotif < datetime.datetime.now()):
-            logging.debug (f"self.next_renotif:        {self.next_renotif}")
-            logging.debug (f"datetime.datetime.now():  {datetime.datetime.now()}")
 
             if self.are_criticals():
                 criticals = ""
@@ -123,16 +125,16 @@ class notif_class:
                 except Exception as e:
                     logging.warning(f"snd_notif failed.  Email server down?:\n        {criticals}\n        {e}")
 
-                self.next_renotif = datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
+                self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
                 logging.info(f"Next critical renotification:  {self.next_renotif}")
             else:
                 self.next_renotif = datetime.datetime.now().replace(microsecond=0)
 
 
     def summary(self):
-        logging.debug (f"Entering: {HANDLER_NAME}.summary")
+        logging.debug (f"Entering: {HANDLER_NAME}.summary()")
         if self.next_summary:       # Will be None if SummaryDays is not defined.
-            if (self.next_summary < datetime.datetime.now())  or  globvars.args.once:
+            if (self.next_summary < datetime.datetime.now())  or  not globvars.args.service:
                 sum = ""
                 if len(self.events) == 0:
                     sum += "  No current events.  All is well."
@@ -140,7 +142,7 @@ class notif_class:
                     for event in self.events:
                         sum += f"{self.events[event]['message']}\n"
 
-                if globvars.args.once:
+                if not globvars.args.service:
                     logging.debug(f"lanmonitor status summary:\n{sum}")
                     return
 
@@ -153,4 +155,3 @@ class notif_class:
                     logging.warning(f"Summary:\n{sum}")
 
                 self.next_summary = next_summary_timestring()
-

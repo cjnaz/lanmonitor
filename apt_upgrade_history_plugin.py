@@ -6,20 +6,21 @@ the most recent occurrence of this text.  May require root access in order to re
 
 Typical config file lines:
     MonType_AptUpgrade  apt_upgrade_history_plugin
-    AptUpgrade_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <apt_command>
-    AptUpgrade_MyHost  local  CRITICAL  15d  apt full-upgrade
+    AptUpgrade_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>    <age>  <apt_command>
+    AptUpgrade_MyHost  local  CRITICAL  1d  30d  apt full-upgrade
 """
 
-__version__ = "V1.0 221120"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
-# V1.0  221120  Initial
+# V2.0 221130  Update for V2.0 changes
+# V1.0 221120  Initial
 #
 # Changes pending
-#  The apt history file content may be locale specific.  This plugin is currently hardcoded to US style.
+#  The apt history file formatting may be locale specific.  This plugin is currently hardcoded to US locale.
 #   
 #==========================================================
 
@@ -49,11 +50,13 @@ class monitor:
             user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
+            check_interval  Time in seconds between rechecks
             rest_of_line    Remainder of line after the 'user_host' from the config file line
         Returns True if all good, else False
         """
 
-        # Construct item type specifics and check validity
+        logging.debug (f"{__name__}.setup()  called for  {item['key']}:\n  {item}")
+
         self.key            = item["key"]                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
         self.tag            = item["tag"]
@@ -65,7 +68,9 @@ class monitor:
             self.failtext = "CRITICAL"
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
+            self.failtext = "FAIL"
+        self.next_run       = datetime.datetime.now()
+        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
 
         try:
             xx = item["rest_of_line"].split(maxsplit=1)
@@ -90,6 +95,8 @@ class monitor:
             message         String with status and context details
         """
         
+        logging.debug (f"{__name__}.eval_status()  called for  {self.key}")
+
         cmd = ["zcat", "-qf", "/var/log/apt/history.log*"]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # print (rslt)                  # Uncomment for debug
@@ -130,22 +137,22 @@ if __name__ == '__main__':
 
 
     def dotest (test):
-        print (f"\n{test}")
+        print ()
         inst = monitor()
         setup_rslt = inst.setup(test)
-        print (f"  {setup_rslt}")
+        print (f"  setup():  {setup_rslt}")
         if setup_rslt == RTN_PASS:
-            print(f"  {inst.eval_status()}")
+            print(f"  eval_status():  {inst.eval_status()}")
 
-    dotest ({"key":"AptUpgrade_Pass", "tag":"Pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "rest_of_line":"500w apt full-upgrade"})
+    dotest ({"key":"AptUpgrade_Pass", "tag":"Pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"500w apt full-upgrade"})
 
-    dotest ({"key":"AptUpgrade_TooOld", "tag":"TooOld", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "rest_of_line":"10h apt full-upgrade"})
+    dotest ({"key":"AptUpgrade_TooOld", "tag":"TooOld", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
 
-    dotest ({"key":"AptUpgrade_NoUpgrades", "tag":"NoUpgrades", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "rest_of_line":"10h apt full-upgradeS"})
+    dotest ({"key":"AptUpgrade_NoUpgrades", "tag":"NoUpgrades", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgradeS"})
 
-    dotest ({"key":"AptUpgrade_CantAccess", "tag":"CantAccess", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "rest_of_line":"10h apt full-upgrade"})
+    dotest ({"key":"AptUpgrade_CantAccess", "tag":"CantAccess", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
 
-    dotest ({"key":"AptUpgrade_baddef", "tag":"badline", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"10m"})
+    dotest ({"key":"AptUpgrade_baddef", "tag":"badline", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10m"})
 
-    dotest ({"key":"AptUpgrade_badtime", "tag":"badtime", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"10y apt full-upgrade"})
+    dotest ({"key":"AptUpgrade_badtime", "tag":"badtime", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10y apt full-upgrade"})
 
