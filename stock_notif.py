@@ -46,7 +46,7 @@ class notif_class:
         self.next_summary = next_summary_timestring()
         if not globvars.args.service:
             self.next_summary = datetime.datetime.now()     # force summary in interactive debug level logging 
-        self.next_renotif = datetime.datetime.now().replace(microsecond=0)  # forcing int keeps logging value prettier
+        self.next_renotif = datetime.datetime.now().replace(microsecond=0)  # forcing int seconds keeps logging value prettier
         self.events.clear()
 
     def are_criticals (self):

@@ -50,7 +50,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            rest_of_line    Remainder of line after the 'user_host' from the config file line
+            rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
@@ -95,9 +95,9 @@ class monitor:
 
         logging.debug (f"{__name__}.eval_status()  called for  {self.key}")
 
-        cmd = ["yum", "history"]        # ssh user@host added by cmd_check if not local
+        cmd = ["yum", "history"]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
-        # print (rslt)                  # Uncomment for debug
+        # logging.debug (f"cmd_check response:  {rslt}")
 
         if "You don't have access to the history DB." in rslt[1].stderr:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO ACCESS TO THE YUM HISTORY DB"}
@@ -135,6 +135,7 @@ if __name__ == '__main__':
 
     globvars.args = parser.parse_args()
     loadconfig(cfgfile=globvars.args.config_file)
+    logging.getLogger().setLevel(logging.DEBUG)
 
 
     def dotest (test):

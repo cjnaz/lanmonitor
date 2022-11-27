@@ -46,7 +46,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            rest_of_line    Remainder of line after the 'user_host' from the config file line
+            rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
@@ -83,9 +83,9 @@ class monitor:
         """
 
         logging.debug (f"{__name__}.eval_status()  called for  {self.key}")
-        cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]      # ssh user@host added by cmd_check if not local
+        cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", expected_text=self.match_text)
-        # print (rslt)                  # Uncomment for debug
+        # logging.debug (f"cmd_check response:  {rslt}")
 
         if "404 Not Found" in rslt[1].stdout:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - WEBPAGE <{self.url}> NOT FOUND"}
@@ -110,6 +110,7 @@ if __name__ == '__main__':
 
     globvars.args = parser.parse_args()
     loadconfig(cfgfile=globvars.args.config_file)
+    logging.getLogger().setLevel(logging.DEBUG)
 
 
     def dotest (test):

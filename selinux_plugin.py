@@ -45,7 +45,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            rest_of_line    Remainder of line after the 'user_host' from the config file line
+            rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
@@ -84,9 +84,9 @@ class monitor:
 
         logging.debug (f"{__name__}.eval_status()  called for  {self.key}")
 
-        cmd = ["sestatus"]              # ssh user@host added by cmd_check if not local
+        cmd = ["sestatus"]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", check_line_text="Current mode:", expected_text=self.expected_mode)
-        # print (rslt)                  # Uncomment for debug
+        # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == True:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
@@ -108,6 +108,7 @@ if __name__ == '__main__':
 
     globvars.args = parser.parse_args()
     loadconfig(cfgfile=globvars.args.config_file)
+    logging.getLogger().setLevel(logging.DEBUG)
 
 
     def dotest (test):

@@ -46,7 +46,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            rest_of_line    Remainder of line after the 'user_host' from the config file line
+            rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
@@ -71,6 +71,8 @@ class monitor:
 
         # Identify the system manager type - expecting systemd or init
         psp1_rslt = cmd_check(["ps", "-p1"], user_host_port=self.user_host_port, return_type="cmdrun")
+        # logging.debug (f"cmd_check response:  {psp1_rslt}")
+
         if not psp1_rslt[0]:
             logging.error (f"  WARNING:  <{self.key}> - {self.host} - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)")
             return RTN_WARNING
@@ -104,7 +106,7 @@ class monitor:
 
         rslt = cmd_check(self.cmd, user_host_port=self.user_host_port, return_type="check_string",
             check_line_text=self.check_line_text, expected_text=self.expected_text, not_text=self.not_text)
-        # print (rslt)                  # Uncomment for debug
+        # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == True:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.service_name}"}
@@ -126,6 +128,7 @@ if __name__ == '__main__':
 
     globvars.args = parser.parse_args()
     loadconfig(cfgfile=globvars.args.config_file)
+    logging.getLogger().setLevel(logging.DEBUG)
 
 
     def dotest (test):
