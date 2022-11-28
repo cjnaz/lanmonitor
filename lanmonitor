@@ -57,8 +57,6 @@ def main():
     monline = {}
 
 
-    # For monitor items that run >= daily, set run time to 5min before the summary time, if defined
-
     while 1:
         reloaded = loadconfig(cfgfile = globvars.args.config_file, flush_on_reload=True, cfglogfile=None, cfglogfile_wins=logfile_override) #, cfgloglevel=10)
 
@@ -96,7 +94,7 @@ def main():
             inst_dict.clear()
             globvars.keylen = 0
             globvars.hostlen = 0
-            for key in cfg:                 # Get keylen and hostlen field widths across all monitored items
+            for key in cfg:                 # Get keylen and hostlen field widths across all monitored items for pretty printing
                 if key.startswith("MonType_"):
                     montype_tag = key.split("_")[1]
                     for line in cfg:
@@ -111,12 +109,8 @@ def main():
                             pass    # Issue will be caught and logged in the following setup code
 
 
-        # Confirm LAN access on every iteration
-        have_LAN_access = lanmonfuncs.check_LAN_access()      # True if "Gateway" host can be reached
-        if not have_LAN_access:
-            logging.warning(f"WARNING:  NO ACCESS TO LAN ({getcfg('Gateway')}) - Checks on remote hosts are skipped for this iteration.")
-
         # Process each monitor type and item
+        checked_have_LAN_access = False
         for line in cfg:
             if line.startswith("MonType_"):
                 montype_tag = line.split("_", maxsplit=1)[1]
@@ -134,7 +128,7 @@ def main():
                         #           ^^^  tag
                         #                 ^^^^^^^^^^ user_host_port
                         #                    ^^^^      host
-                        #                            ^^^^^^^^  critical  (optional, case insensitive, boolean)
+                        #                            ^^^^^^^^  critical  (optional, case insensitive, saved as boolean)
                         #                                      ^^  check_interval (converted to sec)
                         #                                          ^^^^^^^^^^^^^^^^^^^  rest_of_line (parsed by plugin)
 
@@ -158,7 +152,6 @@ def main():
                                 monline["check_interval"] = timevalue(yy.split(maxsplit=1)[0]).seconds
                                 monline["rest_of_line"] = yy.split(maxsplit=1)[1]
 
-                                # logging.debug (f"Config item:  {key}  {cfg[key]}\n           {monline}")
                                 inst = plugin.monitor()
                                 rslt = inst.setup(monline)          # SETUP() CALL
                                     # setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
@@ -170,14 +163,12 @@ def main():
                                 logging.debug (f"setup() returned:  {rslt}")
                                 if rslt == lanmonfuncs.RTN_FAIL:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
-                                    # logging.error(f"  ERROR:  {_msg}")
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
                                                     "message":f"  WARNING: {key} - {host} - {_msg}"})
                                     inst_dict[key] = False
                                 elif rslt == lanmonfuncs.RTN_WARNING:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  WILL RETRY."
-                                    # logging.error(f"  WARNING:  {_msg}")
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
                                                     "message":f"  WARNING: {key} - {host} - {_msg}"})
@@ -213,8 +204,17 @@ def main():
                                         logging.error (f"Cannot parse <DailyRuntime> in config:  {getcfg('DailyRuntime')} - Aborting")
                                         sys.exit(1)
 
+                                # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host.  Do only once per active serviceloop.
+                                if inst.host != "local"  and  not checked_have_LAN_access:
+                                    checked_have_LAN_access = True
+                                    have_LAN_access = lanmonfuncs.check_LAN_access()
+                                    if not have_LAN_access:
+                                        logging.warning(f"WARNING:  NO ACCESS TO LAN ({getcfg('Gateway')}) - Checks run on remote hosts are skipped for this iteration.")
+                                    else:
+                                        logging.debug(f"LAN access confirmed.  Proceeding with checks run on remote hosts.")
+
                                 if inst.host == "local" or have_LAN_access: 
-                                    rslt = inst.eval_status()                 # EVAL_STATUS() CALL
+                                    rslt = inst.eval_status()                               # EVAL_STATUS() CALL
                                     logging.debug (f"eval_status() returned:  {rslt}")
 
                                     for notif_handler in notif_handlers_list:

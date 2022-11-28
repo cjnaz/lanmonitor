@@ -34,7 +34,7 @@ from funcs3 import logging
 # Configs / Constants
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
-
+PING_RESPONSE_RE = re.compile(r"([\d.]+)\)*:.+time=([\d.]+) ms")
 
 class monitor:
 
@@ -73,7 +73,7 @@ class monitor:
 
         self.ip_or_hostname = item["rest_of_line"]
         if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
-            logging.error (f"  ERROR:  <{self.key}> INVALID IP OR HOSTNAME <{self.ip_or_hostname}>")
+            logging.error (f"  ERROR:  <{self.key}> CAN'T PARSE IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL
         return RTN_PASS
 
@@ -90,19 +90,19 @@ class monitor:
 
         cmd = ["ping", "-c", "1", "-W", "1", self.ip_or_hostname]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
-        # logging.debug (f"cmd_check response:  {rslt}")
-
-        IP_address = "(NONE)"
-        for line in rslt[1].stdout.split("\n"):
-            if line.startswith("PING"):
-                IP_address = line.split()[2].replace(":", "")   # dd-wrt ping response may include a ":" - "(192.168.1.56):"
-                break
+        logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == True:
-            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} {IP_address}"}
+            ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
+            if ping_rslt:
+                return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
+            else:
+                return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  UNKNOWN ERROR"}  # This should not happen
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {IP_address} IS NOT RESPONDING"}
-
+            error_msg = rslt[1].stderr.replace('\n','')
+            if error_msg == ""  and  "100% packet loss" in rslt[1].stdout:
+                error_msg = "Cannot contact target host."
+            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
 
 
 if __name__ == '__main__':
@@ -138,4 +138,6 @@ if __name__ == '__main__':
 
     dotest ({"key":"Host_local_to_INV", "tag":"local_to_INV", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"invalid@hostname"})
 
-    dotest ({"key":"Host_local_to_XX", "tag":"local_to_XX", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"XX.lan"})
+    dotest ({"key":"Host_local_to_Unknown", "tag":"local_to_Unknown", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"XX.lan"})
+
+    dotest ({"key":"Host_Unknown_to_Known", "tag":"Unknown_to_Known", "host":"unknown", "user_host_port":"me@unknown", "critical":False, "check_interval":1, "rest_of_line":"shop2"})
