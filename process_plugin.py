@@ -48,7 +48,7 @@ class monitor:
         Returns True if all good, else False
         """
 
-        logging.debug (f"{__name__}.setup()  called for  {item['key']}:\n  {item}")
+        logging.debug (f"{item['key']} - {__name__}.setup() called:\n  {item}")
 
         self.key            = item["key"]                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
@@ -62,7 +62,7 @@ class monitor:
         else:
             self.failtype = RTN_FAIL
             self.failtext = "FAIL"
-        self.next_run       = datetime.datetime.now()
+        self.next_run       = datetime.datetime.now().replace(microsecond=0)
         self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
 
         self.process_path   = item["rest_of_line"]
@@ -77,7 +77,9 @@ class monitor:
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
         """
-        
+
+        logging.debug (f"{self.key} - {__name__}.eval_status() called")
+
         cmd = ["ps", "-Af"]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", expected_text=self.process_path)
         # logging.debug (f"cmd_check response:  {rslt}")
@@ -93,6 +95,7 @@ if __name__ == '__main__':
     from funcs3 import loadconfig
 
     CONFIG_FILE = "lanmonitor.cfg"
+    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
 
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--config-file', default=CONFIG_FILE,
@@ -101,17 +104,17 @@ if __name__ == '__main__':
                         help="Return version number and exit.")
 
     globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file)
+    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
     logging.getLogger().setLevel(logging.DEBUG)
 
 
     def dotest (test):
-        print (f"\n{test}")
+        logging.debug("")
         inst = monitor()
         setup_rslt = inst.setup(test)
-        print (f"  setup():  {setup_rslt}")
+        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
         if setup_rslt == RTN_PASS:
-            print(f"  eval_status():  {inst.eval_status()}")
+            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
     dotest ({"key":"Process_x11vnc", "tag":"x11vnc", "host":"local", "user_host_port":"local", "critical":False, "check_interval":1, "rest_of_line":"/usr/bin/x11vnc"})
 

@@ -47,6 +47,7 @@ PY_MIN_VERSION         = 3.6
 FUNCS3_MIN_VERSION     = 1.1
 CONFIG_FILE            = os.path.join(PROGDIR, 'lanmonitor.cfg')
 CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
+FILE_LOGGING_FORMAT    = '{asctime} {module:>26}.{funcName:11} {levelname:>8}:  {message}'
 
 
 def main():
@@ -160,7 +161,7 @@ def main():
                                     #   If the interrogation fails (i.e., can't access), then the plugin.setup should return
                                     #   RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
                                     #   so that setup is retried on each iteration.
-                                logging.debug (f"setup() returned:  {rslt}")
+                                logging.debug (f"{key} - setup() returned:  {rslt}")
                                 if rslt == lanmonfuncs.RTN_FAIL:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
                                     for notif_handler in notif_handlers_list:
@@ -189,7 +190,7 @@ def main():
                             inst = inst_dict[key]
                         if inst is not False:       # See above setup() call notes
                             if inst.next_run > datetime.datetime.now():
-                                logging.debug (f"<{key}> not due - skipped")
+                                logging.debug (f"{key} - Not due, skipped")
                             else:
                                 inst.next_run += datetime.timedelta(seconds=inst.check_interval)
 
@@ -199,10 +200,11 @@ def main():
                                         target_hour   = int(getcfg("DailyRuntime").split(":")[0])
                                         target_minute = int(getcfg("DailyRuntime").split(":")[1])
                                         inst.next_run = inst.next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-                                        logging.debug (f"Adjusted next_run:  {inst.next_run}")
                                     except Exception as e:
                                         logging.error (f"Cannot parse <DailyRuntime> in config:  {getcfg('DailyRuntime')} - Aborting")
                                         sys.exit(1)
+
+                                logging.debug(f"{key} - Next runtime: {inst.next_run}")
 
                                 # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host.  Do only once per active serviceloop.
                                 if inst.host != "local"  and  not checked_have_LAN_access:
@@ -215,7 +217,7 @@ def main():
 
                                 if inst.host == "local" or have_LAN_access: 
                                     rslt = inst.eval_status()                               # EVAL_STATUS() CALL
-                                    logging.debug (f"eval_status() returned:  {rslt}")
+                                    logging.debug (f"{key} - eval_status() returned:  {rslt}")
 
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event(rslt)
