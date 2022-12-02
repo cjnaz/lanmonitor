@@ -63,7 +63,7 @@ optional arguments:
 ## Example output
 ```
 $ ./lanmonitor --verbose
- WARNING:  ========== lanmonitor (V1.5 221120) ==========
+ WARNING:  ========== lanmonitor (V1.5 221120, pid 7829) ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  Host_RPi2_TempMon         OK - local    - rpi2.lan
     INFO:  Host_Printer_Server       OK - local    - 192.168.1.44
@@ -102,12 +102,14 @@ $ ./lanmonitor --verbose
   - `LogLevel` controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
   - `LogFile` specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
 
-- Edit the config info in the `lanmonitor.cfg` file for the **notification handler parameters**:
+- Edit the config info in the `lanmonitor.cfg` file for the **Notification handler parameters**:
   - `Notif_handlers` is a whitespace separated list of Python modules (without the .py extension) that will handle monitored item event tracking, notifications, and periodic summaries.  `stock_notify.py` is provided, and has full functionality.  See [Writing Notification Handler Plugins](#writing-notification-handler-plugins), below.
   - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.  (As implemented by the `stock_notif.py` notification handler.)
   - `SummaryDays` sets which days of the week for summaries to be emailed.  Monday =1, Tuesday =2, ... Saturday =6, Sunday = 7.  Multiple days may be selected.  Comment out `SummaryDays` to eliminate summaries.  (As implemented by the `stock_notif.py` notification handler.)
   - `SummaryTime` sets the time of day (local time) for summaries to be emailed.  24-clock format, for example, `13:00`.  (As implemented by the `stock_notif.py` notification handler.)
   - `LogSummary`, if True, forces the content of the periodic summary to be sent to the log file.  (As implemented by the `stock_notif.py` notification handler.)
+  - `EmailTo` is a whitespace separated list of email addresses that summaries will be sent to.  Comment out EmailTo to disable emailing summaries.  (As implemented by the `stock_notif.py` notification handler.)
+  - `NotifList` is a whitespace separated list of phone numbers (using your carrier's email-to-text bridge) to which event notifications will be sent.  Comment out NotifList to disable all notifications.  (As implemented by the `stock_notif.py` notification handler.)
 
 - Edit the config info in the `lanmonitor.cfg` file for the **SMTP email parameters**.
   - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
@@ -146,7 +148,7 @@ For monitored items, the general format of a line is
 1. `<type>` matches the corresponding `MonType_<type>` line.
 2. `<friendly_name>` is arbitrary and is used for notifications, logging, etc. `<type>_<friendly_name>` must be unique.
 3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line below specifies that `Yahoo.com` will be pinged from the `RPi2.mylan` host by doing an `ssh me@RPi2.mylan ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
-4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.
+4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.  (For critical-tagged items their `check_interval` should be less than the `CriticalReNotificationInterval`.)
 5. `<check_interval>` is the wait time between rechecks for this specific item.  Each item is checked at its own check_interval.
 5. `<rest_of_line>` are the monitored type-specific settings.
 
@@ -298,6 +300,16 @@ The following functions within each listed notification handler are called.  The
 - `each_loop()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any general code here that needs to be executed on every iteration.  Unused by stock_notif.
 - `renotif()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any code here related to sending additional notifications for items that remain broken.  stock_notif sends repeat notification messages for any critical items on every `CriticalReNotificationInterval` period.  All still-broken critical items are bundled into a single message so as to minimize text messages being sent.
 - `summary()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any code here related to scheduling and producing a periodic report.  The lanmonfuncs.py module provides `next_summary_timestring()`, which uses `SummaryTime` and `SummaryDays` in the config file, for summary scheduling.  stock_notif's summary simply emails a list of any current WARNING, FAIL, or CRITICAL items, or an "All is well" message to provide a periodic _lanmonitor-is-alive_ message.
+
+` `  
+## Debug features:
+- lanmonitor dynamically reloads the config file when it senses that the config file has been changed.  When reloaded, all monitored items are reinitialized per the current content of the config file, and all prior monitored items and their history are discarded.  All setting may be changed, such as the core tool parameters, notification handler parameters, and setups on monitored items.
+- Setting LogLevel to 10 in the config file enables debug level logging to the log file while running in service mode.
+- Running interactively with `-vv` enables debug level logging to the console.  A summary report is also produced, which allows checking summary report operations and content.
+- Sending a SIGUSR1 signal to lanmonitor when running in service mode causes a summary to be generated to the log file.
+- Sending a SIGUSR2 signal to lanmonitor when running in service mode causes a dump of the current status of all monitored items, including prior runtime, next runtime, and any alert messages.  
+- To send signals to a running lanmonitor service process use the `kill -<signal> <pid>` command (eg, `$ kill -SIGUSR1 7829`).  The process pid is printed in the startup banner to the log, or may be found using `ps`.
+- Monitor item plugins have built-in test cases, and when a plugin is run directly (eg, `$ ./fsactivity_plugin`), the logging level is set to debug level.
 
 ` `  
 ## Known issues:

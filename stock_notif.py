@@ -8,7 +8,7 @@ __version__ = "V2.0 221130"
 #
 #  Chris Nelson, 2021-2022
 #
-# V2.0  221130  Dropped --once, added --service
+# V2.0  221130  Dropped --once, added --service.  Added on-demand summary.
 # V1.4  221120  Summaries optional if SummaryDays is not defined.
 # V1.3  220420  Incorporated funcs3 timevalue and retime
 # V1.2  220217  Allow logging of repeat warnings when the log level is INFO or DEBUG.  Catch snd_notif/snd_email fails.
@@ -26,6 +26,8 @@ import sys
 import os.path
 import datetime
 import globvars
+import __main__
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
 from funcs3 import getcfg, snd_email, snd_notif, logging, timevalue
 from lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
@@ -67,6 +69,7 @@ class notif_class:
                 RTN_FAIL     - Logged & notified
                 RTN_CRITICAL - Logged & notified, with periodic renotification
             message     - Message text from the monitor plugin
+        All notifications are disabled if config NotifList is not defined.
         """
 
         if dict["rslt"] == RTN_PASS:
@@ -86,8 +89,8 @@ class notif_class:
                 if self.next_renotif < datetime.datetime.now()  and  not self.are_criticals():
                     self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
                     if globvars.args.service:
-                        logging.info(f"Next critical renotification:  {self.next_renotif}")
-            if dict["notif_key"] not in self.events  and  globvars.args.service:
+                        logging.debug(f"Next critical renotification:  {self.next_renotif}")
+            if dict["notif_key"] not in self.events  and  globvars.args.service  and  getcfg("NotifList", False):
                 try:
                     snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
                 except Exception as e:
@@ -99,22 +102,42 @@ class notif_class:
 
 
     def each_loop(self):
-        """ Called every service loop
+        """ On-demand status dump, triggered by signal SIGUSR2
         """
         logging.debug (f"Entering: {HANDLER_NAME}.each_loop()")
 
+        if not globvars.sig_status:
+            return
+        globvars.sig_status = False
+
+        status_log = f"  {'Monitor item'.ljust(globvars.keylen)}  Prior run time       Next run time          Last check status\n"
+        for key in __main__.inst_dict:
+            if key in self.events:
+                status = self.events[key]['message']
+            else:
+                status = "  OK"
+            status_log += f"  {key.ljust(globvars.keylen)}  {__main__.inst_dict[key].prior_run}  {__main__.inst_dict[key].next_run}  {status}\n"
+            # NOTE - Risk of crash since prior_run vars are undefined until first run completes.  Don't send SIGUSR2 until after first run completes.  Practically unlikely.
+
+        logging.warning(f"On-demand status dump:\n{status_log}")
+
+
 
     def renotif(self):
-        """ Periodically send a consolidated notification with all current critical events
+        """ Periodically send a consolidated notification with all current critical events.
         if renotif time passed then
             if there are active criticals then
                 send consolidated renotif message
             else
                 set renotif time = now, which allows next critical to be notified immediately
+        All notifications are disabled if config NotifList is not defined.
         """
         logging.debug (f"Entering: {HANDLER_NAME}.renotif()")
-        if (self.next_renotif < datetime.datetime.now()):
 
+        if not getcfg("NotifList", False):
+            return
+        
+        if (self.next_renotif < datetime.datetime.now()):
             if self.are_criticals():
                 criticals = ""
                 for event in self.events:
@@ -126,13 +149,41 @@ class notif_class:
                     logging.warning(f"snd_notif failed.  Email server down?:\n        {criticals}\n        {e}")
 
                 self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
-                logging.info(f"Next critical renotification:  {self.next_renotif}")
+                logging.debug(f"Next critical renotification:  {self.next_renotif}")
             else:
                 self.next_renotif = datetime.datetime.now().replace(microsecond=0)
 
 
     def summary(self):
+        """ Periodically produce a summary and email it and print it in the log file.
+
+        Config file params
+            SummaryDays, SummaryTime - processed by lanmonfuncs.next_summary_timestring().
+                Comment out SummaryDays to disable periodic summaries.
+            EmailTo - Whitespace separated list of email addresses.
+                Comment out EmailTo to disable emailing of summaries.
+            LogSummary - Cause the summary to be printed to the log file.
+        
+        Summary debug feature:  The summary will be printed when running in non-service 
+        mode and debug level logging.
+
+        On-demand summary feature:  In service mode, a summary may be forced by placing a 
+        file named "summary" in the program directory.  The file will be deleted and the 
+        summary will be printed to the log file.
+        """
+
         logging.debug (f"Entering: {HANDLER_NAME}.summary()")
+
+        if globvars.sig_summary:
+            globvars.sig_summary = False
+            sum = ""
+            if len(self.events) == 0:
+                sum += "  No current events.  All is well."
+            else:
+                for event in self.events:
+                    sum += f"{self.events[event]['message']}\n"
+            logging.warning(f"On-demand summary:\n{sum}")
+
         if self.next_summary:       # Will be None if SummaryDays is not defined.
             if (self.next_summary < datetime.datetime.now())  or  not globvars.args.service:
                 sum = ""
@@ -146,10 +197,11 @@ class notif_class:
                     logging.debug(f"lanmonitor status summary:\n{sum}")
                     return
 
-                try:
-                    snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
-                except Exception as e:
-                    logging.warning(f"snd_summary failed.  Email server down?:\n        {e}")
+                if getcfg("EmailTo", False):
+                    try:
+                        snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
+                    except Exception as e:
+                        logging.warning(f"snd_summary failed.  Email server down?:\n        {e}")
 
                 if getcfg("LogSummary", False):
                     logging.warning(f"Summary:\n{sum}")

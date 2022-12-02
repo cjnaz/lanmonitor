@@ -52,6 +52,7 @@ FILE_LOGGING_FORMAT    = '{asctime} {module:>26}.{funcName:11} {levelname:>8}:  
 
 def main():
 
+    global inst_dict
     first = True
     inst_dict = {}
     notif_handlers_list = []
@@ -192,7 +193,9 @@ def main():
                             if inst.next_run > datetime.datetime.now():
                                 logging.debug (f"{key} - Not due, skipped")
                             else:
+                                inst.prior_run = datetime.datetime.now().replace(microsecond=0)
                                 inst.next_run += datetime.timedelta(seconds=inst.check_interval)
+                                # inst.next_run += datetime.timedelta(seconds=60)  # for debug
 
                                 # For items that run >= daily, set the daily run time, if defined
                                 if first  and  getcfg("DailyRuntime", False)  and  (inst.check_interval >= 86400):
@@ -239,11 +242,24 @@ def main():
         time.sleep (timevalue(getcfg("ServiceLoopTime")).seconds)
 
 
-def int_handler(signal, frame):
-    logging.warning(f"Signal {signal} received.  Exiting.")
-    sys.exit(1)
-signal.signal(signal.SIGINT,  int_handler)      # Ctrl-C
-signal.signal(signal.SIGTERM, int_handler)      # kill
+globvars.sig_summary = False
+globvars.sig_status  = False
+
+def int_handler(sig, frame):
+    logging.debug(f"Signal {sig} received.")
+    if sig == signal.SIGUSR1:
+        globvars.sig_summary = True
+        return
+    elif sig == signal.SIGUSR2:
+        globvars.sig_status = True
+        return
+    else:
+        sys.exit(1)
+
+signal.signal(signal.SIGINT,  int_handler)      # Ctrl-C  (2)
+signal.signal(signal.SIGTERM, int_handler)      # kill    (9)
+signal.signal(signal.SIGUSR1, int_handler)      # User 1  (10)
+signal.signal(signal.SIGUSR2, int_handler)      # User 2  (12)
 
 
 if __name__ == '__main__':
@@ -268,7 +284,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
 
-    logging.warning (f"========== {os.path.basename(__file__)} ({__version__}) ==========")
+    logging.warning (f"========== {os.path.basename(__file__)} ({__version__}, pid {os.getpid()}) ==========")
 
 
     # Python min version check
@@ -291,7 +307,7 @@ if __name__ == '__main__':
         _fp = getcfg("LogFile")
         if not os.path.isabs(_fp):
             _fp = os.path.join(PROGDIR, _fp)
-        subprocess.run(["tail", "-40", _fp])
+        subprocess.run(["tail", "-100", _fp])
         sys.exit()
 
 
