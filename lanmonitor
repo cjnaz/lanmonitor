@@ -72,13 +72,13 @@ def main():
 
         if first:
             if globvars.args.service:
-                time.sleep (timevalue(getcfg('StartupDelay')).seconds)
+                time.sleep (timevalue(getcfg('StartupDelay', 0)).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
         if reloaded:
             if not first:
                 logging.warning(f"NOTE - The config file has been reloaded.")
-
+            
             # Refresh the notifications handlers
             notif_handlers_list.clear()
             notif_handlers = getcfg("Notif_handlers", None)
@@ -198,7 +198,7 @@ def main():
                                 # inst.next_run += datetime.timedelta(seconds=60)  # for debug
 
                                 # For items that run >= daily, set the daily run time, if defined
-                                if first  and  getcfg("DailyRuntime", False)  and  (inst.check_interval >= 86400):
+                                if (first or reloaded)  and  getcfg("DailyRuntime", False)  and  (inst.check_interval >= 86400):
                                     try:
                                         target_hour   = int(getcfg("DailyRuntime").split(":")[0])
                                         target_minute = int(getcfg("DailyRuntime").split(":")[1])
@@ -209,7 +209,10 @@ def main():
 
                                 logging.debug(f"{key} - Next runtime: {inst.next_run}")
 
-                                # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host.  Do only once per active serviceloop.
+                                # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host, if defined.  Do only once per active serviceloop.
+                                if (first or reloaded)  and  getcfg("Gateway", False) == False:
+                                    checked_have_LAN_access = True
+                                    have_LAN_access = True
                                 if inst.host != "local"  and  not checked_have_LAN_access:
                                     checked_have_LAN_access = True
                                     have_LAN_access = lanmonfuncs.check_LAN_access()

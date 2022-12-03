@@ -44,7 +44,7 @@ class notif_class:
     next_renotif = None
 
     def __init__(self):
-        logging.debug (f"Notif handler <{__name__}> initialized.")
+        logging.debug (f"Notif handler <{__name__}> initialized")
         self.next_summary = next_summary_timestring()
         if not globvars.args.service:
             self.next_summary = datetime.datetime.now()     # force summary in interactive debug level logging 
@@ -90,12 +90,16 @@ class notif_class:
                     self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
                     if globvars.args.service:
                         logging.debug(f"Next critical renotification:  {self.next_renotif}")
-            if dict["notif_key"] not in self.events  and  globvars.args.service  and  getcfg("NotifList", False):
-                try:
-                    snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
-                except Exception as e:
-                    logging.warning(f"snd_notif failed.  Email server down?:\n        {dict['message']}\n        {e}")
-            if dict["notif_key"] not in self.events  or  not globvars.args.service  or  getcfg("LogLevel", 30) < 30:
+            if globvars.args.service:
+                if dict["notif_key"] not in self.events:
+                    if getcfg("NotifList", False):
+                        try:
+                            snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
+                        except Exception as e:
+                            logging.warning(f"snd_notif failed.  Email server down?:\n        {dict['message']}\n        {e}")
+                    else:
+                        logging.warning(dict["message"])
+            else:   # non-service mode
                 logging.warning(dict["message"])
 
         self.events[dict["notif_key"]] = {"message": dict["message"], "criticality": dict["rslt"]}
@@ -117,10 +121,9 @@ class notif_class:
             else:
                 status = "  OK"
             status_log += f"  {key.ljust(globvars.keylen)}  {__main__.inst_dict[key].prior_run}  {__main__.inst_dict[key].next_run}  {status}\n"
-            # NOTE - Risk of crash since prior_run vars are undefined until first run completes.  Don't send SIGUSR2 until after first run completes.  Practically unlikely.
+            # NOTE - prior_run vars are not defined until after first run.  each_loop() isn't called until after check items have been run, so _shouldn't_ crash.
 
         logging.warning(f"On-demand status dump:\n{status_log}")
-
 
 
     def renotif(self):
@@ -142,7 +145,7 @@ class notif_class:
                 criticals = ""
                 for event in self.events:
                     if self.events[event]["criticality"] == RTN_CRITICAL:
-                        criticals += f"  {self.events[event]['message']}\n"
+                        criticals += f"\n  {self.events[event]['message']}"
                 try:
                     snd_notif (subj=NOTIF_SUBJ, msg=criticals, log=True)
                 except Exception as e:

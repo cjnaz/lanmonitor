@@ -7,7 +7,7 @@ critical items, such as firewalld being down, and summary reports are generated 
 - A configuration file is used for all setups - no coding required for use.  The config file may be modified on-th-fly while lanmonitor is running as a service.
 - Checks may be executed from the local machine, or from any remote host (with ssh access).  For example, you can check the health of a service running on another machine, or check that a webpage is accessible from another machine.
 
-
+` `
 ## Several plug-ins are provided in the distribution (more details [below](#supplied-plugins)):
 
 | Monitor plugin | Description |
@@ -34,7 +34,9 @@ If you need other plug-ins, or wish to contribute, please open an issue to discu
 - Removed config RecheckInterval, replaced with ServiceLoopTime (same but different function)
 - Added `--print-log` switch
 - Tuned up debug logging for plugin development
+- Added signal-based on-demand summary and status dumps
 - Fixed summaries disable bug
+
 ` `  
 ## Usage
 ```
@@ -63,11 +65,11 @@ optional arguments:
 ## Example output
 ```
 $ ./lanmonitor --verbose
- WARNING:  ========== lanmonitor (V1.5 221120, pid 7829) ==========
+ WARNING:  ========== lanmonitor (V2.0 221130, pid 7829) ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  Host_RPi2_TempMon         OK - local    - rpi2.lan
     INFO:  Host_Printer_Server       OK - local    - 192.168.1.44
- WARNING:    FAIL: Host_RPi3_from_RPi1 - rpi1.lan    - HOST RPi3.lan IS NOT RESPONDING
+ WARNING:    FAIL: Host_RPi3_from_RPi1 - rpi1.lan - HOST RPi3.lan IS NOT RESPONDING
     INFO:  Service_routermonitor     OK - local    - routermonitor
     INFO:  Service_wanstatus         OK - local    - wanstatus
     INFO:  Service_plexmediaserver   OK - local    - plexmediaserver
@@ -97,17 +99,17 @@ $ ./lanmonitor --verbose
   - `ServiceLoopTime` sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
   - `nRetries` sets how many tries will be made to accomplish each monitored item.
   - `RetryInterval` sets the time between nRetries.
-  - `StartupDelay` is a wait time when starting in --service mode to allow everything to come up fully (or crash) at system boot before checking items.
-  - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.
+  - `StartupDelay` is a wait time (default 0 seconds) when starting in --service mode to allow everything to come up fully (or crash) at system boot before checking items.
+  - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
   - `LogLevel` controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
   - `LogFile` specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
 
 - Edit the config info in the `lanmonitor.cfg` file for the **Notification handler parameters**:
   - `Notif_handlers` is a whitespace separated list of Python modules (without the .py extension) that will handle monitored item event tracking, notifications, and periodic summaries.  `stock_notify.py` is provided, and has full functionality.  See [Writing Notification Handler Plugins](#writing-notification-handler-plugins), below.
-  - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.  (As implemented by the `stock_notif.py` notification handler.)
+  - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.  Set `ServiceLoopTime` less than `CriticalReNotificationInterval` so that resolved critical items are rechecked before the next renotification message.  (As implemented by the `stock_notif.py` notification handler.)
   - `SummaryDays` sets which days of the week for summaries to be emailed.  Monday =1, Tuesday =2, ... Saturday =6, Sunday = 7.  Multiple days may be selected.  Comment out `SummaryDays` to eliminate summaries.  (As implemented by the `stock_notif.py` notification handler.)
   - `SummaryTime` sets the time of day (local time) for summaries to be emailed.  24-clock format, for example, `13:00`.  (As implemented by the `stock_notif.py` notification handler.)
-  - `LogSummary`, if True, forces the content of the periodic summary to be sent to the log file.  (As implemented by the `stock_notif.py` notification handler.)
+  - `LogSummary`, if True, forces the content of the periodic summary to also be sent to the log file.  (As implemented by the `stock_notif.py` notification handler.)
   - `EmailTo` is a whitespace separated list of email addresses that summaries will be sent to.  Comment out EmailTo to disable emailing summaries.  (As implemented by the `stock_notif.py` notification handler.)
   - `NotifList` is a whitespace separated list of phone numbers (using your carrier's email-to-text bridge) to which event notifications will be sent.  Comment out NotifList to disable all notifications.  (As implemented by the `stock_notif.py` notification handler.)
 
@@ -309,7 +311,7 @@ The following functions within each listed notification handler are called.  The
 - Sending a SIGUSR1 signal to lanmonitor when running in service mode causes a summary to be generated to the log file.
 - Sending a SIGUSR2 signal to lanmonitor when running in service mode causes a dump of the current status of all monitored items, including prior runtime, next runtime, and any alert messages.  
 - To send signals to a running lanmonitor service process use the `kill -<signal> <pid>` command (eg, `$ kill -SIGUSR1 7829`).  The process pid is printed in the startup banner to the log, or may be found using `ps`.
-- Monitor item plugins have built-in test cases, and when a plugin is run directly (eg, `$ ./fsactivity_plugin`), the logging level is set to debug level.
+- Monitor item plugins have built-in test cases, and when a plugin is run directly (eg, `$ ./fsactivity_plugin.py`), the logging level is set to debug level.
 
 ` `  
 ## Known issues:
