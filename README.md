@@ -67,8 +67,10 @@ optional arguments:
 $ ./lanmonitor --verbose
  WARNING:  ========== lanmonitor (V2.0 221130, pid 7829) ==========
     INFO:  SELinux_local             OK - local    - enforcing
-    INFO:  Host_RPi2_TempMon         OK - local    - rpi2.lan
-    INFO:  Host_Printer_Server       OK - local    - 192.168.1.44
+    INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
+    INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)
+    INFO:  Host_RPi2_TempMon         OK - local    - rpi2.lan (192.168.1.23 / 3.07 ms)
+    INFO:  Host_Printer_Server       OK - local    - 192.168.1.44 (192.168.1.44 / 0.874 ms)
  WARNING:    FAIL: Host_RPi3_from_RPi1 - rpi1.lan - HOST RPi3.lan IS NOT RESPONDING
     INFO:  Service_routermonitor     OK - local    - routermonitor
     INFO:  Service_wanstatus         OK - local    - wanstatus
@@ -99,7 +101,8 @@ $ ./lanmonitor --verbose
   - `ServiceLoopTime` sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
   - `nRetries` sets how many tries will be made to accomplish each monitored item.
   - `RetryInterval` sets the time between nRetries.
-  - `StartupDelay` is a wait time (default 0 seconds) when starting in --service mode to allow everything to come up fully (or crash) at system boot before checking items.
+  - `StartupDelay` is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking items.
+  - `DailyRuntime` is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
   - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
   - `LogLevel` controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
   - `LogFile` specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
@@ -115,7 +118,7 @@ $ ./lanmonitor --verbose
 
 - Edit the config info in the `lanmonitor.cfg` file for the **SMTP email parameters**.
   - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
-  - Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`, containing:
+  - Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`.  You may need a copy of this file at the root user home directory if lanmonitor is run by root in `--service` mode.
 
             EmailServer       mail.mailserver.com
             EmailServerPort   P587TLS                 # One of: P465, P587, P587TLS, or P25   
@@ -124,7 +127,7 @@ $ ./lanmonitor --verbose
             EmailFrom         yourfromaddress@mailserver.com
 
 - See [below](#monitored-items-setup) for setting up items to be monitored.
-- Run the tool with `./lanmonitor --verbose`.  Make sure that the local machine and user has password-less ssh access to any remote machines.  `-v` enables Info level logging of passing itmes.  `-vv` turns on Debug level logging.
+- Run the tool with `./lanmonitor --verbose`.  Make sure that the local machine and user (root?) has password-less ssh access to any remote machines.  `-v` enables Info level logging of passing itmes.  `-vv` turns on Debug level logging.
 - Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next ServiceLoopTime.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.  Also note that a copy of the creds_SMTP file may be needed in the root user home dir.
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
