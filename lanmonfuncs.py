@@ -73,7 +73,7 @@ def split_user_host_port(u_h_p):
                 port = out.group(2)
             else:
                 _msg = f"Expecting <user@host> or <user@host:port> format, but found <{u_h_p}>."
-                logging.error(f"ERROR:  {_msg}")
+                # logging.error(f"ERROR:  {_msg}")
                 raise ValueError (_msg)
     return user_host_noport, host, port
 
@@ -195,5 +195,6 @@ def next_summary_timestring():
     except Exception as e:
         _msg = f"SummaryDays <{getcfg('SummaryDays','')}> or SummaryTime <{getcfg('SummaryTime','')}> settings could not be parsed\n  {e}"
         logging.error(f"ERROR:  {_msg}")
-        raise ValueError (_msg) from None
+        sys.exit(1)
+        # raise ValueError (_msg) from None
         

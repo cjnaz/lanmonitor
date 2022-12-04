@@ -5,16 +5,17 @@ Check the age of the dd-wrt version on the specified router.  The routerIP may b
 
 Typical config file lines:
     MonType_DD-wrt_age  dd-wrt_age_plugin
-    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <routerIP>
-    DD-wrt_age_Router  local  CRITICAL  30d  192.168.1.1
+    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
+    DD-wrt_age_Router  local  CRITICAL  1d  30d  192.168.1.1
 """
 
-__version__ = "V1.1 220420"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
+# V2.0 221130  Update for V2.0 changes
 # V1.1 220420  Incorporated funcs3 timevalue and retime
 # V1.0 210622  new
 #
@@ -46,11 +47,13 @@ class monitor:
             user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
-            rest_of_line    Remainder of line after the 'user_host' from the config file line
+            check_interval  Time in seconds between rechecks
+            rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
-        # Construct item type specifics and check validity
+        logging.debug (f"{item['key']} - {__name__}.setup() called:\n  {item}")
+
         self.key            = item["key"]                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
         self.tag            = item["tag"]
@@ -62,7 +65,9 @@ class monitor:
             self.failtext = "CRITICAL"
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
+            self.failtext = "FAIL"
+        self.next_run       = datetime.datetime.now().replace(microsecond=0)
+        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
 
         try:
             xx = item["rest_of_line"].split(maxsplit=1)
@@ -85,10 +90,13 @@ class monitor:
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
         """
-        
-        cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]      # ssh user@host added by cmd_check if not local
+
+        logging.debug (f"{self.key} - {__name__}.eval_status() called")
+
+        cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
-        # print (rslt)                  # Uncomment for debug
+        # logging.debug (f"cmd_check response:  {rslt}")
+
 
         out = LINEFORMAT.match(rslt[1].stdout)
         if out:
@@ -114,6 +122,7 @@ if __name__ == '__main__':
     from funcs3 import loadconfig
 
     CONFIG_FILE = "lanmonitor.cfg"
+    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
 
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--config-file', default=CONFIG_FILE,
@@ -122,21 +131,22 @@ if __name__ == '__main__':
                         help="Return version number and exit.")
 
     globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file)
+    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
+    logging.getLogger().setLevel(logging.DEBUG)
 
 
     def dotest (test):
-        print (f"\n{test}")
+        logging.debug("")
         inst = monitor()
         setup_rslt = inst.setup(test)
-        print (f"  {setup_rslt}")
+        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
         if setup_rslt == RTN_PASS:
-            print(f"  {inst.eval_status()}")
+            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-    dotest ({"key":"DD-wrt_age_Pass", "tag":"Pass", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"90d 192.168.1.1"})
+    dotest ({"key":"DD-wrt_age_Pass", "tag":"Pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"90d 192.168.1.1"})
 
-    dotest ({"key":"DD-wrt_age_Fail", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"0d 192.168.1.1"})
+    dotest ({"key":"DD-wrt_age_Fail", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0d 192.168.1.1"})
 
-    dotest ({"key":"DD-wrt_age_noreply", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"0d 192.168.1.99"})
+    dotest ({"key":"DD-wrt_age_noreply", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0d 192.168.1.99"})
 
-    dotest ({"key":"DD-wrt_age_badline", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"0y 192.168.1.99"})
+    dotest ({"key":"DD-wrt_age_badline", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0y 192.168.1.99"})

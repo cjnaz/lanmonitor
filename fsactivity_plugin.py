@@ -5,29 +5,30 @@ The age of files at the `<path to directory or file>` is checked for at least on
 Note that sub-directories are not recursed - only the listed top-level directory is checked for the newest file.
 
       MonType_Activity	fsactivity_plugin
-      Activity_<friendly_name>  <local or user@host>  [CRITICAL]  <age>  <path to directory or file>
-      Activity_MyServer_backups     local       8d    /mnt/share/MyServerBackups
-      Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  5m    /mnt/RAMDRIVE/log.csv
+      Activity_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <path to directory or file>
+      Activity_MyServer_backups     local       1d  8d    /mnt/share/MyServerBackups
+      Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  30s  5m    /mnt/RAMDRIVE/log.csv
 """
 
-__version__ = "V1.2 220420"
+__version__ = "V2.0 221130"
 
 #==========================================================
 #
 #  Chris Nelson, 2021-2022
 #
-# V1.2  220420  Incorporated funcs3 timevalue and retime
-# V1.1  210523  Touched fail output formatting
+# V2.0 221130  Update for V2.0 changes
+# V1.2 220420  Incorporated funcs3 timevalue and retime
+# V1.1 210523  Touched fail output formatting
 # V1.0  210507  Initial
 #
 # Changes pending
 #   
 #==========================================================
 
-import re
 import datetime
+import re
 import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check #, convert_time
+from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from funcs3 import logging, timevalue, retime  #, cfg, getcfg
 
 # Configs / Constants
@@ -49,11 +50,13 @@ class monitor:
             user_host_port  'local' or 'user@hostname[:port]' from config file line
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
-            rest_of_line    Remainder of line after the 'user_host' from the config file line
+            check_interval  Time in seconds between rechecks
+            rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
-        # Construct item type specifics and check validity
+        logging.debug (f"{item['key']} - {__name__}.setup() called:\n  {item}")
+
         self.key            = item["key"]                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
         self.tag            = item["tag"]
@@ -65,7 +68,9 @@ class monitor:
             self.failtext = "CRITICAL"
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"                                  # ^^^^ These items don't need to be modified
+            self.failtext = "FAIL"
+        self.next_run       = datetime.datetime.now().replace(microsecond=0)
+        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
 
         xx = item["rest_of_line"].split(maxsplit=1)
         try:
@@ -89,8 +94,12 @@ class monitor:
             message         String with status and context details
         """
 
-        cmd = ["ls", "-ltA", "--full-time", self.path]   # ssh user@host added by cmd_check if not local
+        logging.debug (f"{self.key} - {__name__}.eval_status() called")
+
+        cmd = ["ls", "-ltA", "--full-time", self.path]
         ls_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
+        # logging.debug (f"cmd_check response:  {ls_rslt}")
+
         if not ls_rslt[0]:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET ls OF PATH <{self.path}>"}
         ls_list = ls_rslt[1].stdout.split("\n")
@@ -110,12 +119,12 @@ class monitor:
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
 
-
 if __name__ == '__main__':
     import argparse
     from funcs3 import loadconfig
 
     CONFIG_FILE = "lanmonitor.cfg"
+    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
 
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--config-file', default=CONFIG_FILE,
@@ -124,26 +133,26 @@ if __name__ == '__main__':
                         help="Return version number and exit.")
 
     globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file)
+    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
+    logging.getLogger().setLevel(logging.DEBUG)
 
-    inst = monitor()
 
     def dotest (test):
-        print (f"\n{test}")
+        logging.debug("")
         inst = monitor()
         setup_rslt = inst.setup(test)
-        print (f"  {setup_rslt}")
+        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
         if setup_rslt == RTN_PASS:
-            print(f"  {inst.eval_status()}")
+            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-    dotest ({"key":"Activity_Shop2_backups", "tag":"Shop2_backups", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"8d /mnt/share/backups/Shop2/"})
+    dotest ({"key":"Activity_Shop2_backups", "tag":"Shop2_backups", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"8d /mnt/share/backups/Shop2/"})
 
-    dotest ({"key":"Activity_rpi2_ramdrive", "tag":"rpi2_ramdrive", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":True, "rest_of_line":"5m		/mnt/RAMDRIVE"})
+    dotest ({"key":"Activity_rpi3_ramdrive", "tag":"rpi3_ramdrive", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"5m		/mnt/RAMDRIVE"})
 
-    dotest ({"key":"Activity_Shop2_backups_fail", "tag":"Shop2_backups_fail", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"1h /mnt/share/backups/Shop2/"})
+    dotest ({"key":"Activity_Shop2_backups_fail", "tag":"Shop2_backups_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/backups/Shop2/"})
 
-    dotest ({"key":"Activity_empty_dir", "tag":"empty_dir", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"1h junk"}) # empty dir in cwd
+    dotest ({"key":"Activity_empty_dir", "tag":"empty_dir", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk"}) # empty dir in cwd
 
-    dotest ({"key":"Activity_badpath", "tag":"badpath", "host":"local", "user_host_port":"local", "critical":True, "rest_of_line":"1h /mnt/share/xxx"})
+    dotest ({"key":"Activity_badpath", "tag":"badpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
 
-    dotest ({"key":"Activity_badhost", "tag":"badhost", "host":"rpi3.lan", "user_host_port":"pi@rpi3.lan", "critical":True, "rest_of_line":"1h /mnt/share/xxx"})
+    dotest ({"key":"Activity_badhost", "tag":"badhost", "host":"rpi3.lan", "user_host_port":"pi@rpi3.lan", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
