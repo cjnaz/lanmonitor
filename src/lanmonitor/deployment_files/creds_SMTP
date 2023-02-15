@@ -1,0 +1,6 @@
+EmailServer         mail.yourserver.com
+EmailServerPort     P587TLS
+EmailUser           yourname@yourserver.com
+EmailPass           yourpassword
+EmailFrom           yourname@yourserver.com
+

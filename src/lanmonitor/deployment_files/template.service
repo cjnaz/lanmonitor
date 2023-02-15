@@ -1,0 +1,9 @@
+[Unit]
+Description=Some Service Description
+After=network-online.target
+
+[Service]
+ExecStart=/<path>/<to>/<script>
+
+[Install]
+WantedBy=multi-user.target

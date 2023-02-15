@@ -1,0 +1,9 @@
+[Unit]
+Description=Monitor processes and devices on the LAN
+After=network-online.target
+
+[Service]
+ExecStart=/<path_to>/lanmonitor --service
+
+[Install]
+WantedBy=multi-user.target

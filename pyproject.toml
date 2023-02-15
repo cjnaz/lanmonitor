@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"] #, "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "lanmonitor"
+version = "0.1.1"
+description = "one liner"
+readme = "README.md"
+requires-python = ">=3.6"       # Centos 7 uses 3.6.8
+authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
+license = {file = "LICENSE.txt"}
+dependencies = [
+    "cjnfuncs >= 2.0",
+    'importlib-metadata; python_version<"3.8"',
+    ]
+classifiers = [                 # https://pypi.org/classifiers/
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Networking :: Monitoring",
+    ]
+
+
+[project.scripts]
+lanmonitor = "lanmonitor.lanmonitor:cli"
+
+
+[project.urls]
+repository = "https://github.com/cjnaz/lanmonitor"
+
