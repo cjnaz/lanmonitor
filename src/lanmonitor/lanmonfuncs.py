@@ -26,7 +26,7 @@ import subprocess
 import datetime
 import time
 import re
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
+# sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
 from cjnfuncs.cjnfuncs import logging, getcfg, timevalue #, snd_email, snd_notif
 
 # Configs / Constants

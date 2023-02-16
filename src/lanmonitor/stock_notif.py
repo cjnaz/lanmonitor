@@ -25,12 +25,13 @@ __version__ = "V2.0 221130"
 import sys
 import os.path
 import datetime
-import globvars
+# import globvars
+import lanmonitor.globvars as globvars
 import __main__
 
 # sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
 from cjnfuncs.cjnfuncs import getcfg, snd_email, snd_notif, logging, timevalue
-from lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
+from lanmonitor.lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
 
 # Configs / Constants
 HANDLER_NAME = "stock_notif"

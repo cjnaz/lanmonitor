@@ -29,6 +29,7 @@ import argparse
 import time
 import datetime
 import os.path
+import pathlib
 import subprocess
 import signal
 import platform
@@ -50,20 +51,30 @@ except:
 # from cjnfuncs.cjnfuncs import set_toolname, setup_logging, logging, config_item, getcfg, mungePath, deploy_files, timevalue, retime, requestlock, releaselock,  snd_notif, snd_email
 from cjnfuncs.cjnfuncs import set_toolname, logging, config_item, cfg, getcfg, mungePath, deploy_files, timevalue
 
-import globvars
-import lanmonfuncs
+# sys.path.append("/mnt/share/dev/packages/lanmonitor/src/lanmonitor")
+
+sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      # Supplied plugins are in same folder
+
+import lanmonitor.globvars as globvars
+import lanmonitor.lanmonfuncs as lanmonfuncs
+
+# import globvars
+# import lanmonfuncs
+
+# import lanmonitor.globvars as globvars
+
 
 
 # Configs / Constants
 TOOLNAME               = "lanmonitor"
 CONFIG_FILE            = "lanmonitor.cfg"
 PRINTLOGLENGTH  = 40
-PY_VERSION      = sys.version_info
-SYSTEM          = platform.system()     # 'Linux', 'Windows', ...
+# PY_VERSION      = sys.version_info
+# SYSTEM          = platform.system()     # 'Linux', 'Windows', ...
 
 
 def main():
-    global cfg
+    # global cfg
     global inst_dict
     global tool, config
     first = True
@@ -88,6 +99,11 @@ def main():
                 time.sleep (timevalue(getcfg('StartupDelay', 0)).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
+        def dump_sys_path():
+            for line in sys.path:
+                print (line)
+        # dump_sys_path()
+
         if reloaded:
             if not first:
                 logging.warning(f"NOTE - The config file has been reloaded.")
@@ -96,15 +112,34 @@ def main():
             notif_handlers_list.clear()
             notif_handlers = getcfg("Notif_handlers", None)
             # print (notif_handlers)
+
             try:
                 if notif_handlers is not None:
-                    for handler in notif_handlers.split():
-                        notif_plugin = __import__(handler)
+                    for handler in notif_handlers.split():      # Spaces not allowed in notif handler filename or path
+                        xx = mungePath(handler)
+                        xx_parent = str(xx.parent)
+                        if xx_parent != '.'  and  xx_parent not in sys.path:
+                            sys.path.append(xx_parent)
+                        notif_plugin = __import__(xx.name)
+
+
                         notif_inst = notif_plugin.notif_class()
                         notif_handlers_list.extend([notif_inst])
-            except:
-                logging.error (f"Unable to load notification handler <{handler}> - Aborting.")
+            except Exception as e:
+                logging.error (f"Unable to load notification handler <{handler}> - Aborting.\n  {e}")
                 sys.exit(1)
+
+
+
+            # try:
+            #     if notif_handlers is not None:
+            #         for handler in notif_handlers.split():
+            #             notif_plugin = __import__(handler)
+            #             notif_inst = notif_plugin.notif_class()
+            #             notif_handlers_list.extend([notif_inst])
+            # except Exception as e:
+            #     logging.error (f"Unable to load notification handler <{handler}> - Aborting.\n  {e}")
+            #     sys.exit(1)
 
             # Clear out all current instances, forcing re-setup
             inst_dict.clear()
@@ -123,7 +158,7 @@ def main():
                                     globvars.hostlen = len(host)
                         except Exception as e:
                             pass    # Issue will be caught and logged in the following setup code
-
+            # dump_sys_path()
 
         # Process each monitor type and item
         checked_have_LAN_access = False
@@ -131,8 +166,12 @@ def main():
             if line.startswith("MonType_"):
                 montype_tag = line.split("_", maxsplit=1)[1]
                 montype_plugin = cfg[line]
-
-                plugin = __import__(montype_plugin)
+                xx = mungePath(montype_plugin)          # Allow for abs path or rel to lanmonitor dir
+                print (xx.name, "----", xx.parent)
+                xx_parent = str(xx.parent)              # xx.parent == "." if no path specified
+                if xx_parent != '.'  and  xx_parent not in sys.path:
+                    sys.path.append(xx_parent)
+                plugin = __import__(xx.name)
 
                 # Process all items in cfg of this MonType
                 for key in cfg:
@@ -241,7 +280,7 @@ def main():
 
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event(rslt)
-
+        dump_sys_path()
     
         for notif_handler in notif_handlers_list:
             notif_handler.each_loop()

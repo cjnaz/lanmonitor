@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "0.1.1"
-description = "one liner"
+version = "3.0"
+description = "Track the state of services, processes, web pages, file system, etc. in your server and local area network. "
 readme = "README.md"
 requires-python = ">=3.6"       # Centos 7 uses 3.6.8
 authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
@@ -16,7 +16,6 @@ dependencies = [
     'importlib-metadata; python_version<"3.8"',
     ]
 classifiers = [                 # https://pypi.org/classifiers/
-    "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Networking :: Monitoring",
     ]
