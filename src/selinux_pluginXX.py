@@ -23,8 +23,8 @@ __version__ = "V2.0 221130"
 #==========================================================
 
 import datetime
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.cjnfuncs import logging
 
 # Configs / Constants

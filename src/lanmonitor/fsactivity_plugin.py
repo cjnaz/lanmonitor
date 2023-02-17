@@ -9,27 +9,21 @@ Note that sub-directories are not recursed - only the listed top-level directory
       Activity_MyServer_backups     local       1d  8d    /mnt/share/MyServerBackups
       Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  30s  5m    /mnt/RAMDRIVE/log.csv
 """
-
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
-# V2.0 221130  Update for V2.0 changes
-# V1.2 220420  Incorporated funcs3 timevalue and retime
-# V1.1 210523  Touched fail output formatting
-# V1.0  210507  Initial
-#
-# Changes pending
+# 3.0 230301 - Packaged
 #   
 #==========================================================
 
 import datetime
 import re
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
-from cjnfuncs.cjnfuncs import logging, timevalue, retime  #, cfg, getcfg
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from cjnfuncs.cjnfuncs import logging, timevalue, retime
 
 # Configs / Constants
 LSMATCH = re.compile(r'[ldrwx\-.]+\s+[\d*]\s+[\w\d]+\s+[\w\d]+\s+[\d]+\s+([\d\-]+)+\s([\d:.]+)\s([\d\-]+)')
@@ -118,41 +112,3 @@ class monitor:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
-
-if __name__ == '__main__':
-    import argparse
-    from funcs3 import loadconfig
-
-    CONFIG_FILE = "lanmonitor.cfg"
-    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
-
-    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config-file', default=CONFIG_FILE,
-                        help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                        help="Return version number and exit.")
-
-    globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
-    logging.getLogger().setLevel(logging.DEBUG)
-
-
-    def dotest (test):
-        logging.debug("")
-        inst = monitor()
-        setup_rslt = inst.setup(test)
-        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
-        if setup_rslt == RTN_PASS:
-            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
-
-    dotest ({"key":"Activity_Shop2_backups", "tag":"Shop2_backups", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"8d /mnt/share/backups/Shop2/"})
-
-    dotest ({"key":"Activity_rpi3_ramdrive", "tag":"rpi3_ramdrive", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"5m		/mnt/RAMDRIVE"})
-
-    dotest ({"key":"Activity_Shop2_backups_fail", "tag":"Shop2_backups_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/backups/Shop2/"})
-
-    dotest ({"key":"Activity_empty_dir", "tag":"empty_dir", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk"}) # empty dir in cwd
-
-    dotest ({"key":"Activity_badpath", "tag":"badpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
-
-    dotest ({"key":"Activity_badhost", "tag":"badhost", "host":"rpi3.lan", "user_host_port":"pi@rpi3.lan", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})

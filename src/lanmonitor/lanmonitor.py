@@ -7,12 +7,11 @@ See README.md for descriptions of available plugins.
 Operates interactively or as a service (loop forever and controlled via systemd or other).
 """
 
-
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
-# 3.0 230220 -  Converted to package format, updated to cjnfuncs 2.0
+# 3.0 230301 -  Converted to package format, updated to cjnfuncs 2.0
 # V2.0  221130  check_interval per item, dropped --once, added --service 
 # V1.5  221120  Added --print-log switch, Summaries are optional if SummaryDays is not defined.
 # V1.4  220420  Incorporated funcs3 timevalue and retime
@@ -29,10 +28,10 @@ import argparse
 import time
 import datetime
 import os.path
-import pathlib
-import subprocess
+# import pathlib
+# import subprocess
 import signal
-import platform
+# import platform
 import collections
 
 try:
@@ -45,23 +44,27 @@ except:
         __version__ = importlib_metadata.version(__package__ or __name__)
         print ("Using importlib_metadata for __version__ assignment")
     except:
-        __version__ = "3.0 X"
+        __version__ = "3.0 X"                                               # TODO Since can't be run as a script will this never be used?
         print ("Using local __version__ assignment")
 
 # from cjnfuncs.cjnfuncs import set_toolname, setup_logging, logging, config_item, getcfg, mungePath, deploy_files, timevalue, retime, requestlock, releaselock,  snd_notif, snd_email
 from cjnfuncs.cjnfuncs import set_toolname, logging, config_item, cfg, getcfg, mungePath, deploy_files, timevalue
 
-# sys.path.append("/mnt/share/dev/packages/lanmonitor/src/lanmonitor")
-
 sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      # Supplied plugins are in same folder
+# print ("added", os.path.join(os.path.dirname(os.path.abspath(__file__))))
+
+# def dump_sys_path():
+#     for line in sys.path:
+#         print ("  ", line)
+# dump_sys_path()
 
 import lanmonitor.globvars as globvars
+# print ("here")
 import lanmonitor.lanmonfuncs as lanmonfuncs
 
 # import globvars
+# print ("here")
 # import lanmonfuncs
-
-# import lanmonitor.globvars as globvars
 
 
 
@@ -99,10 +102,6 @@ def main():
                 time.sleep (timevalue(getcfg('StartupDelay', 0)).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
-        def dump_sys_path():
-            for line in sys.path:
-                print (line)
-        # dump_sys_path()
 
         if reloaded:
             if not first:
@@ -119,8 +118,11 @@ def main():
                         xx = mungePath(handler)
                         xx_parent = str(xx.parent)
                         if xx_parent != '.'  and  xx_parent not in sys.path:
+                        # if xx_parent not in sys.path:
                             sys.path.append(xx_parent)
+                            # print ("added", xx_parent, "for", xx.name)
                         notif_plugin = __import__(xx.name)
+                        logging.debug (f"Imported notification plugin <{xx.full_path}>, version <{notif_plugin.__version__}>")
 
 
                         notif_inst = notif_plugin.notif_class()
@@ -167,11 +169,15 @@ def main():
                 montype_tag = line.split("_", maxsplit=1)[1]
                 montype_plugin = cfg[line]
                 xx = mungePath(montype_plugin)          # Allow for abs path or rel to lanmonitor dir
-                print (xx.name, "----", xx.parent)
+                # print (xx.name, "----", xx.parent)
                 xx_parent = str(xx.parent)              # xx.parent == "." if no path specified
                 if xx_parent != '.'  and  xx_parent not in sys.path:
+                # if xx_parent not in sys.path:
                     sys.path.append(xx_parent)
+                    # print ("added", xx_parent, "for", xx.name)
+
                 plugin = __import__(xx.name)
+                logging.debug (f"Imported monitor plugin <{xx.full_path}>, version <{plugin.__version__}>")
 
                 # Process all items in cfg of this MonType
                 for key in cfg:
@@ -280,7 +286,7 @@ def main():
 
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event(rslt)
-        dump_sys_path()
+        # dump_sys_path()
     
         for notif_handler in notif_handlers_list:
             notif_handler.each_loop()

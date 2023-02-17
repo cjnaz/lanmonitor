@@ -2,12 +2,11 @@
 """LAN monitor support functions
 """
 
-# __version__ = "V1.4 221120"
-
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
+# 3.0 230301 - Packaged
 # V1.4  221120  Summaries optional if SummaryDays is not defined.
 # V1.3  220420  Incorporated funcs3 timevalue and retime (removed convert_time)
 # V1.2a 220223  Bug fix in summary day calculation
@@ -15,8 +14,6 @@
 # V1.1  210523  cmd timeout tweaks
 # V1.0  210507  V1.0
 # V1.0a 210515  Set timeouts to 1s for ping and 5s for ssh commands on remotes
-#
-# Changes pending
 #   
 #==========================================================
 
@@ -26,7 +23,6 @@ import subprocess
 import datetime
 import time
 import re
-# sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
 from cjnfuncs.cjnfuncs import logging, getcfg, timevalue #, snd_email, snd_notif
 
 # Configs / Constants

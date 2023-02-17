@@ -8,26 +8,21 @@ Typical config file lines:
     DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
     DD-wrt_age_Router  local  CRITICAL  1d  30d  192.168.1.1
 """
-
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
-# V2.0 221130  Update for V2.0 changes
-# V1.1 220420  Incorporated funcs3 timevalue and retime
-# V1.0 210622  new
-#
-# Changes pending
+# 3.0 230301 - Packaged
 #   
 #==========================================================
 
 import datetime
 import re
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check #, convert_time
-from cjnfuncs.cjnfuncs import logging, timevalue, retime  #, cfg, getcfg
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from cjnfuncs.cjnfuncs import logging, timevalue, retime
 
 # Configs / Constants
 LINEFORMAT=re.compile(r'.*DD-WRT v.*-r([\d]+).+\(([\d/]+)\).*', re.DOTALL)
@@ -115,38 +110,3 @@ class monitor:
                     + f"{self.url} - r{dd_wrt_version} - {dd_wrt_date}"}
 
         return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO VALID RESPONSE FROM ROUTER <{self.url}>"}
-
-
-if __name__ == '__main__':
-    import argparse
-    from funcs3 import loadconfig
-
-    CONFIG_FILE = "lanmonitor.cfg"
-    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
-
-    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config-file', default=CONFIG_FILE,
-                        help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                        help="Return version number and exit.")
-
-    globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
-    logging.getLogger().setLevel(logging.DEBUG)
-
-
-    def dotest (test):
-        logging.debug("")
-        inst = monitor()
-        setup_rslt = inst.setup(test)
-        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
-        if setup_rslt == RTN_PASS:
-            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
-
-    dotest ({"key":"DD-wrt_age_Pass", "tag":"Pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"90d 192.168.1.1"})
-
-    dotest ({"key":"DD-wrt_age_Fail", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0d 192.168.1.1"})
-
-    dotest ({"key":"DD-wrt_age_noreply", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0d 192.168.1.99"})
-
-    dotest ({"key":"DD-wrt_age_badline", "tag":"Fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"0y 192.168.1.99"})

@@ -2,12 +2,13 @@
 """LAN monitor notifications handler
 """
 
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
+# 3.0 230301 - Packaged
 # V2.0  221130  Dropped --once, added --service.  Added on-demand summary.
 # V1.4  221120  Summaries optional if SummaryDays is not defined.
 # V1.3  220420  Incorporated funcs3 timevalue and retime
@@ -22,15 +23,10 @@ __version__ = "V2.0 221130"
 #   
 #==========================================================
 
-import sys
-import os.path
 import datetime
-# import globvars
-import lanmonitor.globvars as globvars
 import __main__
-
-# sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../funcs3/'))
 from cjnfuncs.cjnfuncs import getcfg, snd_email, snd_notif, logging, timevalue
+import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
 
 # Configs / Constants

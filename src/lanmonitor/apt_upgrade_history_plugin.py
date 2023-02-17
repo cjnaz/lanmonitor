@@ -9,25 +9,22 @@ Typical config file lines:
     AptUpgrade_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>    <age>  <apt_command>
     AptUpgrade_MyHost  local  CRITICAL  1d  30d  apt full-upgrade
 """
-
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
-# V2.0 221130  Update for V2.0 changes
-# V1.0 221120  Initial
+# 3.0 230301 - Packaged
 #
-# Changes pending
-#  The apt history file formatting may be locale specific.  This plugin is currently hardcoded to US locale.
+# Note: The apt history file formatting may be locale specific.  This plugin is currently hardcoded to US locale.
 #   
 #==========================================================
 
 import datetime
 import re
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check #, convert_time
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.cjnfuncs import logging, timevalue, retime
 
 # Configs / Constants
@@ -118,43 +115,3 @@ class monitor:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(last_update_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)"}
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - APT UPGRADE TOO LONG AGO - {retime(last_update_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)"}
-
-
-if __name__ == '__main__':
-    import argparse
-    from funcs3 import loadconfig
-
-    CONFIG_FILE = "lanmonitor.cfg"
-    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
-
-    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config-file', default=CONFIG_FILE,
-                        help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                        help="Return version number and exit.")
-
-    globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
-    logging.getLogger().setLevel(logging.DEBUG)
-
-
-    def dotest (test):
-        logging.debug("")
-        inst = monitor()
-        setup_rslt = inst.setup(test)
-        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
-        if setup_rslt == RTN_PASS:
-            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
-
-    dotest ({"key":"AptUpgrade_Pass", "tag":"Pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"500w apt full-upgrade"})
-
-    dotest ({"key":"AptUpgrade_TooOld", "tag":"TooOld", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
-
-    dotest ({"key":"AptUpgrade_NoUpgrades", "tag":"NoUpgrades", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgradeS"})
-
-    dotest ({"key":"AptUpgrade_CantAccess", "tag":"CantAccess", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
-
-    dotest ({"key":"AptUpgrade_baddef", "tag":"badline", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10m"})
-
-    dotest ({"key":"AptUpgrade_badtime", "tag":"badtime", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10y apt full-upgrade"})
-

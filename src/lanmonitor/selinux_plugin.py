@@ -7,25 +7,21 @@ Checks that the sestatus Current mode: value matches the config file value.
       SELinux_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <enforcing or permissive>
       SELinux_localhost     local      5m       enforcing
 """
-
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
-# V2.0 221130  Update for V2.0 changes
-# V1.1 210523  Touched fail output formatting
-# V1.0 210507  Initial
-#
-# Changes pending
+# 3.0 230301 - Packaged
 #   
 #==========================================================
 
 import datetime
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.cjnfuncs import logging
+
 
 # Configs / Constants
 SEMODES = ["enforcing", "permissive"]
@@ -92,40 +88,3 @@ class monitor:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting <{self.expected_mode}>)"}
-
-
-if __name__ == '__main__':
-    import argparse
-    from funcs3 import loadconfig
-
-    CONFIG_FILE = "lanmonitor.cfg"
-    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
-
-    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config-file', default=CONFIG_FILE,
-                        help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                        help="Return version number and exit.")
-
-    globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
-    logging.getLogger().setLevel(logging.DEBUG)
-
-
-    def dotest (test):
-        logging.debug("")
-        inst = monitor()
-        setup_rslt = inst.setup(test)
-        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
-        if setup_rslt == RTN_PASS:
-            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
-
-    dotest ({"key":"SELinux_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
-
-    dotest ({"key":"SELinux_RPiX", "tag":"RPiX", "host":"RPiX", "user_host_port":"pi@rpiX", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
-
-    dotest ({"key":"SELinux_RPi3", "tag":"RPi3", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":False, "check_interval":1, "rest_of_line":"enforcing"})
-
-    dotest ({"key":"SELinux_badmode", "tag":"Shop2", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcingX"})
-
-    dotest ({"key":"SELinux_RPi3_CRIT", "tag":"RPi3_CRIT", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})

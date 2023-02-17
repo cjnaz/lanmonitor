@@ -12,23 +12,20 @@ Expected free space may be an absolute value or a percentage.
 If the path does not exist, setup() will pass but eval_status() will return RTN_WARNING and retry on each
 check_interval.  This allows for intermittently missing paths.
 """
-
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
-# V2.0 221130  Initial
-#
-# Changes pending
+# 3.0 230301 - Packaged
 #   
 #==========================================================
 
 import datetime
 import re
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.cjnfuncs import logging
 
 # Configs / Constants
@@ -126,45 +123,3 @@ class monitor:
         else:
             logging.debug (f"df of <{self.path}> not parsable - returned\n  {df_rslt[1].stdout}")
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - df OF PATH <{self.path}> not parsable"}
-
-
-if __name__ == '__main__':
-    import argparse
-    from funcs3 import loadconfig
-
-    CONFIG_FILE = "lanmonitor.cfg"
-    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
-
-    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config-file', default=CONFIG_FILE,
-                        help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                        help="Return version number and exit.")
-
-    globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
-    logging.getLogger().setLevel(logging.DEBUG)
-
-
-    def dotest (test):
-        logging.debug("")
-        inst = monitor()
-        setup_rslt = inst.setup(test)
-        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
-        if setup_rslt == RTN_PASS:
-            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
-
-    dotest ({"key":"Free_Per_pass", "tag":"Per_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
-
-    dotest ({"key":"Free_Per_fail", "tag":"Per_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"100% /home"})
-
-    dotest ({"key":"Free_Abs_pass", "tag":"Abs_pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"18000 /mnt/RAMDRIVE"})
-
-    dotest ({"key":"Free_Abs_fail", "tag":"Abs_fail", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"30000 /mnt/RAMDRIVE"})
-
-    dotest ({"key":"Free_nosuchpath", "tag":"nosuchpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/nosuchpath"})
-
-    dotest ({"key":"Free_pathWithSpaces", "tag":"pathWithSpaces", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/share/tmp/Ripped videos"})
-    
-    dotest ({"key":"Free_badlimit", "tag":"badlimit", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10x% /home"})
-    

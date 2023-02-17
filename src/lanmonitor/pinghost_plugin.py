@@ -9,26 +9,20 @@ Each host is pinged.  The `friendly_name` is user defined (not the real hostname
       Host_RPi1_HP1018    local    CRITICAL   1h   192.168.1.44
       Host_Yahoo          me@RPi2.mylan       15m  Yahoo.com
 """
-
-__version__ = "V2.0 221130"
+__version__ = "3.0"
 
 #==========================================================
 #
-#  Chris Nelson, 2021-2022
+#  Chris Nelson, Copyright 2021-2023
 #
-# V2.0 221130  Update for V2.0 changes
-# V1.2 210605  Removed warning HOST IS NOT KNOWN, allowing item to be a FAIL/CRITICAL.
-# V1.1 210523  Allow '_' in hosthame.  Added 1s timeout.  Touched fail output formatting.  Added print of IP address.
-# V1.0 210507  Initial
-#
-# Changes pending
+# 3.0 230301 - Packaged
 #   
 #==========================================================
 
 import datetime
 import re
-import globvars
-from lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+import lanmonitor.globvars as globvars
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.cjnfuncs import logging
 
 # Configs / Constants
@@ -103,42 +97,3 @@ class monitor:
             if error_msg == ""  and  "100% packet loss" in rslt[1].stdout:
                 error_msg = "Cannot contact target host."
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
-
-
-if __name__ == '__main__':
-    import argparse
-    from funcs3 import loadconfig
-
-    CONFIG_FILE = "lanmonitor.cfg"
-    CONSOLE_LOGGING_FORMAT = '{levelname:>8}:  {message}'
-
-    parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config-file', default=CONFIG_FILE,
-                        help=f"Path to config file (default <{CONFIG_FILE}>).")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__,
-                        help="Return version number and exit.")
-
-    globvars.args = parser.parse_args()
-    loadconfig(cfgfile=globvars.args.config_file, cfglogfile_wins=True)
-    logging.getLogger().setLevel(logging.DEBUG)
-
-
-    def dotest (test):
-        logging.debug("")
-        inst = monitor()
-        setup_rslt = inst.setup(test)
-        logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
-        if setup_rslt == RTN_PASS:
-            logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
-
-    dotest ({"key":"Host_local_to_RPi3", "tag":"local_to_RPi3", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"rpi3"})
-
-    dotest ({"key":"Host_local_to_IP", "tag":"local_to_IP", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"192.168.1.1"})
-
-    dotest ({"key":"Host_RPi3_to_Shop2", "tag":"RPi3_to_Shop2", "host":"rpi3", "user_host_port":"pi@rpi3:22", "critical":True, "check_interval":1, "rest_of_line":"shop2"})
-
-    dotest ({"key":"Host_local_to_INV", "tag":"local_to_INV", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"invalid@hostname"})
-
-    dotest ({"key":"Host_local_to_Unknown", "tag":"local_to_Unknown", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"XX.lan"})
-
-    dotest ({"key":"Host_Unknown_to_Known", "tag":"Unknown_to_Known", "host":"unknown", "user_host_port":"me@unknown", "critical":False, "check_interval":1, "rest_of_line":"shop2"})
