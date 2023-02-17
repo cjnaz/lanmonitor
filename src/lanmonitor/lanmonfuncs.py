@@ -7,13 +7,13 @@
 #  Chris Nelson, Copyright 2021-2023
 #
 # 3.0 230301 - Packaged
-# V1.4  221120  Summaries optional if SummaryDays is not defined.
-# V1.3  220420  Incorporated funcs3 timevalue and retime (removed convert_time)
-# V1.2a 220223  Bug fix in summary day calculation
-# V1.2  210605  Reworked have_access check to check_LAN_access logic.
-# V1.1  210523  cmd timeout tweaks
-# V1.0  210507  V1.0
-# V1.0a 210515  Set timeouts to 1s for ping and 5s for ssh commands on remotes
+# 1.4 221120 - Summaries optional if SummaryDays is not defined.
+# 1.3 220420 - Incorporated funcs3 timevalue and retime (removed convert_time)
+# 1.2a 220223 - Bug fix in summary day calculation
+# 1.2 210605 - Reworked have_access check to check_LAN_access logic.
+# 1.1 210523 - cmd timeout tweaks
+# 1.0 210507 - V1.0
+# 1.0a 210515 - Set timeouts to 1s for ping and 5s for ssh commands on remotes
 #   
 #==========================================================
 
@@ -23,7 +23,7 @@ import subprocess
 import datetime
 import time
 import re
-from cjnfuncs.cjnfuncs import logging, getcfg, timevalue #, snd_email, snd_notif
+from cjnfuncs.cjnfuncs import logging, getcfg, timevalue
 
 # Configs / Constants
 NOTIF_SUBJ = "LAN Monitor"

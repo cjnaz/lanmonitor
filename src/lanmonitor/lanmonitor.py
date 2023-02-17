@@ -11,15 +11,15 @@ Operates interactively or as a service (loop forever and controlled via systemd 
 #
 #  Chris Nelson, Copyright 2021-2023
 #
-# 3.0 230301 -  Converted to package format, updated to cjnfuncs 2.0
-# V2.0  221130  check_interval per item, dropped --once, added --service 
-# V1.5  221120  Added --print-log switch, Summaries are optional if SummaryDays is not defined.
-# V1.4  220420  Incorporated funcs3 timevalue and retime
-# V1.3  220217  Updates for funcs3 V1.0, stock_notif catch of emailer fails.
-# V1.2  210605  Reworked have_access check to check_LAN_access logic.
-# V1.1  210523  Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formatting tweaks.
-# V1.0  210507  Major refactor
-# V0.1  210129  Initial
+# 3.0 230301 - Converted to package format, updated to cjnfuncs 2.0
+# 2.0 221130 - check_interval per item, dropped --once, added --service 
+# 1.5 221120 - Added --print-log switch, Summaries are optional if SummaryDays is not defined.
+# 1.4 220420 - Incorporated funcs3 timevalue and retime
+# 1.3 220217 - Updates for funcs3 V1.0, stock_notif catch of emailer fails.
+# 1.2 210605 - Reworked have_access check to check_LAN_access logic.
+# 1.1 210523 - Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formatting tweaks.
+# 1.0 210507 - Major refactor
+# 0.1 210129 - Initial
 #
 #==========================================================
 
@@ -28,56 +28,38 @@ import argparse
 import time
 import datetime
 import os.path
-# import pathlib
-# import subprocess
 import signal
-# import platform
 import collections
 
 try:
     import importlib.metadata
     __version__ = importlib.metadata.version(__package__ or __name__)
-    print ("Using importlib.metadata for __version__ assignment")
+    # print ("Using importlib.metadata for __version__ assignment")
 except:
-    try:
-        import importlib_metadata
-        __version__ = importlib_metadata.version(__package__ or __name__)
-        print ("Using importlib_metadata for __version__ assignment")
-    except:
-        __version__ = "3.0 X"                                               # TODO Since can't be run as a script will this never be used?
-        print ("Using local __version__ assignment")
+    import importlib_metadata
+    __version__ = importlib_metadata.version(__package__ or __name__)
+    # try:
+    #     import importlib_metadata
+    #     __version__ = importlib_metadata.version(__package__ or __name__)
+    #     # print ("Using importlib_metadata for __version__ assignment")
+    # except:
+    #     __version__ = "3.0 X"                                               # TODO Since can't be run as a script will this never be used?
+    #     # print ("Using local __version__ assignment")
 
-# from cjnfuncs.cjnfuncs import set_toolname, setup_logging, logging, config_item, getcfg, mungePath, deploy_files, timevalue, retime, requestlock, releaselock,  snd_notif, snd_email
 from cjnfuncs.cjnfuncs import set_toolname, logging, config_item, cfg, getcfg, mungePath, deploy_files, timevalue
-
-sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      # Supplied plugins are in same folder
-# print ("added", os.path.join(os.path.dirname(os.path.abspath(__file__))))
-
-# def dump_sys_path():
-#     for line in sys.path:
-#         print ("  ", line)
-# dump_sys_path()
-
 import lanmonitor.globvars as globvars
-# print ("here")
 import lanmonitor.lanmonfuncs as lanmonfuncs
 
-# import globvars
-# print ("here")
-# import lanmonfuncs
-
+sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      # Supplied plugins are in same folder
 
 
 # Configs / Constants
-TOOLNAME               = "lanmonitor"
-CONFIG_FILE            = "lanmonitor.cfg"
+TOOLNAME        = "lanmonitor"
+CONFIG_FILE     = "lanmonitor.cfg"
 PRINTLOGLENGTH  = 40
-# PY_VERSION      = sys.version_info
-# SYSTEM          = platform.system()     # 'Linux', 'Windows', ...
 
 
 def main():
-    # global cfg
     global inst_dict
     global tool, config
     first = True
@@ -87,7 +69,7 @@ def main():
 
 
     while 1:
-        reloaded = config.loadconfig(flush_on_reload=True, call_logfile=None, call_logfile_wins=logfile_override) #, ldcfg_ll=10)
+        reloaded = config.loadconfig(flush_on_reload=True, call_logfile=None, call_logfile_wins=logfile_override)
 
         if not globvars.args.service:               # In service mode, logging level is set from config file
             if globvars.args.verbose == 1:
@@ -110,20 +92,16 @@ def main():
             # Refresh the notifications handlers
             notif_handlers_list.clear()
             notif_handlers = getcfg("Notif_handlers", None)
-            # print (notif_handlers)
 
             try:
                 if notif_handlers is not None:
                     for handler in notif_handlers.split():      # Spaces not allowed in notif handler filename or path
-                        xx = mungePath(handler)
+                        xx = mungePath(handler)                 # Allow for abs path or rel to lanmonitor dir
                         xx_parent = str(xx.parent)
                         if xx_parent != '.'  and  xx_parent not in sys.path:
-                        # if xx_parent not in sys.path:
                             sys.path.append(xx_parent)
-                            # print ("added", xx_parent, "for", xx.name)
                         notif_plugin = __import__(xx.name)
                         logging.debug (f"Imported notification plugin <{xx.full_path}>, version <{notif_plugin.__version__}>")
-
 
                         notif_inst = notif_plugin.notif_class()
                         notif_handlers_list.extend([notif_inst])
@@ -131,17 +109,6 @@ def main():
                 logging.error (f"Unable to load notification handler <{handler}> - Aborting.\n  {e}")
                 sys.exit(1)
 
-
-
-            # try:
-            #     if notif_handlers is not None:
-            #         for handler in notif_handlers.split():
-            #             notif_plugin = __import__(handler)
-            #             notif_inst = notif_plugin.notif_class()
-            #             notif_handlers_list.extend([notif_inst])
-            # except Exception as e:
-            #     logging.error (f"Unable to load notification handler <{handler}> - Aborting.\n  {e}")
-            #     sys.exit(1)
 
             # Clear out all current instances, forcing re-setup
             inst_dict.clear()
@@ -160,7 +127,7 @@ def main():
                                     globvars.hostlen = len(host)
                         except Exception as e:
                             pass    # Issue will be caught and logged in the following setup code
-            # dump_sys_path()
+
 
         # Process each monitor type and item
         checked_have_LAN_access = False
@@ -169,13 +136,9 @@ def main():
                 montype_tag = line.split("_", maxsplit=1)[1]
                 montype_plugin = cfg[line]
                 xx = mungePath(montype_plugin)          # Allow for abs path or rel to lanmonitor dir
-                # print (xx.name, "----", xx.parent)
                 xx_parent = str(xx.parent)              # xx.parent == "." if no path specified
                 if xx_parent != '.'  and  xx_parent not in sys.path:
-                # if xx_parent not in sys.path:
                     sys.path.append(xx_parent)
-                    # print ("added", xx_parent, "for", xx.name)
-
                 plugin = __import__(xx.name)
                 logging.debug (f"Imported monitor plugin <{xx.full_path}>, version <{plugin.__version__}>")
 
@@ -286,8 +249,8 @@ def main():
 
                                     for notif_handler in notif_handlers_list:
                                         notif_handler.log_event(rslt)
-        # dump_sys_path()
-    
+        
+
         for notif_handler in notif_handlers_list:
             notif_handler.each_loop()
 
@@ -325,12 +288,9 @@ signal.signal(signal.SIGUSR2, int_handler)      # User 2  (12)
 
 
 def cli():
-
     global tool, config, logfile_override
     tool = set_toolname (TOOLNAME)
 
-
-# if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--print-log', '-p', action='store_true',
                         help=f"Print the tail end of the log file (default last {PRINTLOGLENGTH} lines).")
@@ -352,30 +312,26 @@ def cli():
     # Deploy template files
     if globvars.args.setup_user:
         deploy_files([
-            { "source": CONFIG_FILE,        "target_dir": "USER_CONFIG_DIR", "file_stat": 0o644, "dir_stat": 0o755},
-            { "source": "creds_SMTP",       "target_dir": "USER_CONFIG_DIR", "file_stat": 0o600},
+            { "source": CONFIG_FILE,          "target_dir": "USER_CONFIG_DIR", "file_stat": 0o644, "dir_stat": 0o755},
+            { "source": "creds_SMTP",         "target_dir": "USER_CONFIG_DIR", "file_stat": 0o600},
             { "source": "lanmonitor.service", "target_dir": "USER_CONFIG_DIR", "file_stat": 0o644},
-            # { "source": "test_dir",         "target_dir": "USER_DATA_DIR/mydirs", "file_stat": 0o633, "dir_stat": 0o770},
-            ]) #, overwrite=True)
+            ])
         sys.exit()
 
     if globvars.args.setup_site:
         deploy_files([
-            { "source": CONFIG_FILE,        "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o644, "dir_stat": 0o755},
-            { "source": "creds_SMTP",       "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o600},
+            { "source": CONFIG_FILE,          "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o644, "dir_stat": 0o755},
+            { "source": "creds_SMTP",         "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o600},
             { "source": "lanmonitor.service", "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o644},
-            # { "source": "test_dir",         "target_dir": "SITE_DATA_DIR/mydirs", "file_stat": 0o633, "dir_stat": 0o770},
-            ]) #, overwrite=True)
+            ])
         sys.exit()
 
 
     # Load config file and setup logging
     logfile_override = True  if not globvars.args.service  else False
     try:
-        # tool.stats()
         config = config_item(globvars.args.config_file)
-        config.loadconfig(call_logfile_wins=logfile_override)         #, call_logfile=args.log_file, ldcfg_ll=10)
-        # config.stats()
+        config.loadconfig(call_logfile_wins=logfile_override)
     except Exception as e:
         logging.error(f"Failed loading config file <{globvars.args.config_file}>. \
 \n  Run with  '--setup-user' or '--setup-site' to install starter files.\n  {e}\n  Aborting.")
@@ -400,7 +356,3 @@ def cli():
 
 
     sys.exit(main())
-
-    
-if __name__ == '__main__':
-    sys.exit(cli())
