@@ -338,7 +338,7 @@ def cli():
         sys.exit(1)
 
 
-    logging.warning (f"========== {tool.toolname} ({__version__}) ==========")
+    logging.warning (f"========== {tool.toolname} {__version__}, pid {os.getpid()} ==========")
     logging.warning (f"Config file <{config.config_full_path}>")
 
 

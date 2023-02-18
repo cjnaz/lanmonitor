@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - yum_update_history_plugin
 
-yum history output is checked for the specific <yum_command> text and the date is extracted from
-the first occurrence this line.  May require root access in order to read yum history.
+yum history output is checked for the specific <yum_command> text and the date is extracted from 
+the first occurrence this line, then compared to the <age> limit. May require root access in 
+order to read yum history.
 
 Typical config file lines:
     MonType_YumUpdate  yum_update_history_plugin

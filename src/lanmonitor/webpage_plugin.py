@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - webpage_plugin
 
-Each URL is read and checked for the `<expected text>`, which starts at the first non-white-space character after the URL 
-and up to the end of the line or a `#` comment character.  Leading and trailing white-space is trimmed off.  The url may be on a remote server.
+The specified web page <url> is retrieved and checked that it contains the <expected text>. 
+The url may be on a local or remote server.
 
       MonType_Page		webpage_plugin
       Page_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <url>  <expected text>

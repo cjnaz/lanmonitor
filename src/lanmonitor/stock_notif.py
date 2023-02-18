@@ -28,6 +28,7 @@ import __main__
 from cjnfuncs.cjnfuncs import getcfg, snd_email, snd_notif, logging, timevalue
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
+from lanmonitor.lanmonitor import inst_dict
 
 # Configs / Constants
 HANDLER_NAME = "stock_notif"
@@ -112,13 +113,20 @@ class notif_class:
         globvars.sig_status = False
 
         status_log = f"  {'Monitor item'.ljust(globvars.keylen)}  Prior run time       Next run time          Last check status\n"
-        for key in __main__.inst_dict:
+        for key in inst_dict:
             if key in self.events:
                 status = self.events[key]['message']
             else:
                 status = "  OK"
-            status_log += f"  {key.ljust(globvars.keylen)}  {__main__.inst_dict[key].prior_run}  {__main__.inst_dict[key].next_run}  {status}\n"
+            status_log += f"  {key.ljust(globvars.keylen)}  {inst_dict[key].prior_run}  {inst_dict[key].next_run}  {status}\n"
             # NOTE - prior_run vars are not defined until after first run.  each_loop() isn't called until after check items have been run, so _shouldn't_ crash.
+        # for key in __main__.inst_dict:
+        #     if key in self.events:
+        #         status = self.events[key]['message']
+        #     else:
+        #         status = "  OK"
+        #     status_log += f"  {key.ljust(globvars.keylen)}  {__main__.inst_dict[key].prior_run}  {__main__.inst_dict[key].next_run}  {status}\n"
+        #     # NOTE - prior_run vars are not defined until after first run.  each_loop() isn't called until after check items have been run, so _shouldn't_ crash.
 
         logging.warning(f"On-demand status dump:\n{status_log}")
 

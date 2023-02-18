@@ -6,7 +6,7 @@ Expected free space may be an absolute value or a percentage.
 
       MonType_Free		freespace_plugin
       Free_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <free_amount>  <path>
-      Free_RPi1    pi@RPi3    CRITICAL   5m   20%         /home/pi
+      Free_RPi3    pi@RPi3    CRITICAL   5m   20%         /home/pi
       Free_share   local                 1d   1000000000  /mnt/share
 
 If the path does not exist, setup() will pass but eval_status() will return RTN_WARNING and retry on each

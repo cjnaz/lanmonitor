@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """LAN Monitor plugin - service_plugin
 
-Each service name is checked with a `systemctl status <service name>` (for systemd)
-or `service <service_name> status` (for init), checking for the active/running response.
+Check that the specified service is active and running. Checking is done via systemctl status 
+<service name> (for systemd) or service <service_name> status (for init).
 
       MonType_Service		service_plugin
       Service_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <service name>

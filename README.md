@@ -7,7 +7,10 @@ critical items, such as firewalld being down, and summary reports are generated 
 - A configuration file is used for all setups - no coding required for use.  The config file may be modified on-th-fly while lanmonitor is running as a service.
 - Checks may be executed from the local machine, or from any remote host (with ssh access).  For example, you can check the health of a service running on another machine, or check that a webpage is accessible from another machine.
 
-` `
+<br/>
+
+---
+
 ## Several plug-ins are provided in the distribution (more details [below](#supplied-plugins)):
 
 | Monitor plugin | Description |
@@ -26,22 +29,22 @@ critical items, such as firewalld being down, and summary reports are generated 
 
 If you need other plug-ins, or wish to contribute, please open an issue to discuss.
 
-` `
-## Notable changes since prior release (V1.4 to V2.0)
-- Item check interval is now controlled per item via the config file.  Fast changing and critical items can be checked every few seconds, while slow changing and low risk items can be checked once per day.
-- Added `freespace` and `apt_upgrade_history` plugins
-- Removed --once switch, replaced with --service switch
-- Removed config RecheckInterval, replaced with ServiceLoopTime (same but different function)
-- Added `--print-log` switch
-- Tuned up debug logging for plugin development
-- Added signal-based on-demand summary and status dumps
-- Fixed summaries disable bug
+<br/>
 
-` `  
+---
+
+## Notable changes since prior release
+- Converted to Python package format and posted to PyPI.
+
+<br/>
+
+---
+
 ## Usage
 ```
-$ ./lanmonitor -h
-usage: lanmonitor [-h] [-p] [-v] [--config-file CONFIG_FILE] [--service] [-V]
+$ lanmonitor -h
+usage: lanmonitor [-h] [--print-log] [--verbose] [--config-file CONFIG_FILE]
+                  [--service] [--setup-user] [--setup-site] [-V]
 
 LAN monitor
 
@@ -49,23 +52,28 @@ Monitor status of network resources, such as services, hosts, file system age, s
 See README.md for descriptions of available plugins.
 
 Operates interactively or as a service (loop forever and controlled via systemd or other).
-V2.0 221130
+3.0
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p, --print-log       Print the tail end of the log file (last 40 lines).
-  -v, --verbose         Display OK items in non-service mode. (-vv for debug logging)
-  --config-file CONFIG_FILE
-                        Path to config file (default </script_install_path/lanmonitor.cfg>).
+  --print-log, -p       Print the tail end of the log file (default last 40 lines).
+  --verbose, -v         Display OK items in non-service mode. (-vv for debug logging)
+  --config-file CONFIG_FILE, -c CONFIG_FILE
+                        Path to the config file (Default <lanmonitor.cfg)> in user/site config directory.
   --service             Enter endless loop for use as a systemd service.
+  --setup-user          Install starter files in user space.
+  --setup-site          Install starter files in system-wide space. Run with root prev.
   -V, --version         Return version number and exit.
 ```
 
-` `  
+<br/>
+
+---
+
 ## Example output
 ```
-$ ./lanmonitor --verbose
- WARNING:  ========== lanmonitor (V2.0 221130, pid 7829) ==========
+$ lanmonitor --verbose
+ WARNING:  ========== lanmonitor 3.0, pid 26032 ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
     INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)
@@ -92,23 +100,30 @@ $ ./lanmonitor --verbose
     INFO:  Activity_RPi2_log.csv     OK - rpi2.lan -    0.8 mins  (   5 mins  max)  /mnt/RAMDRIVE/log.csv
 ```
 
-` `  
-## Setup and Usage notes
-- Supported on Python3.6+ only.  Developed on Centos 7.9 with Python 3.6.8 / 3.7.
-- Place the files in a directory on your server.
+<br/>
 
-- Edit the config info in the `lanmonitor.cfg` file for the **Core tool parameters**:
+---
+
+## Setup and Usage notes
+- Install lanmonitor from PyPI (`pip install lanmonitor`).
+- Install the initial configuration files (`lanmonitor --setup-user` places files at `~/.config/lanmonitor`).
+
+- Edit `lanmonitor.cfg` for the **Core tool parameters**:
   - `ServiceLoopTime` sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
   - `nRetries` sets how many tries will be made to accomplish each monitored item.
   - `RetryInterval` sets the time between nRetries.
-  - `StartupDelay` is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking items.
+  - `StartupDelay` is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
   - `DailyRuntime` is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
   - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
   - `LogLevel` controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
   - `LogFile` specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
+  - `PrintLogLength`, `ConsoleLogFormat`, and `FileLogFormat` may also be customized.
 
-- Edit the config info in the `lanmonitor.cfg` file for the **Notification handler parameters**:
-  - `Notif_handlers` is a whitespace separated list of Python modules (without the .py extension) that will handle monitored item event tracking, notifications, and periodic summaries.  `stock_notify.py` is provided, and has full functionality.  See [Writing Notification Handler Plugins](#writing-notification-handler-plugins), below.
+- Edit `lanmonitor.cfg` for the **Notification handler parameters**:
+  - `Notif_handlers` is a whitespace separated list of Python modules (without the .py extension) that will handle monitored item event tracking, notifications, and periodic summaries. `stock_notify.py` is provided, and has full functionality.  See [Writing Notification Handler Plugins](#writing-notification-handler-plugins), below. An optional absolute or relative (to the lanmonitor modules directory) path may be specified for each notification handler, eg:
+  
+            Notif_handlers  stock_notif  ~/my_lanmon_dir/my_notif_plugin
+    
   - `CriticalReNotificationInterval` sets how long between repeated notifications for any failing CRITICAL monitored items in service mode.  Set `ServiceLoopTime` less than `CriticalReNotificationInterval` so that resolved critical items are rechecked before the next renotification message.  (As implemented by the `stock_notif.py` notification handler.)
   - `SummaryDays` sets which days of the week for summaries to be emailed.  Monday =1, Tuesday =2, ... Saturday =6, Sunday = 7.  Multiple days may be selected.  Comment out `SummaryDays` to eliminate summaries.  (As implemented by the `stock_notif.py` notification handler.)
   - `SummaryTime` sets the time of day (local time) for summaries to be emailed.  24-clock format, for example, `13:00`.  (As implemented by the `stock_notif.py` notification handler.)
@@ -116,10 +131,9 @@ $ ./lanmonitor --verbose
   - `EmailTo` is a whitespace separated list of email addresses that summaries will be sent to.  Comment out EmailTo to disable emailing summaries.  (As implemented by the `stock_notif.py` notification handler.)
   - `NotifList` is a whitespace separated list of phone numbers (using your carrier's email-to-text bridge) to which event notifications will be sent.  Comment out NotifList to disable all notifications.  (As implemented by the `stock_notif.py` notification handler.)
 
-- Edit the config info in the `lanmonitor.cfg` file for the **SMTP email parameters**.
-  - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file:  `import /home/<user>/creds_SMTP`. (Any, none, or all parameters may be moved to an imported config file.)
-  - Create an SMTP/email credentials file such as `/home/<user>/creds_SMTP` in your home directory and set the file protections to mode `600`.  You may need a copy of this file at the root user home directory if lanmonitor is run by root in `--service` mode.
-
+- Edit `lanmonitor.cfg`  and `creds_SMTP` for the **SMTP email parameters**.
+  - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file (`import creds_SMTP`). Any, none, or all parameters may be moved to an imported config file.
+  
             EmailServer       mail.mailserver.com
             EmailServerPort   P587TLS                 # One of: P465, P587, P587TLS, or P25   
             EmailUser	      yourusername@mailserver.com
@@ -127,14 +141,18 @@ $ ./lanmonitor --verbose
             EmailFrom         yourfromaddress@mailserver.com
 
 - See [below](#monitored-items-setup) for setting up items to be monitored.
-- Run the tool with `./lanmonitor --verbose`.  Make sure that the local machine and user (root?) has password-less ssh access to any remote machines.  `-v` enables Info level logging of passing itmes.  `-vv` turns on Debug level logging.
-- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided.  Note that the config file may be modified while the service is running, with changes taking effect on the next ServiceLoopTime.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.  Also note that a copy of the creds_SMTP file may be needed in the root user home dir.
+- Run the tool with `lanmonitor --verbose`.  Make sure that the local machine and user (root?) has password-less ssh access to any remote machines.  `-v` enables INFO level logging of passing itmes.  `-vv` turns on DEGUG level logging.
+- Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided in the config directory.  Note that the config file may be modified while the service is running, with changes taking effect on the next ServiceLoopTime.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - NOTE:  All timevalues in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6h` is 6 hours.  If no suffix is provided the time value is taken as seconds.
-- NOTE:  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router reboot.
+- NOTE:  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router (DHCP / DNS resolver) reboot.
+- Supported on Python3.6+ on Linux.
 
-` `  
+<br/>
+
+---
+
 ## Monitored items setup
 Items to be monitored are defined in the `lanmonitor.cfg` file.  "Plugin" modules provide the logic for each monitored item type.  [Supplied plugins](#supplied-plugins) are described below.  See the description at the top of each plugin module for additional notes.
 To activate a given plugin, a `MonType_` line is included in the configuration file using this format:
@@ -143,8 +161,7 @@ To activate a given plugin, a `MonType_` line is included in the configuration f
 
 1. Begins with the `MonType_` prefix
 2. The `<type>` is used as the prefix on successive lines for monitor items of this type
-3. The `<plugin_name>` is the Python module name (implied .py suffix)
-
+3. The `<plugin_name>` is the Python module name (implied .py suffix). An optional absolute or relative (to the lanmonitor modules directory) path may specified, eg: `MonType_XYZ ~/my_lanmon_dir/myXYZ_plugin`.
 
 For monitored items, the general format of a line is
 
@@ -157,7 +174,10 @@ For monitored items, the general format of a line is
 5. `<check_interval>` is the wait time between rechecks for this specific item.  Each item is checked at its own check_interval.
 5. `<rest_of_line>` are the monitored type-specific settings.
 
-` `  
+<br/>
+
+---
+
 ## Supplied plugins
 
 See the documentation header in each plugin for additional functionality and configuration specifics.
@@ -175,7 +195,8 @@ the most recent occurrence of this text, then compared to the `<age>` limit.  Ma
       DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
       DD-wrt_age_Router          local          CRITICAL  1d   30d  192.168.1.1
 
-- **freespace_plugin:**  The free space on the file system that holds the  specified `<path>` is checked.  Expected free space may be an absolute value or a percentage.
+- **freespace_plugin:**  The free space on the file system that holds the  specified `<path>` is checked.  Expected free space may be an absolute value or a percentage. If the path does not exist, setup() will pass but eval_status() will return RTN_WARNING and retry on each
+check_interval.  This allows for intermittently missing paths.
 
       MonType_Free		freespace_plugin
       Free_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <free_amount>  <path>
@@ -235,13 +256,16 @@ the first occurrence this line, then compared to the `<age>` limit.  May require
       YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
       YumUpdate_MyHost           local          CRITICAL  2h   15d  update --skip-broken
 
-` `  
+<br/>
+
+---
+
 ## Writing Monitor Plugins
 
 New plugins may be added easily.  The core lanmonitor code provides a framework for configuration, logging, command retries, and parsing components.  The general process for creating a new plugin is:
 
-- Copy an existing plugin, such as the webpage_plug.py.
-- Adjust the module comment block to describe the functionality and config file details.
+- Copy an existing plugin, such as the `lanmonitor/src/lanmonitor/webpage_plug.py` to a working directory as `mynewitem_plugin.py`.
+- Adjust the \<newitem> comment block to describe the functionality and config file details.
 - Within the `setup()` function:
   - Adjust the `rest_of_line` parsing, creating new vars as needed.
   - Add any checker code to validate these new values.
@@ -249,9 +273,10 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
   - Adjust the `cmd` for your needed subprocess call command.
   - The `cmd_check()` function can check the returncode or return text.  It also returns the full subprocess call response.  _See the cmd_check function within the lanmonfuncs.py module for built-in checking features._  Uncomment the `# logging.debug (f"cmd_check response:  {rslt}")` line to see what's available for building response checker code.
   - Adjust the `if rslt[0] == True: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
-- Adjust the tests at the bottom to exercise all possible good, bad, and invalid conditions.
-- Debug and validate the new plugin module by running standalone (`./myplugin`).
-- Add the `MonType_<your_monitor_type> <your_plugin_name>` line and specific monitor items to your config file.
+- Create a companion `mynewitem_plugin_test.py` by copying from the lanmonitor/tests directory, and create `dotest()` calls to exercise all possible good, bad, and invalid conditions.
+- Debug and validate the new plugin module by running standalone (`./mynewitem_plugin_test.py`).
+- Add the `MonType_<your_monitor_type> <abs_path_to>/mynewitem_plugin>` line and specific monitor items to your config file.
+  - New plugins are welcome for bundling into the lanmonitor distribution.  Open a github issue.
 
 ` `  
 ### Additional plugin writing notes
@@ -276,11 +301,11 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
 
-      - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`./lanmonitor -vv`, or run the plugin standalone)
+      - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`lanmonitor -vv`, or run the plugin standalone)
       to see the available cmd_check() response data. See `lanmonfuncs.py` for cmd_check feature details and the return structure.
       - If the host is not `local` then the lanmonitor core will check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access()` check is performed only once per check iteration.  Thus, your eval_status() code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check (using the pinghost plugin) earlier in the config file to limit fail ambiguity.
 
-3. The plugin module may be tested standalone by running it directly on the command line.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `"check_interval":1` as a placeholder.)
+3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `"check_interval":1` as a placeholder.)
 
             dotest ({"key":"SELinux_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
 
@@ -292,7 +317,10 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
 
             dotest ({"key":"SELinux_RPi2_CRIT", "tag":"RPi2_CRIT", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
 
-` `  
+<br/>
+
+---
+
 ## Writing Notification Handler Plugins
 
 One or more notification handlers may be specified in the configuration file line, such as:
@@ -306,7 +334,10 @@ The following functions within each listed notification handler are called.  The
 - `renotif()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any code here related to sending additional notifications for items that remain broken.  stock_notif sends repeat notification messages for any critical items on every `CriticalReNotificationInterval` period.  All still-broken critical items are bundled into a single message so as to minimize text messages being sent.
 - `summary()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any code here related to scheduling and producing a periodic report.  The lanmonfuncs.py module provides `next_summary_timestring()`, which uses `SummaryTime` and `SummaryDays` in the config file, for summary scheduling.  stock_notif's summary simply emails a list of any current WARNING, FAIL, or CRITICAL items, or an "All is well" message to provide a periodic _lanmonitor-is-alive_ message.
 
-` `  
+<br/>
+
+---
+
 ## Debug features:
 - lanmonitor dynamically reloads the config file when it senses that the config file has been changed.  When reloaded, all monitored items are reinitialized per the current content of the config file, and all prior monitored items and their history are discarded.  All setting may be changed, such as the core tool parameters, notification handler parameters, and setups on monitored items.
 - Setting LogLevel to 10 in the config file enables debug level logging to the log file while running in service mode.
@@ -314,18 +345,25 @@ The following functions within each listed notification handler are called.  The
 - Sending a SIGUSR1 signal to lanmonitor when running in service mode causes a summary to be generated to the log file.
 - Sending a SIGUSR2 signal to lanmonitor when running in service mode causes a dump of the current status of all monitored items, including prior runtime, next runtime, and any alert messages.  
 - To send signals to a running lanmonitor service process use the `kill -<signal> <pid>` command (eg, `$ kill -SIGUSR1 7829`).  The process pid is printed in the startup banner to the log, or may be found using `ps`.
-- Monitor item plugins have built-in test cases, and when a plugin is run directly (eg, `$ ./fsactivity_plugin.py`), the logging level is set to debug level.
+- Monitor item plugins have companion test case files.  Copy a plugin and its test file from the repo to a working directory, then run the test file (eg, `$ ./fsactivity_plugin_test.py`).
 
-` `  
+<br/>
+
+---
+
 ## Known issues:
 - none
 
-` `  
+<br/>
+
+---
+
 ## Version history
-- V2.0  221130  Changed to check_interval per item.  Added `freespace` and `apt_upgrade_history` plugins.  Removed --once switch, replaced with --service switch.  Removed config RecheckInterval, replaced with ServiceLoopTime.  - Added `--print-log` switch.  Tuned up debug logging for plugin development.  Fixed summaries disable bug.
-- V1.5  221120  Added apt_upgrade_history plugin, Added `--print-log` switch, Fixed summaries disable bug.
-- V1.4  220420  Updated for funcs3.py V1.1 - Log file setup now in config file, timevalue & retime moved to funcs3.  SummaryDays bug and doc fix.  A couple corner case bug fixes.
-- V1.2  210605  Reworked have_access check to check_LAN_access logic.
-- V1.1  210523  Added loadconfig flush_on_reload (funcs3.py V0.7) to purge any deleted cfg keys.  Error formatting tweaks.  Cmd timeout tweaks
-- V1.0  210507  Major refactor
-- V0.1  210129  New
+- 3.0 230301 - Converted to package format, updated to cjnfuncs 2.0
+- V2.0  221130 - Changed to check_interval per item.  Added `freespace` and `apt_upgrade_history` plugins.  Removed --once switch, replaced with --service switch.  Removed config RecheckInterval, replaced with ServiceLoopTime.  - Added `--print-log` switch.  Tuned up debug logging for plugin development.  Fixed summaries disable bug.
+- V1.5  221120 - Added apt_upgrade_history plugin, Added `--print-log` switch, Fixed summaries disable bug.
+- V1.4  220420 - Updated for funcs3.py V1.1 - Log file setup now in config file, timevalue & retime moved to funcs3.  SummaryDays bug and doc fix.  A couple corner case bug fixes.
+- V1.2  210605 - Reworked have_access check to check_LAN_access logic.
+- V1.1  210523 - Added loadconfig flush_on_reload (funcs3.py V0.7) to purge any deleted cfg keys.  Error formatting tweaks.  Cmd timeout tweaks
+- V1.0  210507 - Major refactor
+- V0.1  210129 - New
