@@ -18,12 +18,12 @@
 #==========================================================
 
 import sys
-import os.path
 import subprocess
 import datetime
 import time
 import re
 from cjnfuncs.cjnfuncs import logging, getcfg, timevalue
+
 
 # Configs / Constants
 NOTIF_SUBJ = "LAN Monitor"
@@ -33,26 +33,39 @@ RTN_FAIL     = 2
 RTN_CRITICAL = 3
 
 
-# Module global vars
-args = None
-keylen = 0      # Padding vars used for pretty printing
-hostlen = 0
-
-
+#=====================================================================================
+#=====================================================================================
+#  s p l i t _ u s e r _ h o s t _ p o r t
+#=====================================================================================
+#=====================================================================================
 USER_HOST_FORMAT = re.compile(r"[\w.-]+@([\w.-]+)$")
 USER_HOST_PORT_FORMAT = re.compile(r"[\w.-]+@([\w.-]+):([\d]+)$")
 
 def split_user_host_port(u_h_p):
-    """ Handle variations in passed-in user_host_port (u_h_p)
-        "local", "user@host", or "user@host:port"
-    Return separate user_host, host, and port values
-    EG:
+    """
+    ## split_user_host_port (u_h_p) - Handle variations in passed-in user_host_port
+    
+    ### Parameter
+    `u_h_p`
+    - Str in the form of - `local`, `user@host`, or `user@host:port`
+    - Port number 22 is default
+    - `local` indicates the current host
+
+    ### Returns
+    - 3-tuple
+      - user@host (without port), or `local`
+      - host (without user or port), or `local`
+      - port number
+    
+    ### Examples
+    ```
         "xyz@host15:4455" returns:
-            ["xyz@host15", "host15", "4455"]
+            ("xyz@host15", "host15", "4455")
         "xyz@host15" returns:
-            ["xyz@host15", "host15", "22"]  (the default port is "22" for ssh)
-        "local" returns
-            ["local", "local", ""]
+            ("xyz@host15", "host15", "22")  (the default port is "22" for ssh)
+        "local" returns:
+            ("local", "local", "")
+    ```
     """
     user_host_noport = u_h_p.split(":")[0]
     host = u_h_p
@@ -71,17 +84,49 @@ def split_user_host_port(u_h_p):
                 _msg = f"Expecting <user@host> or <user@host:port> format, but found <{u_h_p}>."
                 # logging.error(f"ERROR:  {_msg}")
                 raise ValueError (_msg)
-    return user_host_noport, host, port
+    return (user_host_noport, host, port)
 
 
+#=====================================================================================
+#=====================================================================================
+#  c m d _ c h e c k
+#=====================================================================================
+#=====================================================================================
 def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expected_text=None, not_text=None):
-    """  Runs the cmd and operates on the response based on return_type.
-    return_types:
-        check_string        Returns True if expected_text occurs in response of the cmd, plus the full full subprocess run structure
-            check_line_text     If provided, only the first line containing this text is checked
-            expected_text       Text that must be found
-            not_text            Text that must NOT be found
-        cmdrun              Returns True if the cmd return code was 0, plus the full full subprocess run structure
+    """
+    ## cmd_check (cmd, user_host_port, return_type=None, check_line_text=None, expected_text=None, not_text=None) - Runs the cmd and operates on the response based on return_type
+
+    ### Parameters
+    `cmd`
+    - Command to be passed to subprocess() in list form
+
+    `user_host_port`
+    - Str for the target machine to execute cmd on.  Port optional (default 22).  `local`
+    indicates run the cmd on the local machine.
+
+    `return_type`
+    - "cmdrun" or "check_string"
+    - If "cmdrun" then the `cmd` execution status (`True` if no error) and subprocess
+    return structure is returned.
+    - If "check_string" then the following parameters are used to evaluate the `cmd` response.
+   
+    `check_line_text` (default None)
+    - A qualifier for which line of the `cmd` response to look for `expected_text` and/or `not_text`
+    - If provided, only the first line containing this text is checked.  If not provided then
+    all lines of the `cmd` response are checked.
+
+    `expected_text` (default None)
+    - Text that must be found
+
+    `not_text`  (default None)
+    - Text that must NOT be found
+    
+    ### Returns
+    - 2-tuple of (success_status, subprocess run return structure)
+    - if `return_type` = "cmdrun" then success_status = True if the subprocess run returns a 
+    passing status (0), else success_status = False.
+    - if `return_type` = "check_string" then success_status = True if the `cmd` stdout response
+    contains `expected_text` and not `not_text` (response line qualified by `check_line_text`).
     """
 
     if user_host_port != "local":
@@ -95,7 +140,7 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             runtry = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
         except Exception as e:
             logging.error(f"ERROR:  subprocess.run of cmd <{cmd}> failed.\n  {e}")
-            return False, None
+            return (False, None)
 
         if return_type == "check_string":
             if check_line_text is None:
@@ -110,18 +155,18 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             if expected_text in text_to_check:
                 if not_text is not None:
                     if not_text not in text_to_check:
-                        return True, runtry
+                        return (True, runtry)
                 else:
-                    return True, runtry
+                    return (True, runtry)
             else:
                 if nTry == getcfg('nRetries')-1:
-                    return False, runtry
+                    return (False, runtry)
 
         elif return_type == "cmdrun":
             if runtry.returncode == 0:
-                return True, runtry
+                return (True, runtry)
             elif nTry == getcfg('nRetries')-1:
-                return False, runtry
+                return (False, runtry)
 
         else:
             _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
@@ -130,19 +175,34 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
         time.sleep (timevalue(getcfg('RetryInterval')).seconds)
 
 
+#=====================================================================================
+#=====================================================================================
+#  c h e c k _ L A N _ a c c e s s
+#=====================================================================================
+#=====================================================================================
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
-def check_LAN_access():
-    """Check for basic access to another reliable host on the LAN, typically the router/gateway.
-    Used as an execution gate for all non-local items on each RecheckInterval.
+def check_LAN_access(host=None):
+    """
+    ## check_LAN_access (host=None) - Check for basic access to another reliable host on the LAN
 
-    Requires "Gateway <IP address or hostname>" definition in the config file.
+    Reliable access to another host on the network, such as a router/gateway, is used
+    as a gate for checking items on other hosts on each RecheckInterval.  
 
-    Returns True if the "Gateway" host can be pinged, else False.
+    Requires "Gateway <IP address or hostname>" definition in the config file if `host` is
+    not provided in the call.
+
+    ### Parameter
+
+    `host` (default None)
+    - A resolvable hostname or IP address.  If not provided then config `Gateway` is used.
+
+    ### Returns
+    - Returns True if the `host` or config `Gateway` host can be pinged, else False.
     """
 
-    ip_or_hostname = getcfg("Gateway", False)
+    ip_or_hostname = getcfg("Gateway", host)
     if not ip_or_hostname:
         logging.error (f"  ERROR:  PARAMETER 'Gateway' NOT DEFINED IN CONFIG FILE - Aborting.")
         sys.exit(1)
@@ -151,19 +211,34 @@ def check_LAN_access():
         logging.error (f"  ERROR:  INVALID IP ADDRESS OR HOSTNAME <{ip_or_hostname}> - Aborting.")
         sys.exit(1)
 
-    pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", getcfg("Gateway")], user_host_port="local", return_type="cmdrun")
+    pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", getcfg("Gateway")], 
+                         user_host_port="local", return_type="cmdrun")
     if pingrslt[0]:
         return True
     else:
         return False
 
 
+#=====================================================================================
+#=====================================================================================
+#  n e x t _ s u m m a r y _ t i m e s t r i n g
+#=====================================================================================
+#=====================================================================================
 def next_summary_timestring():
-    """Calculate timestring of next summary.
-    SummaryDays			1 2 3 4 5 6 7	# Days of week: 1 = Monday, 7 = Sunday.  = 0 or comment out to disable summaries
-    SummaryTime			9:45		    # 24 hour clock
-    NOTE:  May be off by 1 hour over a DTS changes.
-    Don't define SummaryDays to disable summaries.
+    """
+    ## next_summary_timestring () - Calculate the datetime timestring of next summary
+
+    Example config file items
+    ```
+        SummaryDays   1 2 3 4 5 6 7  # Days of week: 1 = Monday, 7 = Sunday.  = 0 or comment out to disable summaries
+        SummaryTime   9:45           # 24 hour clock
+    ```
+
+    - NOTE:  May be off by 1 hour over a DTS changes.
+    - Don't define SummaryDays to disable summaries.
+
+    ### Returns
+    - datetime of next summary
     """
     if getcfg("SummaryDays", None) is None:
         logging.debug(f"SummaryDays not defined.  Summaries are disabled.")
