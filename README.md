@@ -27,7 +27,7 @@ critical items, such as firewalld being down, and summary reports are generated 
 | webpage | Checks that the given URL responds with an expected string of text, as an indicator that that the web page is alive |
 | yum_update_history | Checks that the most recent yum update operation was more recent than a given age |
 
-If you need other plug-ins, or wish to contribute, please open an issue to discuss.
+If you need other plug-ins, or wish to contribute, please open an issue on the github repo to discuss.
 
 <br/>
 
@@ -278,7 +278,8 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
 - Add the `MonType_<your_monitor_type> <abs_path_to>/mynewitem_plugin>` line and specific monitor items to your config file.
   - New plugins are welcome for bundling into the lanmonitor distribution.  Open a github issue.
 
-` `  
+<br/>
+
 ### Additional plugin writing notes
 1. The `setup()` function of your module will be called for each related `<type>_<friendly_name>` line in the config file.  setup() is called only once at initial startup and after any on-the-fly edits to the configuration file.  setup() is supplied a dictionary:
 
