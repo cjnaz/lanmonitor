@@ -38,13 +38,7 @@ try:
 except:
     import importlib_metadata
     __version__ = importlib_metadata.version(__package__ or __name__)
-    # try:
-    #     import importlib_metadata
-    #     __version__ = importlib_metadata.version(__package__ or __name__)
-    #     # print ("Using importlib_metadata for __version__ assignment")
-    # except:
-    #     __version__ = "3.0 X"                                               # TODO Since can't be run as a script will this never be used?
-    #     # print ("Using local __version__ assignment")
+    # print ("Using importlib_metadata for __version__ assignment")
 
 from cjnfuncs.cjnfuncs import set_toolname, logging, config_item, cfg, getcfg, mungePath, deploy_files, timevalue
 import lanmonitor.globvars as globvars
