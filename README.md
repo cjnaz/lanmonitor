@@ -114,6 +114,7 @@ $ lanmonitor --verbose
   - `ServiceLoopTime` sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
   - `nRetries` sets how many tries will be made to accomplish each monitored item.
   - `RetryInterval` sets the time between nRetries.
+  - `ssh_timeout` sets the max time for ssh connections to non-local hosts (default 1s if not specified).
   - `StartupDelay` is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
   - `DailyRuntime` is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
   - `Gateway` is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
@@ -362,7 +363,8 @@ The following functions within each listed notification handler are called.  The
 ---
 
 ## Version history
-- 3.0.2 230226 - Converted to package format, updated to cjnfuncs 2.0
+- 3.0.3 230306 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, added pinghost_plugin_timeout.
+- 3.0.2 230226 - Converted to package format, updated to cjnfuncs 2.0.
 - V2.0  221130 - Changed to check_interval per item.  Added `freespace` and `apt_upgrade_history` plugins.  Removed --once switch, replaced with --service switch.  Removed config RecheckInterval, replaced with ServiceLoopTime.  - Added `--print-log` switch.  Tuned up debug logging for plugin development.  Fixed summaries disable bug.
 - V1.5  221120 - Added apt_upgrade_history plugin, Added `--print-log` switch, Fixed summaries disable bug.
 - V1.4  220420 - Updated for funcs3.py V1.1 - Log file setup now in config file, timevalue & retime moved to funcs3.  SummaryDays bug and doc fix.  A couple corner case bug fixes.

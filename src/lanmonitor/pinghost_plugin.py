@@ -8,13 +8,19 @@ Each host is pinged.  The `friendly_name` is user defined (not the real hostname
       Host_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <IP address or hostname>
       Host_RPi1_HP1018    local    CRITICAL   1h   192.168.1.44
       Host_Yahoo          me@RPi2.mylan       15m  Yahoo.com
+
+The default timeout for ping commands is 1 seconds.  pinghost_plugin_timeout may be set in the config file 
+to override the default, eg:
+      pinghost_plugin_timeout 5s
+
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230304 - Added config setting pinghost_plugin_timeout
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -23,12 +29,13 @@ import datetime
 import re
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
-from cjnfuncs.cjnfuncs import logging
+from cjnfuncs.cjnfuncs import logging, getcfg, timevalue
 
 # Configs / Constants
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 PING_RESPONSE_RE = re.compile(r"([\d.]+)\)*:.+time=([\d.]+) ms")
+TIMEOUT = "1s"
 
 class monitor:
 
@@ -69,6 +76,9 @@ class monitor:
         if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
             logging.error (f"  ERROR:  <{self.key}> CAN'T PARSE IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL
+    
+        self.timeout = str(int((timevalue(getcfg("pinghost_plugin_timeout", TIMEOUT)).seconds)))
+
         return RTN_PASS
 
 
@@ -82,7 +92,7 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ["ping", "-c", "1", "-W", "1", self.ip_or_hostname]
+        cmd = ["ping", "-c", "1", "-w", self.timeout, self.ip_or_hostname]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         logging.debug (f"cmd_check response:  {rslt}")
 

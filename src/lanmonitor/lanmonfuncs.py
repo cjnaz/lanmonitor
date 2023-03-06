@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230306 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug
 # 3.0 230301 - Packaged
 # 1.4 221120 - Summaries optional if SummaryDays is not defined.
 # 1.3 220420 - Incorporated funcs3 timevalue and retime (removed convert_time)
@@ -121,6 +122,10 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
     `not_text`  (default None)
     - Text that must NOT be found
     
+    ### cfg dictionary param
+    `ssh_timeout` (default 1s)
+    - Timeout for completion of all operations on remote hosts (a global setting)
+
     ### Returns
     - 2-tuple of (success_status, subprocess run return structure)
     - if `return_type` = "cmdrun" then success_status = True if the subprocess run returns a 
@@ -131,7 +136,8 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
 
     if user_host_port != "local":
         u_h, _, port = split_user_host_port(user_host_port)
-        cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=1", "-T"] + cmd
+        ct = str(int((timevalue(getcfg("ssh_timeout", "1s")).seconds)))
+        cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T"] + cmd
 
     for nTry in range (getcfg('nRetries')):
         try:
@@ -140,7 +146,8 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             runtry = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
         except Exception as e:
             logging.error(f"ERROR:  subprocess.run of cmd <{cmd}> failed.\n  {e}")
-            return (False, None)
+            continue
+            # return (False, None)
 
         if return_type == "check_string":
             if check_line_text is None:
@@ -173,6 +180,8 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             logging.error (f"ERROR:  {_msg}")
             raise ValueError (_msg)
         time.sleep (timevalue(getcfg('RetryInterval')).seconds)
+
+    return (False, None)
 
 
 #=====================================================================================

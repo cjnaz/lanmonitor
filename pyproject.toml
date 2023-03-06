@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.0.2"
+version = "3.0.3a1"
 description = "Monitor the state of services, processes, web pages, file system, etc. on your server and LAN"
 readme = "README.md"
 requires-python = ">=3.6"       # Centos 7 uses 3.6.8

@@ -31,7 +31,7 @@ import os.path
 import signal
 import collections
 
-try:
+try:        # running as script not supported, so no default __version__ assignment
     import importlib.metadata
     __version__ = importlib.metadata.version(__package__ or __name__)
     # print ("Using importlib.metadata for __version__ assignment")
