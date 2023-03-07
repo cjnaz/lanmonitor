@@ -5,6 +5,10 @@ Monitor status of network resources, such as services, hosts, file system age, s
 See README.md for descriptions of available plugins.
 
 Operates interactively or as a service (loop forever and controlled via systemd or other).
+
+In service mode
+    kill -SIGUSR1 <pid>   outputs a summary to the log file
+    kill -SIGUSR2 <pid>   outputs monitored items current status to the log file
 """
 
 #==========================================================
