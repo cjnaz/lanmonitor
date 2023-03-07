@@ -37,6 +37,7 @@ If you need other plug-ins, or wish to contribute, please open an issue on the g
 
 ## Notable changes since prior release
 - Converted to Python package format and posted to PyPI.
+- Added cfg params ssh_timeout and pinghost_plugin_timeout.
 
 <br/>
 
