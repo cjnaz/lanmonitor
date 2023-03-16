@@ -96,7 +96,8 @@ class monitor:
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         logging.debug (f"cmd_check response:  {rslt}")
 
-        if rslt[0] == True:
+        # if rslt[0] == True:
+        if rslt[0] == RTN_PASS:
             ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
             if ping_rslt:
                 return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}

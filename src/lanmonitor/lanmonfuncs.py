@@ -134,14 +134,20 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
     contains `expected_text` and not `not_text` (response line qualified by `check_line_text`).
     """
 
+    if return_type not in ["check_string", "cmdrun"]:
+        _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
+        logging.error (f"ERROR:  {_msg}")
+        raise ValueError (_msg)
+
+
     if user_host_port != "local":
-        u_h, _, port = split_user_host_port(user_host_port)
+        u_h, host, port = split_user_host_port(user_host_port)
         ct = str(int((timevalue(getcfg("ssh_timeout", "1s")).seconds)))
         cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T"] + cmd
 
     for nTry in range (getcfg('nRetries')):
         try:
-            logging.debug(f"cmd_check subprocess command try {nTry+1}: <{cmd}>")
+            logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
             # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
             runtry = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
         except Exception as e:
@@ -162,26 +168,64 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             if expected_text in text_to_check:
                 if not_text is not None:
                     if not_text not in text_to_check:
-                        return (True, runtry)
+                        # return (True, runtry)
+                        return (RTN_PASS, runtry)
                 else:
-                    return (True, runtry)
-            else:
-                if nTry == getcfg('nRetries')-1:
-                    return (False, runtry)
+                    # return (True, runtry)
+                    return (RTN_PASS, runtry)
+            # else:
+            #     if nTry == getcfg('nRetries')-1:
+            #         # return (False, runtry)
+            #         return (RTN_FAIL, runtry)
 
         elif return_type == "cmdrun":
             if runtry.returncode == 0:
-                return (True, runtry)
-            elif nTry == getcfg('nRetries')-1:
-                return (False, runtry)
+                # return (True, runtry)
+                return (RTN_PASS, runtry)
+            # elif nTry == getcfg('nRetries')-1:
+            #     # return (False, runtry)
+            #     return (RTN_FAIL, runtry)
 
-        else:
-            _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
-            logging.error (f"ERROR:  {_msg}")
-            raise ValueError (_msg)
+        # else:
+            # _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
+            # logging.error (f"ERROR:  {_msg}")
+            # raise ValueError (_msg)
         time.sleep (timevalue(getcfg('RetryInterval')).seconds)
 
-    return (False, None)
+    if user_host_port == "local"  or  "ping" in cmd:
+        return (RTN_FAIL, runtry)
+    
+    else:  # Failing on remote system - ensure target can be pinged
+        logging.debug(f"cmd_check command failed on remote system - attempting to ping {host}")
+        pt = str(int((timevalue(getcfg("ping_timeout", "1s")).seconds)))
+        pingcmd = ["ping", "-c", "1", "-w", pt, host]
+        for nTry in range (getcfg('nRetries')):
+
+            try:
+                logging.debug(f"cmd_check ping try {nTry+1}: <{pingcmd}>")
+                # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
+                pingtry = subprocess.run(pingcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+                # print (pingtry.returncode)
+                if pingtry.returncode == 0:
+                    return (RTN_FAIL, runtry)
+            except Exception as e:
+                logging.error(f"ERROR:  subprocess.run of cmd <{pingcmd}> failed.\n  {e}")
+                continue
+                # return (False, None)
+        
+        # logging.debug(f"cmd_check ping of remote host {host} failed.")
+        error_msg = pingtry.stderr.replace('\n','')
+        if error_msg == ""  and  "100% packet loss" in pingtry.stdout:
+            error_msg = "Cannot contact target host."
+
+        return (RTN_WARNING, error_msg)
+
+
+    
+
+    # return (False, None)
+    # return (RTN_FAIL, runtry)
+
 
 
 #=====================================================================================
@@ -222,7 +266,8 @@ def check_LAN_access(host=None):
 
     pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", getcfg("Gateway")], 
                          user_host_port="local", return_type="cmdrun")
-    if pingrslt[0]:
+    # if pingrslt[0]:
+    if pingrslt[0] == RTN_PASS:
         return True
     else:
         return False

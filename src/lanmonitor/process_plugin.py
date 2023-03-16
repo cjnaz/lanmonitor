@@ -79,7 +79,10 @@ class monitor:
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", expected_text=self.process_path)
         # logging.debug (f"cmd_check response:  {rslt}")
 
-        if rslt[0] == True:
+        # if rslt[0] == True:
+        if rslt[0] == RTN_PASS:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.process_path}"}
+        elif rslt[0] == RTN_WARNING:
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {rslt[1]}"} # REMOTE HOST IS NOT ACCESSIBLE"}
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - PROCESS <{self.process_path}> IS NOT RUNNING"}
