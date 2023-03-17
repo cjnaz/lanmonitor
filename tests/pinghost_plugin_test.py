@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -45,4 +46,6 @@ dotest ({"key":"Host_local_to_INV", "tag":"local_to_INV", "host":"local", "user_
 
 dotest ({"key":"Host_local_to_Unknown", "tag":"local_to_Unknown", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"XX.lan"})
 
-dotest ({"key":"Host_Unknown_to_Known", "tag":"Unknown_to_Known", "host":"unknown", "user_host_port":"me@unknown", "critical":False, "check_interval":1, "rest_of_line":"shop2"})
+dotest ({"key":"Host_local_to_Unavailable", "tag":"local_to_Unavailable", "host":"local", "user_host_port":"local", "critical":False, "check_interval":1, "rest_of_line":"shopcam"})
+
+dotest ({"key":"Host_Unavailable_to_Known", "tag":"Unavailable_to_Known", "host":"shopcam", "user_host_port":"me@shopcam", "critical":False, "check_interval":1, "rest_of_line":"shop2"})

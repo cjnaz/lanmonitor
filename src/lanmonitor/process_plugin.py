@@ -7,12 +7,13 @@ Each process is checked by seeing if the `<executable path>` occurs in the outpu
       Process_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <executable path>
       Process_x11vnc		local       CRITICAL  5m  /usr/bin/x11vnc
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -79,10 +80,10 @@ class monitor:
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", expected_text=self.process_path)
         # logging.debug (f"cmd_check response:  {rslt}")
 
-        # if rslt[0] == True:
         if rslt[0] == RTN_PASS:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.process_path}"}
         elif rslt[0] == RTN_WARNING:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {rslt[1]}"} # REMOTE HOST IS NOT ACCESSIBLE"}
+            errro_msg = rslt[1].stderr.replace('\n','')
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - PROCESS <{self.process_path}> IS NOT RUNNING"}

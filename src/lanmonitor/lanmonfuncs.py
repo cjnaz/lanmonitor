@@ -6,7 +6,8 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
-# 3.1 230306 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug
+# 3.1 230320 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, 
+#   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
 # 3.0 230301 - Packaged
 # 1.4 221120 - Summaries optional if SummaryDays is not defined.
 # 1.3 220420 - Incorporated funcs3 timevalue and retime (removed convert_time)
@@ -128,17 +129,19 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
 
     ### Returns
     - 2-tuple of (success_status, subprocess run return structure)
-    - if `return_type` = "cmdrun" then success_status = True if the subprocess run returns a 
-    passing status (0), else success_status = False.
-    - if `return_type` = "check_string" then success_status = True if the `cmd` stdout response
-    contains `expected_text` and not `not_text` (response line qualified by `check_line_text`).
+    - If `user_host_port` is a remote host but a ssh connection was not successful then 
+    success_status = RTN_WARNING.
+    - If `return_type` = "cmdrun" then success_status = RTN_PASS if the subprocess run returns a 
+    passing status (0), else success_status = RTN_FAIL.
+    - If `return_type` = "check_string" then success_status = RTN_PASS if the `cmd` stdout response
+    contains `expected_text` and not `not_text` (response line qualified by `check_line_text`),
+    else success_status = RTN_FAIL.
     """
 
     if return_type not in ["check_string", "cmdrun"]:
         _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
         logging.error (f"ERROR:  {_msg}")
         raise ValueError (_msg)
-
 
     if user_host_port != "local":
         u_h, host, port = split_user_host_port(user_host_port)
@@ -153,7 +156,6 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
         except Exception as e:
             logging.error(f"ERROR:  subprocess.run of cmd <{cmd}> failed.\n  {e}")
             continue
-            # return (False, None)
 
         if return_type == "check_string":
             if check_line_text is None:
@@ -168,64 +170,34 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             if expected_text in text_to_check:
                 if not_text is not None:
                     if not_text not in text_to_check:
-                        # return (True, runtry)
                         return (RTN_PASS, runtry)
                 else:
-                    # return (True, runtry)
                     return (RTN_PASS, runtry)
-            # else:
-            #     if nTry == getcfg('nRetries')-1:
-            #         # return (False, runtry)
-            #         return (RTN_FAIL, runtry)
 
         elif return_type == "cmdrun":
             if runtry.returncode == 0:
-                # return (True, runtry)
                 return (RTN_PASS, runtry)
-            # elif nTry == getcfg('nRetries')-1:
-            #     # return (False, runtry)
-            #     return (RTN_FAIL, runtry)
 
-        # else:
-            # _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
-            # logging.error (f"ERROR:  {_msg}")
-            # raise ValueError (_msg)
         time.sleep (timevalue(getcfg('RetryInterval')).seconds)
 
-    if user_host_port == "local"  or  "ping" in cmd:
+    if user_host_port == "local":
         return (RTN_FAIL, runtry)
     
-    else:  # Failing on remote system - ensure target can be pinged
-        logging.debug(f"cmd_check command failed on remote system - attempting to ping {host}")
-        pt = str(int((timevalue(getcfg("ping_timeout", "1s")).seconds)))
-        pingcmd = ["ping", "-c", "1", "-w", pt, host]
-        for nTry in range (getcfg('nRetries')):
+    logging.debug(f"cmd_check command failed on remote system - attempting simple ssh connection to {u_h}")
+    simplessh = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T", "echo", "hello"]
 
-            try:
-                logging.debug(f"cmd_check ping try {nTry+1}: <{pingcmd}>")
-                # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
-                pingtry = subprocess.run(pingcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
-                # print (pingtry.returncode)
-                if pingtry.returncode == 0:
-                    return (RTN_FAIL, runtry)
-            except Exception as e:
-                logging.error(f"ERROR:  subprocess.run of cmd <{pingcmd}> failed.\n  {e}")
-                continue
-                # return (False, None)
-        
-        # logging.debug(f"cmd_check ping of remote host {host} failed.")
-        error_msg = pingtry.stderr.replace('\n','')
-        if error_msg == ""  and  "100% packet loss" in pingtry.stdout:
-            error_msg = "Cannot contact target host."
+    for nTry in range (getcfg('nRetries')):
+        try:
+            logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
+            # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
+            simplessh_try = subprocess.run(simplessh, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+            if simplessh_try.returncode == 0:       # ssh access works - return original cmd fail info
+                return (RTN_FAIL, runtry)
+        except Exception as e:
+            logging.error(f"ERROR:  subprocess.run of cmd <{simplessh}> failed.\n  {e}")
+            continue
 
-        return (RTN_WARNING, error_msg)
-
-
-    
-
-    # return (False, None)
-    # return (RTN_FAIL, runtry)
-
+    return (RTN_WARNING, simplessh_try)
 
 
 #=====================================================================================
@@ -266,7 +238,6 @@ def check_LAN_access(host=None):
 
     pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", getcfg("Gateway")], 
                          user_host_port="local", return_type="cmdrun")
-    # if pingrslt[0]:
     if pingrslt[0] == RTN_PASS:
         return True
     else:

@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -35,8 +36,12 @@ def dotest (test):
     if setup_rslt == RTN_PASS:
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-dotest ({"key":"Process_x11vnc", "tag":"x11vnc", "host":"local", "user_host_port":"local", "critical":False, "check_interval":1, "rest_of_line":"/usr/bin/x11vnc"})
+dotest ({"key":"Process_local_pass", "tag":"local_pass", "host":"local", "user_host_port":"local", "critical":False, "check_interval":1, "rest_of_line":"/usr/bin/x11vnc"})
 
-dotest ({"key":"Process_RPi3_sshd", "tag":"Process_RPi3_sshd", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":False, "check_interval":1, "rest_of_line":"/usr/sbin/sshd"})
+dotest ({"key":"Process_remote_pass", "tag":"remote_pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":False, "check_interval":1, "rest_of_line":"/usr/sbin/sshd"})
 
-dotest ({"key":"Process_XXX", "tag":"XXX", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"/usr/bin/XXX"})
+dotest ({"key":"Process_local_fail", "tag":"local_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"/usr/bin/XXX"})
+
+dotest ({"key":"Process_unknown_XXX", "tag":"unknown_XXX", "host":"unknown", "user_host_port":"me@unknown", "critical":False, "check_interval":1, "rest_of_line":"/usr/bin/XXX"})
+
+dotest ({"key":"Process_unavailable_XXX", "tag":"unavailable_XXX", "host":"shopcam", "user_host_port":"me@shopcam", "critical":False, "check_interval":1, "rest_of_line":"/usr/bin/XXX"})
