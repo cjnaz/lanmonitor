@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -48,3 +49,7 @@ dotest ({"key":"Free_nosuchpath", "tag":"nosuchpath", "host":"local", "user_host
 dotest ({"key":"Free_pathWithSpaces", "tag":"pathWithSpaces", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/share/tmp/Ripped videos"})
 
 dotest ({"key":"Free_badlimit", "tag":"badlimit", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10x% /home"})
+
+dotest ({"key":"Free_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+
+dotest ({"key":"Free_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})

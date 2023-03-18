@@ -36,8 +36,8 @@ If you need other plug-ins, or wish to contribute, please open an issue on the g
 ---
 
 ## Notable changes since prior release
-- Converted to Python package format and posted to PyPI.
-- Added cfg params ssh_timeout and pinghost_plugin_timeout.
+- Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  ssh access failures are logged as WARNINGs and do not generate notifications.  
+- Added cfg params `ssh_timeout` and `pinghost_plugin_timeout`.
 
 <br/>
 
@@ -55,7 +55,7 @@ Monitor status of network resources, such as services, hosts, file system age, s
 See README.md for descriptions of available plugins.
 
 Operates interactively or as a service (loop forever and controlled via systemd or other).
-3.0
+3.1
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -76,7 +76,7 @@ optional arguments:
 ## Example output
 ```
 $ lanmonitor --verbose
- WARNING:  ========== lanmonitor 3.0, pid 26032 ==========
+ WARNING:  ========== lanmonitor 3.1, pid 26032 ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
     INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)
@@ -155,6 +155,8 @@ $ lanmonitor --verbose
 
 <br/>
 
+<a id="monitored-items-setup"></a>
+
 ---
 
 ## Monitored items setup
@@ -176,9 +178,11 @@ For monitored items, the general format of a line is
 3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line below specifies that `Yahoo.com` will be pinged from the `RPi2.mylan` host by doing an `ssh me@RPi2.mylan ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
 4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.  (For critical-tagged items their `check_interval` should be less than the `CriticalReNotificationInterval`.)
 5. `<check_interval>` is the wait time between rechecks for this specific item.  Each item is checked at its own check_interval.
-5. `<rest_of_line>` are the monitored type-specific settings.
+6. `<rest_of_line>` are the monitored type-specific settings.
 
 <br/>
+
+<a id="supplied-plugins"></a>
 
 ---
 
@@ -226,6 +230,8 @@ check_interval.  This allows for intermittently missing paths.
       Host_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <IP address or hostname>
       Host_RPi1_HP1018           local          CRITICAL  5m   192.168.1.44
       Host_Yahoo                 me@RPi2.mylan            20m  Yahoo.com
+
+  The default timeout for ping commands is 1 seconds.  pinghost_plugin_timeout may be set in the config file to override the default, eg: `pinghost_plugin_timeout 5s`
 
 - **process_plugin:**  Check that the specified process is alive.  A process is checked by seeing if the `<executable path>` occurs in the output of a `ps -Af` call.  
 
@@ -276,7 +282,7 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
 - Within the `eval_status()` function:
   - Adjust the `cmd` for your needed subprocess call command.
   - The `cmd_check()` function can check the returncode or return text.  It also returns the full subprocess call response.  _See the cmd_check function within the lanmonfuncs.py module for built-in checking features._  Uncomment the `# logging.debug (f"cmd_check response:  {rslt}")` line to see what's available for building response checker code.
-  - Adjust the `if rslt[0] == True: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
+  - Adjust the `if rslt[0] == RTN_PASS: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
 - Create a companion `mynewitem_plugin_test.py` by copying from the lanmonitor/tests directory, and create `dotest()` calls to exercise all possible good, bad, and invalid conditions.
 - Debug and validate the new plugin module by running standalone (`./mynewitem_plugin_test.py`).
 - Add the `MonType_<your_monitor_type> <abs_path_to>/mynewitem_plugin>` line and specific monitor items to your config file.
@@ -306,23 +312,29 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
 
-      - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`lanmonitor -vv`, or run the plugin standalone)
+      - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`lanmonitor -vv`, or run the plugin's `..._test.py` script)
       to see the available cmd_check() response data. See `lanmonfuncs.py` for cmd_check feature details and the return structure.
       - If the host is not `local` then the lanmonitor core will check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access()` check is performed only once per check iteration.  Thus, your eval_status() code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check (using the pinghost plugin) earlier in the config file to limit fail ambiguity.
+      - In addition to the `Gateway` access check, if a monitor item is to be executed on a remote host (not `local`) and the results are not passing, then `cmd_check` with double checks that ssh-based access to the target host is working.  `cmd_check` returns RTN_WARNING if there is an ssh access issue, versus RTN_PASS/RTN_FAIL for the specific checked item.  Your plugin should distinguish between ssh vs. real failures.
 
 3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `"check_interval":1` as a placeholder.)
 
             dotest ({"key":"SELinux_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
 
-            dotest ({"key":"SELinux_RPiX", "tag":"RPiX", "host":"RPiX", "user_host_port":"pi@rpiX", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+            dotest ({"key":"SELinux_RPi3", "tag":"RPi3", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":False, "check_interval":1, "rest_of_line":"enforcing"})
 
-            dotest ({"key":"SELinux_RPi2", "tag":"RPi2", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":False, "check_interval":1, "rest_of_line":"enforcing"})
+            dotest ({"key":"SELinux_RPi3_CRIT", "tag":"RPi3_CRIT", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
 
             dotest ({"key":"SELinux_badmode", "tag":"Shop2", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcingX"})
 
-            dotest ({"key":"SELinux_RPi2_CRIT", "tag":"RPi2_CRIT", "host":"rpi2.lan", "user_host_port":"pi@rpi2.lan", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+            dotest ({"key":"SELinux_Unknown", "tag":"Unknown", "host":"RPiX", "user_host_port":"pi@rpiX", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+
+            dotest ({"key":"SELinux_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+
 
 <br/>
+
+<a id="writing-notification-handler-plugins"></a>
 
 ---
 
@@ -364,7 +376,9 @@ The following functions within each listed notification handler are called.  The
 ---
 
 ## Version history
-- 3.0.3 230306 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, added pinghost_plugin_timeout.
+- 3.1 230320 - Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  
+Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, added pinghost_plugin_timeout.
+  cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
 - 3.0.2 230226 - Converted to package format, updated to cjnfuncs 2.0.
 - V2.0  221130 - Changed to check_interval per item.  Added `freespace` and `apt_upgrade_history` plugins.  Removed --once switch, replaced with --service switch.  Removed config RecheckInterval, replaced with ServiceLoopTime.  - Added `--print-log` switch.  Tuned up debug logging for plugin development.  Fixed summaries disable bug.
 - V1.5  221120 - Added apt_upgrade_history plugin, Added `--print-log` switch, Fixed summaries disable bug.
