@@ -9,12 +9,13 @@ The url may be on a local or remote server.
       Page_WeeWX              local             15m  http://localhost/weewx/             Current Conditions
       Page_xBrowserSync       me@RPi2.mylan     1h   https://www.xbrowsersync.org/       Browser syncing as it should be: secure, anonymous and free
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -86,7 +87,10 @@ class monitor:
         if "404 Not Found" in rslt[1].stdout:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - WEBPAGE <{self.url}> NOT FOUND"}
 
-        if rslt[0] == True:
+        if rslt[0] == RTN_PASS:
             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.url}"}
+        elif rslt[0] == RTN_WARNING:
+            errro_msg = rslt[1].stderr.replace('\n','')
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
         else:
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - WEBPAGE <{self.url}> NOT AS EXPECTED"}

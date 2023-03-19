@@ -48,4 +48,6 @@ dotest ({"key":"Host_local_to_Unknown", "tag":"local_to_Unknown", "host":"local"
 
 dotest ({"key":"Host_local_to_Unavailable", "tag":"local_to_Unavailable", "host":"local", "user_host_port":"local", "critical":False, "check_interval":1, "rest_of_line":"shopcam"})
 
-dotest ({"key":"Host_Unavailable_to_Known", "tag":"Unavailable_to_Known", "host":"shopcam", "user_host_port":"me@shopcam", "critical":False, "check_interval":1, "rest_of_line":"shop2"})
+dotest ({"key":"Host_Unknown_remote", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"rpi3"})
+
+dotest ({"key":"Host_Unavailable_remote", "tag":"Unavailable_to_Known", "host":"shopcam", "user_host_port":"me@shopcam", "critical":False, "check_interval":1, "rest_of_line":"rpi3"})
