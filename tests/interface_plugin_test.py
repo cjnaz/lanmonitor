@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -37,8 +38,15 @@ def dotest (test):
 
 dotest ({"key":"Interface_local_lo", "tag":"local_lo", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"lo"})
 
-dotest ({"key":"Interface_router_wl0.1", "tag":"router_wl0.1", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "check_interval":1, "rest_of_line":"wl0.1"})
+dotest ({"key":"Interface_remote_lo", "tag":"remote_lo", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"lo"})
+
+# Test relevant for dd-wrt
+# dotest ({"key":"Interface_router_wl0.1", "tag":"router_wl0.1", "host":"192.168.1.1", "user_host_port":"root@192.168.1.1", "critical":True, "check_interval":1, "rest_of_line":"wl0.1"})
 
 dotest ({"key":"Interface_bad_intf", "tag":"bad_intf", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"bad"})
 
 dotest ({"key":"Interface_no_interface", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":""})
+
+dotest ({"key":"Interface_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"lo"})
+
+dotest ({"key":"Interface_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"lo"})

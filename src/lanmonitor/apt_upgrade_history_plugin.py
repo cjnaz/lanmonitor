@@ -9,12 +9,13 @@ Typical config file lines:
     AptUpgrade_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>    <age>  <apt_command>
     AptUpgrade_MyHost  local  CRITICAL  1d  30d  apt full-upgrade
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #
 # Note: The apt history file formatting may be locale specific.  This plugin is currently hardcoded to US locale.
@@ -98,7 +99,11 @@ class monitor:
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # logging.debug (f"cmd_check response:  {rslt}")
 
-        if not rslt[0]:
+        if rslt[0] == RTN_WARNING:
+            errro_msg = rslt[1].stderr.replace('\n','')
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+
+        if rslt[0] != RTN_PASS:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET APT HISTORY"}
 
         dates = self.apt_RE.findall(rslt[1].stdout)

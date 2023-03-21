@@ -9,12 +9,13 @@ Note that sub-directories are not recursed - only the listed top-level directory
       Activity_MyServer_backups     local       1d  8d    /mnt/share/MyServerBackups
       Activity_RPi2_log.csv         rpi2.mylan  CRITICAL  30s  5m    /mnt/RAMDRIVE/log.csv
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -94,8 +95,13 @@ class monitor:
         ls_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # logging.debug (f"cmd_check response:  {ls_rslt}")
 
-        if not ls_rslt[0]:
+        if ls_rslt[0] == RTN_WARNING:
+            errro_msg = ls_rslt[1].stderr.replace('\n','')
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+
+        if ls_rslt[0] != RTN_PASS:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET ls OF PATH <{self.path}>"}
+
         ls_list = ls_rslt[1].stdout.split("\n")
         newest_file = ls_list[0]                # When path is to a file
         if newest_file.startswith("total"):

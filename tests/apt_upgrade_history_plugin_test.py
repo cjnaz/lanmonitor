@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -41,7 +42,9 @@ dotest ({"key":"AptUpgrade_TooOld", "tag":"TooOld", "host":"rpi3", "user_host_po
 
 dotest ({"key":"AptUpgrade_NoUpgrades", "tag":"NoUpgrades", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgradeS"})
 
-dotest ({"key":"AptUpgrade_CantAccess", "tag":"CantAccess", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
+dotest ({"key":"AptUpgrade_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
+
+dotest ({"key":"AptUpgrade_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"10h apt full-upgrade"})
 
 dotest ({"key":"AptUpgrade_baddef", "tag":"badline", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10m"})
 

@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -35,14 +36,16 @@ def dotest (test):
     if setup_rslt == RTN_PASS:
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-dotest ({"key":"Activity_Shop2_backups", "tag":"Shop2_backups", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"8d /mnt/share/backups/Shop2/"})
+dotest ({"key":"Activity_local_pass", "tag":"local_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"8d /etc"})
 
-dotest ({"key":"Activity_rpi3_ramdrive", "tag":"rpi3_ramdrive", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"5m		/mnt/RAMDRIVE"})
+dotest ({"key":"Activity_remote_pass", "tag":"remote_pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"5m		/mnt/RAMDRIVE"})
 
-dotest ({"key":"Activity_Shop2_backups_fail", "tag":"Shop2_backups_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/backups/Shop2/"})
+dotest ({"key":"Activity_local_fail", "tag":"local_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1s /etc"})
 
 dotest ({"key":"Activity_empty_dir", "tag":"empty_dir", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk"}) # empty dir in cwd
 
 dotest ({"key":"Activity_badpath", "tag":"badpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
 
-dotest ({"key":"Activity_badhost", "tag":"badhost", "host":"rpi3.lan", "user_host_port":"pi@rpi3.lan", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
+dotest ({"key":"Activity_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
+
+dotest ({"key":"Activity_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})

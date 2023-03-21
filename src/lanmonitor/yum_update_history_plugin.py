@@ -10,12 +10,13 @@ Typical config file lines:
     YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
     YumUpdate_MyHost  local  CRITICAL  1d  15d  update --skip-broken
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -96,7 +97,10 @@ class monitor:
 
         if "You don't have access to the history DB." in rslt[1].stderr:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO ACCESS TO THE YUM HISTORY DB"}
-        if not rslt[0]:
+        if rslt[0] == RTN_WARNING:
+            errro_msg = rslt[1].stderr.replace('\n','')
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+        if rslt[0] != RTN_PASS:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET YUM HISTORY"}
 
         for line in rslt[1].stdout.split("\n"):

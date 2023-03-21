@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
@@ -35,8 +36,12 @@ def dotest (test):
     if setup_rslt == RTN_PASS:
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-dotest ({"key":"Service_local_sshd", "tag":"local_sshd", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"sshd"})
+dotest ({"key":"Service_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"sshd"})
 
-dotest ({"key":"Service_RPi3_sshd", "tag":"RPi3_sshd", "host":"RPi3", "user_host_port":"pi@RPi3", "critical":False, "check_interval":1, "rest_of_line":"sshd"})
+dotest ({"key":"Service_remote", "tag":"remote", "host":"RPi3", "user_host_port":"pi@RPi3", "critical":False, "check_interval":1, "rest_of_line":"sshd"})
 
-dotest ({"key":"Service_local_xx", "tag":"local_xx", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"xx"})
+dotest ({"key":"Service_fail", "tag":"fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"xx"})
+
+dotest ({"key":"Service_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"xx"})
+
+dotest ({"key":"Service_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"xx"})

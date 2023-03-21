@@ -20,7 +20,7 @@ __version__ = "3.1"
 #
 #  Chris Nelson, Copyright 2021-2023
 #
-# 3.1 230304 - Added config setting pinghost_plugin_timeout
+# 3.1 230320 - Added config param pinghost_plugin_timeout, Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -96,14 +96,17 @@ class monitor:
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         logging.debug (f"cmd_check response:  {rslt}")
 
-        if rslt[0] == True:
+        if rslt[0] == RTN_PASS:
             ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
             if ping_rslt:
                 return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
             else:
                 return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  UNKNOWN ERROR"}  # This should not happen
-        else:
+
+        elif rslt[0] == RTN_WARNING:
             error_msg = rslt[1].stderr.replace('\n','')
-            if error_msg == ""  and  "100% packet loss" in rslt[1].stdout:
-                error_msg = "Cannot contact target host."
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
+
+        else:
+            error_msg = "Cannot contact target host"  if rslt[1].stderr == ''  else  rslt[1].stderr.replace('\n','')
             return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}

@@ -12,12 +12,13 @@ Expected free space may be an absolute value or a percentage.
 If the path does not exist, setup() will pass but eval_status() will return RTN_WARNING and retry on each
 check_interval.  This allows for intermittently missing paths.
 """
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
 #==========================================================
@@ -103,7 +104,12 @@ class monitor:
         cmd = ["df", self.path]
         df_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
         # logging.debug (f"cmd_check response:  {df_rslt}")
-        if not df_rslt[0]:
+
+        if df_rslt[0] == RTN_WARNING:
+            errro_msg = df_rslt[1].stderr.replace('\n','')
+            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+
+        if df_rslt[0] != RTN_PASS:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET df OF PATH <{self.path}>"}
 
         out = SPACE_RE.search(df_rslt[1].stdout)

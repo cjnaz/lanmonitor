@@ -1,13 +1,14 @@
 #!/usr/bin/env python3 
-"""LAN monitor notifications handler
+"""LAN monitor stock notifications handler
 """
 
-__version__ = "3.0"
+__version__ = "3.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2023
 #
+# 3.1 230320 - Debug mode status dump 
 # 3.0 230301 - Packaged
 # V2.0  221130  Dropped --once, added --service.  Added on-demand summary.
 # V1.4  221120  Summaries optional if SummaryDays is not defined.
@@ -104,11 +105,13 @@ class notif_class:
 
 
     def each_loop(self):
-        """ On-demand status dump, triggered by signal SIGUSR2
+        """ Status dump enabled either by:
+            Signal SIGUSR2
+            Debug level logging (args verbose == 2) and non-service mode
         """
         logging.debug (f"Entering: {HANDLER_NAME}.each_loop()")
 
-        if not globvars.sig_status:
+        if not globvars.sig_status  and  not (not globvars.args.service  and  globvars.args.verbose == 2):
             return
         globvars.sig_status = False
 
@@ -120,13 +123,6 @@ class notif_class:
                 status = "  OK"
             status_log += f"  {key.ljust(globvars.keylen)}  {inst_dict[key].prior_run}  {inst_dict[key].next_run}  {status}\n"
             # NOTE - prior_run vars are not defined until after first run.  each_loop() isn't called until after check items have been run, so _shouldn't_ crash.
-        # for key in __main__.inst_dict:
-        #     if key in self.events:
-        #         status = self.events[key]['message']
-        #     else:
-        #         status = "  OK"
-        #     status_log += f"  {key.ljust(globvars.keylen)}  {__main__.inst_dict[key].prior_run}  {__main__.inst_dict[key].next_run}  {status}\n"
-        #     # NOTE - prior_run vars are not defined until after first run.  each_loop() isn't called until after check items have been run, so _shouldn't_ crash.
 
         logging.warning(f"On-demand status dump:\n{status_log}")
 
