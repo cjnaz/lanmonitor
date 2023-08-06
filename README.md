@@ -211,11 +211,14 @@ check_interval.  This allows for intermittently missing paths.
       Free_RPi1                  pi@RPi3        CRITICAL  5m   20%         /home/pi
       Free_share                 local                    1d   1000000000  /mnt/share
 
-- **fsactivity_plugin:**  The age of files (or individual file if `<path to directory or file>` is to a file) is checked for at least one file being more recent than `<age>` ago.  Note that sub-directories are not recursed - only the specified top-level directory is checked for the newest file.
+- **fsactivity_plugin:**  The age of files in a directory is checked for at least one file being more recent than `<age>` ago.
+Note that sub-directories are not recursed - only the specified top-level directory is checked for the newest file.
+Alternately, the age of a specific individual file may be checked.
+A path to a directory is specified by ending the path with a `/`, else the path is taken as an individual file.
 
       MonType_Activity	fsactivity_plugin
       Activity_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <path to directory or file>
-      Activity_MyServer_backups  local                    1h   8d  /mnt/share/MyServerBackups
+      Activity_MyServer_backups  local                    1h   8d  /mnt/share/MyServerBackups/
       Activity_RPi2_log.csv      me@rpi2.mylan  CRITICAL  30s  5m  /mnt/RAMDRIVE/log.csv
 
 - **interface_plugin:**  The specified interface is checked with a `ifconfig <interface name>`, checking for 'UP' and 'RUNNING'.
