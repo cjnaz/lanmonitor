@@ -16,7 +16,7 @@ __version__ = "3.2"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.2 230602 - Changed individual file method so as to detect file missing
 # 3.1 230320 - Warning for ssh fail to remote
@@ -29,7 +29,9 @@ import re
 import lanmonitor.globvars as globvars
 import pathlib
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
-from cjnfuncs.cjnfuncs import logging, timevalue, retime
+from cjnfuncs.core import logging
+from cjnfuncs.timevalue import timevalue, retime
+
 
 # Configs / Constants
 LSMATCH = re.compile(r'[ldrwx\-.]+\s+[\d*]\s+[\w\d]+\s+[\w\d]+\s+[\d]+\s+([\d\-]+)+\s([\d:.]+)\s([\d\-]+)')

@@ -18,7 +18,7 @@ __version__ = "3.1"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.1 230320 - Added config param pinghost_plugin_timeout, Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -29,13 +29,16 @@ import datetime
 import re
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
-from cjnfuncs.cjnfuncs import logging, getcfg, timevalue
+from cjnfuncs.core import logging
+from cjnfuncs.timevalue import timevalue
+import lanmonitor.globvars as globvars
 
 # Configs / Constants
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 PING_RESPONSE_RE = re.compile(r"([\d.]+)\)*:.+time=([\d.]+) ms")
 TIMEOUT = "1s"
+
 
 class monitor:
 
@@ -77,7 +80,7 @@ class monitor:
             logging.error (f"  ERROR:  <{self.key}> CAN'T PARSE IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL
     
-        self.timeout = str(int((timevalue(getcfg("pinghost_plugin_timeout", TIMEOUT)).seconds)))
+        self.timeout = str(int((timevalue(globvars.config.getcfg("pinghost_plugin_timeout", TIMEOUT)).seconds)))
 
         return RTN_PASS
 

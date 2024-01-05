@@ -10,12 +10,13 @@ Typical config file lines:
     YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
     YumUpdate_MyHost  local  CRITICAL  1d  15d  update --skip-broken
 """
-__version__ = "3.1"
+__version__ = "3.2"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
+# 3.2 240105 - Bug fix yum command must now completely match
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
@@ -25,10 +26,13 @@ import datetime
 import re
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
-from cjnfuncs.cjnfuncs import logging, timevalue, retime
+from cjnfuncs.core import logging
+from cjnfuncs.timevalue import timevalue, retime
+
+
 
 # Configs / Constants
-YUMLINEFORMAT=re.compile(r"[ \d]+ \| [\w -]+ \| ([\d :-]+) ")
+YUMLINEFORMAT=re.compile(r"[ \d]+ \| ([\w -]+) \| ([\d :-]+) ")
 #    154 | update --skip-broken     | 2021-03-18 22:31 | Update         |    5 ss
 
 
@@ -104,11 +108,11 @@ class monitor:
             return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET YUM HISTORY"}
 
         for line in rslt[1].stdout.split("\n"):
-            if self.yum_command in line:
-                out = YUMLINEFORMAT.match(line)
-                if out:
+            out = YUMLINEFORMAT.match(line)
+            if out:
+                if out.group(1) == self.yum_command:
                     try:
-                        last_update = datetime.datetime.strptime(out.group(1), "%Y-%m-%d %H:%M").timestamp()
+                        last_update = datetime.datetime.strptime(out.group(2), "%Y-%m-%d %H:%M").timestamp()
                         last_update_age = datetime.datetime.now().timestamp() - last_update
                         if last_update_age < self.maxage_sec:
                             return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {retime(last_update_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)"}

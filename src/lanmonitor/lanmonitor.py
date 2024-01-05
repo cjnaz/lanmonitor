@@ -13,17 +13,7 @@ In service mode
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
-#
-# 3.0 230301 - Converted to package format, updated to cjnfuncs 2.0
-# 2.0 221130 - check_interval per item, dropped --once, added --service 
-# 1.5 221120 - Added --print-log switch, Summaries are optional if SummaryDays is not defined.
-# 1.4 220420 - Incorporated funcs3 timevalue and retime
-# 1.3 220217 - Updates for funcs3 V1.0, stock_notif catch of emailer fails.
-# 1.2 210605 - Reworked have_access check to check_LAN_access logic.
-# 1.1 210523 - Added loadconfig flush_on_reload to purge any deleted cfg keys.  Error formatting tweaks.
-# 1.0 210507 - Major refactor
-# 0.1 210129 - Initial
+#  Chris Nelson, Copyright 2021-2024
 #
 #==========================================================
 
@@ -44,7 +34,13 @@ except:
     __version__ = importlib_metadata.version(__package__ or __name__)
     # print ("Using importlib_metadata for __version__ assignment")
 
-from cjnfuncs.cjnfuncs import set_toolname, logging, config_item, cfg, getcfg, mungePath, deploy_files, timevalue
+from cjnfuncs.core import logging, set_toolname
+from cjnfuncs.configman import config_item
+from cjnfuncs.timevalue import timevalue
+from cjnfuncs.mungePath import mungePath
+from cjnfuncs.deployfiles import deploy_files
+import cjnfuncs.core as core
+
 import lanmonitor.globvars as globvars
 import lanmonitor.lanmonfuncs as lanmonfuncs
 
@@ -59,7 +55,7 @@ PRINTLOGLENGTH  = 40
 
 def main():
     global inst_dict
-    global tool, config
+    # global config
     first = True
     inst_dict = {}
     notif_handlers_list = []
@@ -67,7 +63,7 @@ def main():
 
 
     while 1:
-        reloaded = config.loadconfig(flush_on_reload=True, call_logfile=None, call_logfile_wins=logfile_override)
+        reloaded = globvars.config.loadconfig(flush_on_reload=True, call_logfile=None, call_logfile_wins=logfile_override)
 
         if not globvars.args.service:               # In service mode, logging level is set from config file
             if globvars.args.verbose == 1:
@@ -79,7 +75,7 @@ def main():
 
         if first:
             if globvars.args.service:
-                time.sleep (timevalue(getcfg('StartupDelay', 0)).seconds)
+                time.sleep (timevalue(globvars.config.getcfg('StartupDelay', 0)).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
 
@@ -89,7 +85,7 @@ def main():
             
             # Refresh the notifications handlers
             notif_handlers_list.clear()
-            notif_handlers = getcfg("Notif_handlers", None)
+            notif_handlers = globvars.config.getcfg("Notif_handlers", None)
 
             try:
                 if notif_handlers is not None:
@@ -112,15 +108,15 @@ def main():
             inst_dict.clear()
             globvars.keylen = 0
             globvars.hostlen = 0
-            for key in cfg:                 # Get keylen and hostlen field widths across all monitored items for pretty printing
+            for key in globvars.config.cfg:                 # Get keylen and hostlen field widths across all monitored items for pretty printing
                 if key.startswith("MonType_"):
                     montype_tag = key.split("_")[1]
-                    for line in cfg:
+                    for line in globvars.config.cfg:
                         try:
                             if line.startswith(montype_tag + "_"):
                                 if len(line) > globvars.keylen:
                                     globvars.keylen = len(line)
-                                host = lanmonfuncs.split_user_host_port(cfg[line].split(maxsplit=1)[0])[1]
+                                host = lanmonfuncs.split_user_host_port(globvars.config.cfg[line].split(maxsplit=1)[0])[1]
                                 if len(host) > globvars.hostlen:
                                     globvars.hostlen = len(host)
                         except Exception as e:
@@ -129,10 +125,10 @@ def main():
 
         # Process each monitor type and item
         checked_have_LAN_access = False
-        for line in cfg:
+        for line in globvars.config.cfg:
             if line.startswith("MonType_"):
                 montype_tag = line.split("_", maxsplit=1)[1]
-                montype_plugin = cfg[line]
+                montype_plugin = globvars.config.cfg[line]
                 xx = mungePath(montype_plugin)          # Allow for abs path or rel to lanmonitor dir
                 xx_parent = str(xx.parent)              # xx.parent == "." if no path specified
                 if xx_parent != '.'  and  xx_parent not in sys.path:
@@ -141,7 +137,7 @@ def main():
                 logging.debug (f"Imported monitor plugin <{xx.full_path}>, version <{plugin.__version__}>")
 
                 # Process all items in cfg of this MonType
-                for key in cfg:
+                for key in globvars.config.cfg:
                     if key.startswith(montype_tag + "_"):
                         # Instantiate the monitor item and call setup
                         # Line parsing (monline dict keys):
@@ -161,7 +157,7 @@ def main():
                                 monline.clear()
                                 monline["key"] = key
                                 monline["tag"] = key.split("_", maxsplit=1)[1]
-                                xx = cfg[key].split(maxsplit=1)
+                                xx = globvars.config.cfg[key].split(maxsplit=1)
                                 u_h_p = xx[0]
                                 monline["user_host_port"] = u_h_p
                                 _, host, _ = lanmonfuncs.split_user_host_port(u_h_p)
@@ -218,26 +214,26 @@ def main():
                                 # inst.next_run += datetime.timedelta(seconds=60)  # for debug
 
                                 # For items that run >= daily, set the daily run time, if defined
-                                if (first or reloaded)  and  getcfg("DailyRuntime", False)  and  (inst.check_interval >= 86400):
+                                if (first or reloaded)  and  globvars.config.getcfg("DailyRuntime", False)  and  (inst.check_interval >= 86400):
                                     try:
-                                        target_hour   = int(getcfg("DailyRuntime").split(":")[0])
-                                        target_minute = int(getcfg("DailyRuntime").split(":")[1])
+                                        target_hour   = int(globvars.config.getcfg("DailyRuntime").split(":")[0])
+                                        target_minute = int(globvars.config.getcfg("DailyRuntime").split(":")[1])
                                         inst.next_run = inst.next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
                                     except Exception as e:
-                                        logging.error (f"Cannot parse <DailyRuntime> in config:  {getcfg('DailyRuntime')} - Aborting")
+                                        logging.error (f"Cannot parse <DailyRuntime> in config:  {globvars.config.getcfg('DailyRuntime')} - Aborting")
                                         sys.exit(1)
 
                                 logging.debug(f"{key} - Next runtime: {inst.next_run}")
 
                                 # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host, if defined.  Do only once per active serviceloop.
-                                if (first or reloaded)  and  getcfg("Gateway", False) == False:
+                                if (first or reloaded)  and  globvars.config.getcfg("Gateway", False) == False:
                                     checked_have_LAN_access = True
                                     have_LAN_access = True
                                 if inst.host != "local"  and  not checked_have_LAN_access:
                                     checked_have_LAN_access = True
                                     have_LAN_access = lanmonfuncs.check_LAN_access()
                                     if not have_LAN_access:
-                                        logging.warning(f"WARNING:  NO ACCESS TO LAN ({getcfg('Gateway')}) - Checks run on remote hosts are skipped for this iteration.")
+                                        logging.warning(f"WARNING:  NO ACCESS TO LAN ({globvars.config.getcfg('Gateway')}) - Checks run on remote hosts are skipped for this iteration.")
                                     else:
                                         logging.debug(f"LAN access confirmed.  Proceeding with checks run on remote hosts.")
 
@@ -262,7 +258,7 @@ def main():
             sys.exit(0)
 
         first = False
-        time.sleep (timevalue(getcfg("ServiceLoopTime")).seconds)
+        time.sleep (timevalue(globvars.config.getcfg("ServiceLoopTime")).seconds)
 
 
 globvars.sig_summary = False
@@ -286,8 +282,8 @@ signal.signal(signal.SIGUSR2, int_handler)      # User 2  (12)
 
 
 def cli():
-    global tool, config, logfile_override
-    tool = set_toolname (TOOLNAME)
+    global logfile_override
+    set_toolname (TOOLNAME)
 
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--print-log', '-p', action='store_true',
@@ -302,7 +298,7 @@ def cli():
                         help=f"Install starter files in user space.")
     parser.add_argument('--setup-site', action='store_true',
                         help=f"Install starter files in system-wide space. Run with root prev.")
-    parser.add_argument('-V', '--version', action='version', version=f"{tool.toolname} {__version__}",
+    parser.add_argument('-V', '--version', action='version', version=f"{core.tool.toolname} {__version__}",
                         help="Return version number and exit.")
     globvars.args = parser.parse_args()
 
@@ -328,24 +324,24 @@ def cli():
     # Load config file and setup logging
     logfile_override = True  if not globvars.args.service  else False
     try:
-        config = config_item(globvars.args.config_file)
-        config.loadconfig(call_logfile_wins=logfile_override)
+        globvars.config = config_item(globvars.args.config_file)
+        globvars.config.loadconfig(call_logfile_wins=logfile_override)
     except Exception as e:
         logging.error(f"Failed loading config file <{globvars.args.config_file}>. \
 \n  Run with  '--setup-user' or '--setup-site' to install starter files.\n  {e}\n  Aborting.")
         sys.exit(1)
 
 
-    logging.warning (f"========== {tool.toolname} {__version__}, pid {os.getpid()} ==========")
-    logging.warning (f"Config file <{config.config_full_path}>")
+    logging.warning (f"========== {core.tool.toolname} {__version__}, pid {os.getpid()} ==========")
+    logging.warning (f"Config file <{globvars.config.config_full_path}>")
 
 
     # Print log
     if globvars.args.print_log:
         try:
-            _lf = mungePath(getcfg("LogFile"), tool.log_dir_base).full_path
+            _lf = mungePath(globvars.config.getcfg("LogFile"), core.tool.log_dir_base).full_path
             print (f"Tail of  <{_lf}>:")
-            _xx = collections.deque(_lf.open(), getcfg("PrintLogLength", PRINTLOGLENGTH))
+            _xx = collections.deque(_lf.open(), globvars.config.getcfg("PrintLogLength", PRINTLOGLENGTH))
             for line in _xx:
                 print (line, end="")
         except Exception as e:

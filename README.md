@@ -36,8 +36,12 @@ If you need other plug-ins, or wish to contribute, please open an issue on the g
 ---
 
 ## Notable changes since prior release
-- Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  ssh access failures are logged as WARNINGs and do not generate notifications.  
-- Added cfg params `ssh_timeout` and `pinghost_plugin_timeout`.
+- V3.2
+  - Adjusted for cjnfuncs V2.1 (module partitioning).
+  - SMTP params must be in the [SMTP] config file section.
+  - fsactivity plugin supports missing file.
+  - yum_update_history_plugin now requires full command match.
+
 
 <br/>
 
@@ -46,8 +50,7 @@ If you need other plug-ins, or wish to contribute, please open an issue on the g
 ## Usage
 ```
 $ lanmonitor -h
-usage: lanmonitor [-h] [--print-log] [--verbose] [--config-file CONFIG_FILE]
-                  [--service] [--setup-user] [--setup-site] [-V]
+usage: lanmonitor [-h] [--print-log] [--verbose] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V]
 
 LAN monitor
 
@@ -55,9 +58,13 @@ Monitor status of network resources, such as services, hosts, file system age, s
 See README.md for descriptions of available plugins.
 
 Operates interactively or as a service (loop forever and controlled via systemd or other).
-3.1
 
-optional arguments:
+In service mode
+    kill -SIGUSR1 <pid>   outputs a summary to the log file
+    kill -SIGUSR2 <pid>   outputs monitored items current status to the log file
+3.2
+
+options:
   -h, --help            show this help message and exit
   --print-log, -p       Print the tail end of the log file (default last 40 lines).
   --verbose, -v         Display OK items in non-service mode. (-vv for debug logging)
@@ -76,7 +83,7 @@ optional arguments:
 ## Example output
 ```
 $ lanmonitor --verbose
- WARNING:  ========== lanmonitor 3.1, pid 26032 ==========
+ WARNING:  ========== lanmonitor 3.2, pid 26032 ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
     INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)
@@ -136,7 +143,7 @@ $ lanmonitor --verbose
   - `NotifList` is a whitespace separated list of phone numbers (using your carrier's email-to-text bridge) to which event notifications will be sent.  Comment out NotifList to disable all notifications.  (As implemented by the `stock_notif.py` notification handler.)
 
 - Edit `lanmonitor.cfg`  and `creds_SMTP` for the **SMTP email parameters**.
-  - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file (`import creds_SMTP`). Any, none, or all parameters may be moved to an imported config file.
+  - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file (`import creds_SMTP`). Any, none, or all parameters may be moved to an imported config file. All of these SMTP-related params must be in the `[SMTP]` section.
   
             EmailServer       mail.mailserver.com
             EmailServerPort   P587TLS                 # One of: P465, P587, P587TLS, or P25   
@@ -151,6 +158,18 @@ $ lanmonitor --verbose
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - NOTE:  All timevalues in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6h` is 6 hours.  If no suffix is provided the time value is taken as seconds.
 - NOTE:  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router (DHCP / DNS resolver) reboot.
+- NOTE:  Some remote hosts may not have needed commands available for ssh login.  This is a known issue for the interface_plugin: the ifconfig command is not available on a Raspberry Pi via ssh.  To resolve this issue, add the missing command's path to /etc/ssh/sshd_config:
+
+      $ ssh user@host env
+      ...
+      PATH=/usr/local/bin:/usr/bin:/bin:/usr/games
+
+      The path to ifconfig on the target host is /usr/sbin/ifconfig
+
+      Add to the bottom of /etc/ssh/sshd_config
+      SetEnv PATH=/usr/local/bin:/usr/bin:/bin:/usr/games:/usr/sbin
+
+      $ sudo systemctl restart sshd
 - Supported on Python3.6+ on Linux.
 
 <br/>
@@ -379,6 +398,7 @@ The following functions within each listed notification handler are called.  The
 ---
 
 ## Version history
+- 3.2 240105 - Adjusted for cjnfuncs V2.1. fsactivity plugin supports missing file. yum_update_history_plugin now requires full command match.
 - 3.1 230320 - Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  
 Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, added pinghost_plugin_timeout.
   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)

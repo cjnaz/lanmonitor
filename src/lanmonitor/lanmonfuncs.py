@@ -4,7 +4,7 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.1 230320 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, 
 #   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
@@ -24,7 +24,11 @@ import subprocess
 import datetime
 import time
 import re
-from cjnfuncs.cjnfuncs import logging, getcfg, timevalue
+
+from cjnfuncs.core import logging
+from cjnfuncs.timevalue import timevalue
+
+import lanmonitor.globvars as globvars
 
 
 # Configs / Constants
@@ -145,10 +149,10 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
 
     if user_host_port != "local":
         u_h, host, port = split_user_host_port(user_host_port)
-        ct = str(int((timevalue(getcfg("ssh_timeout", "1s")).seconds)))
+        ct = str(int((timevalue(globvars.config.getcfg("ssh_timeout", "1s")).seconds)))
         cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T"] + cmd
 
-    for nTry in range (getcfg('nRetries')):
+    for nTry in range (globvars.config.getcfg('nRetries')):
         try:
             logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
             # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
@@ -179,7 +183,7 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             if runtry.returncode == 0:
                 return (RTN_PASS, runtry)
 
-        time.sleep (timevalue(getcfg('RetryInterval')).seconds)
+        time.sleep (timevalue(globvars.config.getcfg('RetryInterval')).seconds)
 
     if user_host_port == "local":
         return (RTN_FAIL, runtry)
@@ -187,7 +191,7 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
     logging.debug(f"cmd_check command failed on remote system - attempting simple ssh connection to {u_h}")
     simplessh = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T", "echo", "hello"]
 
-    for nTry in range (getcfg('nRetries')):
+    for nTry in range (globvars.config.getcfg('nRetries')):
         try:
             logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
             # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
@@ -229,7 +233,7 @@ def check_LAN_access(host=None):
     - Returns True if the `host` or config `Gateway` host can be pinged, else False.
     """
 
-    ip_or_hostname = getcfg("Gateway", host)
+    ip_or_hostname = globvars.config.getcfg("Gateway", host)
     if not ip_or_hostname:
         logging.error (f"  ERROR:  PARAMETER 'Gateway' NOT DEFINED IN CONFIG FILE - Aborting.")
         sys.exit(1)
@@ -238,7 +242,7 @@ def check_LAN_access(host=None):
         logging.error (f"  ERROR:  INVALID IP ADDRESS OR HOSTNAME <{ip_or_hostname}> - Aborting.")
         sys.exit(1)
 
-    pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", getcfg("Gateway")], 
+    pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", globvars.config.getcfg("Gateway")], 
                          user_host_port="local", return_type="cmdrun")
     if pingrslt[0] == RTN_PASS:
         return True
@@ -267,16 +271,16 @@ def next_summary_timestring():
     ### Returns
     - datetime of next summary
     """
-    if getcfg("SummaryDays", None) is None:
+    if globvars.config.getcfg("SummaryDays", None) is None:
         logging.debug(f"SummaryDays not defined.  Summaries are disabled.")
         return None
     try:
-        target_hour   = int(getcfg("SummaryTime","").split(":")[0])
-        target_minute = int(getcfg("SummaryTime","").split(":")[1])
+        target_hour   = int(globvars.config.getcfg("SummaryTime","").split(":")[0])
+        target_minute = int(globvars.config.getcfg("SummaryTime","").split(":")[1])
         today_day_num = datetime.datetime.today().isoweekday()
         now = datetime.datetime.now().replace(second=0, microsecond=0)
         next_summary = now + datetime.timedelta(days=30)
-        xx = getcfg("SummaryDays")
+        xx = globvars.config.getcfg("SummaryDays")
         days = [xx]  if type(xx) is int  else [int(day) for day in xx.split()]
         for daynum in days:
             offset_num_days = daynum - today_day_num
@@ -291,7 +295,7 @@ def next_summary_timestring():
         logging.debug(f"Next summary:  {next_summary}")
         return next_summary
     except Exception as e:
-        _msg = f"SummaryDays <{getcfg('SummaryDays','')}> or SummaryTime <{getcfg('SummaryTime','')}> settings could not be parsed\n  {e}"
+        _msg = f"SummaryDays <{globvars.config.getcfg('SummaryDays','')}> or SummaryTime <{globvars.config.getcfg('SummaryTime','')}> settings could not be parsed\n  {e}"
         logging.error(f"ERROR:  {_msg}")
         sys.exit(1)
         # raise ValueError (_msg) from None

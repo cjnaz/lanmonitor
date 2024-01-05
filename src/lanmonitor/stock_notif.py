@@ -6,7 +6,7 @@ __version__ = "3.1"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.1 230320 - Debug mode status dump 
 # 3.0 230301 - Packaged
@@ -26,7 +26,11 @@ __version__ = "3.1"
 
 import datetime
 import __main__
-from cjnfuncs.cjnfuncs import getcfg, snd_email, snd_notif, logging, timevalue
+from cjnfuncs.core import logging
+from cjnfuncs.timevalue import timevalue
+from cjnfuncs.SMTP import snd_email, snd_notif
+
+
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
 from lanmonitor.lanmonitor import inst_dict
@@ -86,14 +90,14 @@ class notif_class:
             if dict["rslt"] == RTN_CRITICAL:
                 # if there are no prior active criticals, then set renotif time to now + renotif value
                 if self.next_renotif < datetime.datetime.now()  and  not self.are_criticals():
-                    self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
+                    self.next_renotif += datetime.timedelta(seconds=timevalue(globvars.config.getcfg("CriticalReNotificationInterval")).seconds)
                     if globvars.args.service:
                         logging.debug(f"Next critical renotification:  {self.next_renotif}")
             if globvars.args.service:
                 if dict["notif_key"] not in self.events:
-                    if getcfg("NotifList", False):
+                    if globvars.config.getcfg("NotifList", False, section='SMTP'):
                         try:
-                            snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True)
+                            snd_notif (subj=NOTIF_SUBJ, msg=dict["message"], log=True, smtp_config=globvars.config)
                         except Exception as e:
                             logging.warning(f"snd_notif failed.  Email server down?:\n        {dict['message']}\n        {e}")
                     else:
@@ -138,7 +142,7 @@ class notif_class:
         """
         logging.debug (f"Entering: {HANDLER_NAME}.renotif()")
 
-        if not getcfg("NotifList", False):
+        if not globvars.config.getcfg("NotifList", False, section='SMTP'):
             return
         
         if (self.next_renotif < datetime.datetime.now()):
@@ -148,11 +152,11 @@ class notif_class:
                     if self.events[event]["criticality"] == RTN_CRITICAL:
                         criticals += f"\n  {self.events[event]['message']}"
                 try:
-                    snd_notif (subj=NOTIF_SUBJ, msg=criticals, log=True)
+                    snd_notif (subj=NOTIF_SUBJ, msg=criticals, log=True, smtp_config=globvars.config)
                 except Exception as e:
                     logging.warning(f"snd_notif failed.  Email server down?:\n        {criticals}\n        {e}")
 
-                self.next_renotif += datetime.timedelta(seconds=timevalue(getcfg("CriticalReNotificationInterval")).seconds)
+                self.next_renotif += datetime.timedelta(seconds=timevalue(globvars.config.getcfg("CriticalReNotificationInterval")).seconds)
                 logging.debug(f"Next critical renotification:  {self.next_renotif}")
             else:
                 self.next_renotif = datetime.datetime.now().replace(microsecond=0)
@@ -201,13 +205,15 @@ class notif_class:
                     logging.debug(f"lanmonitor status summary:\n{sum}")
                     return
 
-                if getcfg("EmailTo", False):
+                if globvars.config.getcfg("EmailTo", False, section='SMTP'):
                     try:
-                        snd_email(subj="lanmonitor status summary", body=sum, to=getcfg("EmailTo"), log=True)
+                        snd_email(subj="lanmonitor status summary", body=sum, 
+                                  to=globvars.config.getcfg("EmailTo", section='SMTP'), 
+                                  log=True, smtp_config=globvars.config)
                     except Exception as e:
                         logging.warning(f"snd_summary failed.  Email server down?:\n        {e}")
 
-                if getcfg("LogSummary", False):
+                if globvars.config.getcfg("LogSummary", False):
                     logging.warning(f"Summary:\n{sum}")
 
                 self.next_summary = next_summary_timestring()

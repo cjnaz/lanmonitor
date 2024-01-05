@@ -11,17 +11,20 @@ __version__ = "3.1"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
+#
+# TODO
+#   Check for blank interface in setup
 #   
 #==========================================================
 
 import datetime
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
-from cjnfuncs.cjnfuncs import logging
+from cjnfuncs.core import logging
 
 # Configs / Constants
 

@@ -4,48 +4,64 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
 
-from cjnfuncs.cjnfuncs import set_toolname, setuplogging, logging, cfg
+import subprocess
+import time
+from cjnfuncs.core import set_toolname, setuplogging, logging
+from cjnfuncs.configman import config_item
+import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS
 try:
     from fsactivity_plugin import monitor
 except:
     from lanmonitor.fsactivity_plugin import monitor
 
-tool = set_toolname("tool")
-cfg["nRetries"]         = 1
-cfg["RetryInterval"]    = "0s"
-cfg["ConsoleLogFormat"] = "{module:>35}.{funcName:20} - {levelname:>8}:  {message}"
-setuplogging()
+set_toolname("tool")
+globvars.config = config_item()
+globvars.config.cfg["nRetries"]         = 1
+globvars.config.cfg["RetryInterval"]    = "0s"
+setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 logging.getLogger().setLevel(logging.DEBUG)
 
-test_num = 0
-def dotest (test):
-    global test_num
-    test_num += 1
-    print(f"\nTest {test_num} {'-'*50}")
+def dotest (tnum, desc, test):
+    print(f"\nTest {tnum} - {desc} {'-'*50}")
     inst = monitor()
     setup_rslt = inst.setup(test)
     logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
     if setup_rslt == RTN_PASS:
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-dotest ({"key":"Activity_local_dir_pass", "tag":"local_dir_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"8d /etc/"})
+dotest (1, "Local activity pass - OK",
+        {"key":"Activity_local_dir_pass", "tag":"local_dir_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"8d /etc/"})
 
-dotest ({"key":"Activity_remote_pass", "tag":"remote_pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"5m /mnt/RAMDRIVE/"})
+dotest (2, "Local activity fail - CRITICAL",
+        {"key":"Activity_local_dir_fail", "tag":"local_dir_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1s /etc/"})
 
-dotest ({"key":"Activity_local_dir_fail", "tag":"local_dir_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1s /etc/"})
+subprocess.run(['ssh', 'me@testhost', 'touch', '/mnt/RAMDRIVE/touchfile'])
+dotest (3, "Remote directory activity pass - OK",
+        {"key":"Activity_remote_dir_pass", "tag":"remote_dir_pass", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"5m /mnt/RAMDRIVE/"})
 
-dotest ({"key":"Activity_empty_dir", "tag":"empty_dir", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk/"}) # empty dir in cwd
+dotest (4, "Remote file activity pass - OK",
+        {"key":"Activity_remote_file_pass", "tag":"remote_file_pass", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"5m /mnt/RAMDRIVE/touchfile"})
 
-dotest ({"key":"Activity_no_such_file", "tag":"no_such_file", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk/xxx"})
+time.sleep(2)
+dotest (5, "Remote activity fail - CRITICAL",
+        {"key":"Activity_remote_dir_fail", "tag":"remote_dir_fail", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"1s /mnt/RAMDRIVE/"})
 
-dotest ({"key":"Activity_Unknown_host", "tag":"Unknown_host", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
+dotest (6, "Local empty dir - CRITICAL",
+        {"key":"Activity_empty_dir", "tag":"empty_dir", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk/"}) # empty dir in cwd
 
-dotest ({"key":"Activity_Unavailable_host", "tag":"Unavailable_host", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
+dotest (7, "Local no such file - CRITICAL",
+        {"key":"Activity_no_such_file", "tag":"no_such_file", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"1h junk/xxx"})
+
+dotest (8, "No such host - setup WARNING",
+        {"key":"Activity_Unknown_host", "tag":"Unknown_host", "host":"nosuchhost", "user_host_port":"me@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})
+
+dotest (9, "Known host, unavailable - setup WARNING",
+        {"key":"Activity_Unavailable_host", "tag":"Unavailable_host", "host":"testhostX", "user_host_port":"me@testhostX", "critical":True, "check_interval":1, "rest_of_line":"1h /mnt/share/xxx"})

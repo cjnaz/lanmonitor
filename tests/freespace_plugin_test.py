@@ -4,52 +4,60 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
 
-from cjnfuncs.cjnfuncs import set_toolname, setuplogging, logging, cfg
+from cjnfuncs.core import set_toolname, setuplogging, logging
+from cjnfuncs.configman import config_item
+import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS
 try:
     from freespace_plugin import monitor
 except:
     from lanmonitor.freespace_plugin import monitor
 
-tool = set_toolname("tool")
-cfg["nRetries"]         = 1
-cfg["RetryInterval"]    = "0s"
-cfg["ConsoleLogFormat"] = "{module:>35}.{funcName:20} - {levelname:>8}:  {message}"
-setuplogging()
+set_toolname("tool")
+globvars.config = config_item()
+globvars.config.cfg["nRetries"]         = 1
+globvars.config.cfg["RetryInterval"]    = "0s"
+setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 logging.getLogger().setLevel(logging.DEBUG)
 
-test_num = 0
-def dotest (test):
-    global test_num
-    test_num += 1
-    print(f"\nTest {test_num} {'-'*50}")
+def dotest (tnum, desc, test):
+    print(f"\nTest {tnum} - {desc} {'-'*50}")
     inst = monitor()
     setup_rslt = inst.setup(test)
     logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
     if setup_rslt == RTN_PASS:
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-dotest ({"key":"Free_Per_pass", "tag":"Per_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+dotest (1, "Freespace as a percentage - OK",
+        {"key":"Free_Per_pass", "tag":"Per_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
 
-dotest ({"key":"Free_Per_fail", "tag":"Per_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"100% /home"})
+dotest (2, "Freespace as a percentage - CRITICAL",
+        {"key":"Free_Per_fail", "tag":"Per_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"100% /home"})
 
-dotest ({"key":"Free_Abs_pass", "tag":"Abs_pass", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"18000 /mnt/RAMDRIVE"})
+dotest (3, "Freespace as a absolute min - OK",
+        {"key":"Free_Abs_pass", "tag":"Abs_pass", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"18000 /mnt/RAMDRIVE"})
 
-dotest ({"key":"Free_Abs_fail", "tag":"Abs_fail", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"30000 /mnt/RAMDRIVE"})
+dotest (4, "Freespace as a absolute min - CRITICAL",
+        {"key":"Free_Abs_fail", "tag":"Abs_fail", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"30000 /mnt/RAMDRIVE"})
 
-dotest ({"key":"Free_nosuchpath", "tag":"nosuchpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/nosuchpath"})
+dotest (5, "Known host, No such path - WARNING",
+        {"key":"Free_nosuchpath", "tag":"nosuchpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/nosuchpath"})
 
-dotest ({"key":"Free_pathWithSpaces", "tag":"pathWithSpaces", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/share/tmp/Ripped videos"})
+dotest (6, "Space in path - OK",
+        {"key":"Free_pathWithSpaces", "tag":"pathWithSpaces", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/share/tmp/Ripped videos"})
 
-dotest ({"key":"Free_badlimit", "tag":"badlimit", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10x% /home"})
+dotest (7, "Bad limit value - setup ERROR",
+        {"key":"Free_badlimit", "tag":"badlimit", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10x% /home"})
 
-dotest ({"key":"Free_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"pi@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+dotest (8, "No such host - WARNING",
+        {"key":"Free_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"me@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
 
-dotest ({"key":"Free_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+dotest (9, "Known host, unavailable - WARNING",
+        {"key":"Free_Unavailable", "tag":"Unavailable", "host":"testhostX", "user_host_port":"me@testhostX", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})

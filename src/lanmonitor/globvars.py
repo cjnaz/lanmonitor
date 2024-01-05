@@ -4,7 +4,7 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2023
+#  Chris Nelson, Copyright 2021-2024
 #
 # 3.0 230301 - Packaged
 #   
@@ -13,3 +13,4 @@
 args = None
 keylen = 0
 hostlen = 0
+config = {}
