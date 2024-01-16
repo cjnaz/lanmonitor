@@ -10,12 +10,13 @@ Typical config file lines:
     YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
     YumUpdate_MyHost  local  CRITICAL  1d  15d  update --skip-broken
 """
-__version__ = "3.2"
+__version__ = "3.2.1"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.2.1 240116 - Bug fix yum command match .strip()
 # 3.2 240105 - Bug fix yum command must now completely match
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -110,7 +111,7 @@ class monitor:
         for line in rslt[1].stdout.split("\n"):
             out = YUMLINEFORMAT.match(line)
             if out:
-                if out.group(1) == self.yum_command:
+                if out.group(1).strip() == self.yum_command:
                     try:
                         last_update = datetime.datetime.strptime(out.group(2), "%Y-%m-%d %H:%M").timestamp()
                         last_update_age = datetime.datetime.now().timestamp() - last_update
