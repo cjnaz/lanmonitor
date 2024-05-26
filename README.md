@@ -398,7 +398,7 @@ The following functions within each listed notification handler are called.  The
 ---
 
 ## Version history
-- 3.2.1 240116 - yum_update_history_plugin command match bug fix.
+- 3.2.2 240526 - yum_update_history_plugin command match bug fixes.
 - 3.2 240105 - Adjusted for cjnfuncs V2.1. fsactivity plugin supports missing file. yum_update_history_plugin now requires full command match.
 - 3.1 230320 - Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  
 Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, added pinghost_plugin_timeout.

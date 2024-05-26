@@ -33,7 +33,7 @@ from cjnfuncs.timevalue import timevalue, retime
 
 
 # Configs / Constants
-YUMLINEFORMAT=re.compile(r"[ \d]+ \| ([\w -]+) \| ([\d :-]+) ")
+YUMLINEFORMAT=re.compile(r"[ \d]+ \| ([\w -=]+) \| ([\d :-]+) ")
 #    154 | update --skip-broken     | 2021-03-18 22:31 | Update         |    5 ss
 
 
