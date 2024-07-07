@@ -157,9 +157,9 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
             # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
             runtry = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
-            # logging.warning (f"cmd Try {nTry+1} - {runtry.returncode} - <{runtry.stderr}> - {cmd}")
+            # logging.debug(f"cmd_check subprocess.run returned <{runtry}>")              # Commented out since response can be huge.
         except Exception as e:
-            logging.error(f"ERROR:  subprocess.run of cmd <{cmd}> failed.\n  {e}")
+            logging.debug(f"cmd_check subprocess.run of cmd <{cmd}> failed.\n  {e}")
             continue
 
         if return_type == "check_string":
@@ -188,19 +188,21 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
     if user_host_port == "local":
         return (RTN_FAIL, runtry)
     
+
     logging.debug(f"cmd_check command failed on remote system - attempting simple ssh connection to {u_h}")
     simplessh = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T", "echo", "hello"]
+    simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=255, stdout='', stderr='Connection failed.')     # define default fail message
 
     for nTry in range (globvars.config.getcfg('nRetries')):
         try:
             logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
             # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
             simplessh_try = subprocess.run(simplessh, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
-            # logging.warning (f"ssh Try {nTry+1} - {simplessh_try.returncode} - <{simplessh_try.stderr}> - {simplessh}")
-            if simplessh_try.returncode == 0:       # ssh access works - return original cmd fail info
+            # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")       # Commented out since response can be huge.
+            if simplessh_try.returncode == 0:                                           # ssh access works - return original cmd fail info
                 return (RTN_FAIL, runtry)
         except Exception as e:
-            logging.error(f"ERROR:  subprocess.run of cmd <{simplessh}> failed.\n  {e}")
+            logging.debug(f"cmd_check subprocess.run of cmd <{simplessh}> failed.\n  {e}")
             continue
 
     return (RTN_WARNING, simplessh_try)
