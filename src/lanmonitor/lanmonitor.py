@@ -48,14 +48,15 @@ sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      
 
 
 # Configs / Constants
-TOOLNAME        = "lanmonitor"
-CONFIG_FILE     = "lanmonitor.cfg"
-PRINTLOGLENGTH  = 40
+TOOLNAME =              'lanmonitor'
+CONFIG_FILE =           'lanmonitor.cfg'
+PRINTLOGLENGTH  =       40
+CMD_TIMEOUT =           '1.0s'          # Default value.  May be set in config with Cmd_timeout
+STARTUP_DELAY =         '0s'
 
 
 def main():
     global inst_dict
-    # global config
     first = True
     inst_dict = {}
     notif_handlers_list = []
@@ -75,7 +76,7 @@ def main():
 
         if first:
             if globvars.args.service:
-                time.sleep (timevalue(globvars.config.getcfg('StartupDelay', 0)).seconds)
+                time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY)).seconds)
             reloaded = True                         # Force calc of key and host padding lengths
 
 
@@ -85,7 +86,7 @@ def main():
             
             # Refresh the notifications handlers
             notif_handlers_list.clear()
-            notif_handlers = globvars.config.getcfg("Notif_handlers", None)
+            notif_handlers = globvars.config.getcfg('Notif_handlers', None)
 
             try:
                 if notif_handlers is not None:
@@ -109,13 +110,13 @@ def main():
             globvars.keylen = 0
             globvars.hostlen = 0
             for key in globvars.config.cfg:                 # Get keylen and hostlen field widths across all monitored items for pretty printing
-                if key.startswith("MonType_"):
-                    montype_tag = key.split("_")[1]
+                if key.startswith('MonType_'):
+                    montype_tag = key.split('_')[1]
                     for line in globvars.config.cfg:
                         try:
-                            if line.startswith(montype_tag + "_"):
+                            if line.startswith(montype_tag + '_'):
                                 if len(line) > globvars.keylen:
-                                    globvars.keylen = len(line)
+                                    globvars.keylen = len(line)     # TODO support dict style line
                                 host = lanmonfuncs.split_user_host_port(globvars.config.cfg[line].split(maxsplit=1)[0])[1]
                                 if len(host) > globvars.hostlen:
                                     globvars.hostlen = len(host)
@@ -125,12 +126,13 @@ def main():
 
         # Process each monitor type and item
         checked_have_LAN_access = False
+        default_cmd_timeout = timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT)).seconds      # Default subprocess.run command timeout value
         for line in globvars.config.cfg:
-            if line.startswith("MonType_"):
-                montype_tag = line.split("_", maxsplit=1)[1]
+            if line.startswith('MonType_'):
+                montype_tag = line.split('_', maxsplit=1)[1]
                 montype_plugin = globvars.config.cfg[line]
                 xx = mungePath(montype_plugin)          # Allow for abs path or rel to lanmonitor dir
-                xx_parent = str(xx.parent)              # xx.parent == "." if no path specified
+                xx_parent = str(xx.parent)              # xx.parent == '.' if no path specified
                 if xx_parent != '.'  and  xx_parent not in sys.path:
                     sys.path.append(xx_parent)
                 plugin = __import__(xx.name)
@@ -138,37 +140,71 @@ def main():
 
                 # Process all items in cfg of this MonType
                 for key in globvars.config.cfg:
-                    if key.startswith(montype_tag + "_"):
-                        # Instantiate the monitor item and call setup
-                        # Line parsing (monline dict keys):
-                        #   montype_xyz   pi@rpi3:80 CRITICAL  5m  xyz config specific
-                        #   ^^^^^^^^^^^  key
-                        #           ^^^  tag
-                        #                 ^^^^^^^^^^ user_host_port
-                        #                    ^^^^      host
-                        #                            ^^^^^^^^  critical  (optional, case insensitive, saved as boolean)
-                        #                                      ^^  check_interval (converted to sec)
-                        #                                          ^^^^^^^^^^^^^^^^^^^  rest_of_line (parsed by plugin)
+                    if key.startswith(montype_tag + '_'):
 
                         if key not in inst_dict:
                             # Set up the monitor item instance
                             try:
                                 logging.debug("")
                                 monline.clear()
-                                monline["key"] = key
-                                monline["tag"] = key.split("_", maxsplit=1)[1]
-                                xx = globvars.config.cfg[key].split(maxsplit=1)
-                                u_h_p = xx[0]
-                                monline["user_host_port"] = u_h_p
-                                _, host, _ = lanmonfuncs.split_user_host_port(u_h_p)
-                                monline["host"] = host
-                                monline["critical"] = False
-                                yy = xx[1]
-                                if yy.lower().startswith("critical"):
-                                    monline["critical"] = True
-                                    yy = yy.split(maxsplit=1)[1]
-                                monline["check_interval"] = timevalue(yy.split(maxsplit=1)[0]).seconds
-                                monline["rest_of_line"] = yy.split(maxsplit=1)[1]
+                                monline['key'] = key
+                                monline['tag'] = key.split('_', maxsplit=1)[1]
+                                # line = inst_dict[key]
+                                xx = globvars.config.cfg[key]
+
+                                if isinstance(xx, dict):
+                                    # ***** Monitor item dict format *****
+                                        # Host_testhostY   {'u_h_p': 'local', 'critical':False, 'timeout':'1s', 'recheck':'1m', 'rol':'testhostY.cjn.lan'}
+                                    # Required settings
+                                    monline['check_interval'] =     timevalue(xx['recheck']).seconds
+                                    monline['rest_of_line'] =       xx['rol']
+
+                                    # Default settings
+                                    monline['user_host_port'] = monline['host'] = 'local'
+                                    monline['critical'] =           False
+                                    monline['cmd_timeout'] =        default_cmd_timeout
+
+                                    # Optional settings
+                                    for line_key in xx:
+                                        # if line_key.lower() == 'u_h_p':
+                                        if line_key.lower() == 'u@h:p':
+                                            monline['user_host_port'] = xx[line_key]
+                                            _, monline['host'], _ = lanmonfuncs.split_user_host_port(xx[line_key])
+                                        elif line_key.lower() == 'critical':
+                                            monline['critical'] = xx[line_key]
+                                        elif line_key.lower() == 'timeout':
+                                            monline['cmd_timeout'] = timevalue(xx[line_key]).seconds
+                                        elif line_key.lower() in ['recheck', 'rol']:
+                                            pass
+                                        else:
+                                            raise ValueError (f"Error in line <{key}>:  Unknown key <{line_key}>")
+
+                                    
+                                else:
+                                    # ***** Monitor item str format *****
+                                        # Instantiate the monitor item and call setup
+                                        # Line parsing (monline dict keys):
+                                        #   montype_xyz   pi@rpi3:80 CRITICAL  5m  xyz config specific
+                                        #   ^^^^^^^^^^^  key
+                                        #           ^^^  tag
+                                        #                 ^^^^^^^^^^ user_host_port
+                                        #                    ^^^^      host
+                                        #                            ^^^^^^^^  critical  (optional, case insensitive, saved as boolean)
+                                        #                                      ^^  check_interval (converted to sec)
+                                        #                                          ^^^^^^^^^^^^^^^^^^^  rest_of_line (parsed by plugin)
+                                    xx = globvars.config.cfg[key].split(maxsplit=1)
+                                    u_h_p = xx[0]
+                                    monline['user_host_port'] =     u_h_p
+                                    _, monline['host'], _ =         lanmonfuncs.split_user_host_port(u_h_p)
+                                    # monline['host'] = host
+                                    monline['critical'] =           False
+                                    yy = xx[1]
+                                    if yy.lower().startswith('critical'):
+                                        monline['critical'] =       True
+                                        yy = yy.split(maxsplit=1)[1]
+                                    monline['cmd_timeout'] =        default_cmd_timeout
+                                    monline['check_interval'] =     timevalue(yy.split(maxsplit=1)[0]).seconds
+                                    monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
 
                                 inst = plugin.monitor()
                                 rslt = inst.setup(monline)          # SETUP() CALL
@@ -182,14 +218,14 @@ def main():
                                 if rslt == lanmonfuncs.RTN_FAIL:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
                                     for notif_handler in notif_handlers_list:
-                                        notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
-                                                    "message":f"  WARNING: {key} - {host} - {_msg}"})
+                                        notif_handler.log_event({'rslt':lanmonfuncs.RTN_WARNING, 'notif_key':key,
+                                                    'message':f"  WARNING: {key} - {monline['host']} - {_msg}"})
                                     inst_dict[key] = False
                                 elif rslt == lanmonfuncs.RTN_WARNING:
                                     _msg = f"MONITOR SETUP FOR <{key}> FAILED.  WILL RETRY."
                                     for notif_handler in notif_handlers_list:
-                                        notif_handler.log_event({"rslt":lanmonfuncs.RTN_WARNING, "notif_key":key,
-                                                    "message":f"  WARNING: {key} - {host} - {_msg}"})
+                                        notif_handler.log_event({'rslt':lanmonfuncs.RTN_WARNING, 'notif_key':key,
+                                                    'message':f"  WARNING: {key} - {monline['host']} - {_msg}"})
                                 elif rslt == lanmonfuncs.RTN_PASS:
                                     inst_dict[key] = inst
                                 else:
@@ -214,10 +250,10 @@ def main():
                                 # inst.next_run += datetime.timedelta(seconds=60)  # for debug
 
                                 # For items that run >= daily, set the daily run time, if defined
-                                if (first or reloaded)  and  globvars.config.getcfg("DailyRuntime", False)  and  (inst.check_interval >= 86400):
+                                if (first or reloaded)  and  globvars.config.getcfg('DailyRuntime', False)  and  (inst.check_interval >= 86400):
                                     try:
-                                        target_hour   = int(globvars.config.getcfg("DailyRuntime").split(":")[0])
-                                        target_minute = int(globvars.config.getcfg("DailyRuntime").split(":")[1])
+                                        target_hour   = int(globvars.config.getcfg('DailyRuntime').split(':')[0])
+                                        target_minute = int(globvars.config.getcfg('DailyRuntime').split(':')[1])
                                         inst.next_run = inst.next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
                                     except Exception as e:
                                         logging.error (f"Cannot parse <DailyRuntime> in config:  {globvars.config.getcfg('DailyRuntime')} - Aborting")
@@ -226,10 +262,10 @@ def main():
                                 logging.debug(f"{key} - Next runtime: {inst.next_run}")
 
                                 # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host, if defined.  Do only once per active serviceloop.
-                                if (first or reloaded)  and  globvars.config.getcfg("Gateway", False) == False:
+                                if (first or reloaded)  and  globvars.config.getcfg('Gateway', False) == False:
                                     checked_have_LAN_access = True
                                     have_LAN_access = True
-                                if inst.host != "local"  and  not checked_have_LAN_access:
+                                if inst.host != 'local'  and  not checked_have_LAN_access:
                                     checked_have_LAN_access = True
                                     have_LAN_access = lanmonfuncs.check_LAN_access()
                                     if not have_LAN_access:
@@ -237,7 +273,7 @@ def main():
                                     else:
                                         logging.debug(f"LAN access confirmed.  Proceeding with checks run on remote hosts.")
 
-                                if inst.host == "local" or have_LAN_access: 
+                                if inst.host == 'local' or have_LAN_access: 
                                     rslt = inst.eval_status()                               # EVAL_STATUS() CALL
                                     logging.debug (f"{key} - eval_status() returned:  {rslt}")
 
@@ -258,7 +294,7 @@ def main():
             sys.exit(0)
 
         first = False
-        time.sleep (timevalue(globvars.config.getcfg("ServiceLoopTime")).seconds)
+        time.sleep (timevalue(globvars.config.getcfg('ServiceLoopTime')).seconds)
 
 
 globvars.sig_summary = False
@@ -306,17 +342,17 @@ def cli():
     # Deploy template files
     if globvars.args.setup_user:
         deploy_files([
-            { "source": CONFIG_FILE,          "target_dir": "USER_CONFIG_DIR", "file_stat": 0o644, "dir_stat": 0o755},
-            { "source": "creds_SMTP",         "target_dir": "USER_CONFIG_DIR", "file_stat": 0o600},
-            { "source": "lanmonitor.service", "target_dir": "USER_CONFIG_DIR", "file_stat": 0o644},
+            { 'source': CONFIG_FILE,          'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
+            { 'source': 'creds_SMTP',         'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o600},
+            { 'source': 'lanmonitor.service', 'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644},
             ])
         sys.exit()
 
     if globvars.args.setup_site:
         deploy_files([
-            { "source": CONFIG_FILE,          "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o644, "dir_stat": 0o755},
-            { "source": "creds_SMTP",         "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o600},
-            { "source": "lanmonitor.service", "target_dir": "SITE_CONFIG_DIR", "file_stat": 0o644},
+            { 'source': CONFIG_FILE,          'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
+            { 'source': 'creds_SMTP',         'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o600},
+            { 'source': 'lanmonitor.service', 'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644},
             ])
         sys.exit()
 
@@ -339,11 +375,11 @@ def cli():
     # Print log
     if globvars.args.print_log:
         try:
-            _lf = mungePath(globvars.config.getcfg("LogFile"), core.tool.log_dir_base).full_path
+            _lf = mungePath(globvars.config.getcfg('LogFile'), core.tool.log_dir_base).full_path
             print (f"Tail of  <{_lf}>:")
-            _xx = collections.deque(_lf.open(), globvars.config.getcfg("PrintLogLength", PRINTLOGLENGTH))
+            _xx = collections.deque(_lf.open(), globvars.config.getcfg('PrintLogLength', PRINTLOGLENGTH))
             for line in _xx:
-                print (line, end="")
+                print (line, end='')
         except Exception as e:
             print (f"Couldn't print the log file.  LogFile defined in the config file?\n  {e}")
         sys.exit()

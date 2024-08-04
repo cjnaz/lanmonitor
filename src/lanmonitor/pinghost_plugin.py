@@ -14,7 +14,7 @@ to override the default, eg:
       pinghost_plugin_timeout 5s
 
 """
-__version__ = "3.1"
+__version__ = '3.1'
 
 #==========================================================
 #
@@ -37,7 +37,7 @@ import lanmonitor.globvars as globvars
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 PING_RESPONSE_RE = re.compile(r"([\d.]+)\)*:.+time=([\d.]+) ms")
-TIMEOUT = "1s"
+TIMEOUT = '1s'  #TODO cleanup
 
 
 class monitor:
@@ -54,34 +54,34 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
+            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
         logging.debug (f"{item['key']} - {__name__}.setup() called:\n  {item}")
 
-        self.key            = item["key"]                           # vvvv These items don't need to be modified
+        self.key            = item['key']                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
-        self.tag            = item["tag"]
-        self.user_host_port = item["user_host_port"]
-        self.host           = item["host"]
+        self.tag            = item['tag']
+        self.user_host_port = item['user_host_port']
+        self.host           = item['host']
         self.host_padded    = self.host.ljust(globvars.hostlen)
-        if item["critical"]:
+        if item['critical']:
             self.failtype = RTN_CRITICAL
-            self.failtext = "CRITICAL"
+            self.failtext = 'CRITICAL'
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"
+            self.failtext = 'FAIL'
         self.next_run       = datetime.datetime.now().replace(microsecond=0)
-        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
+        self.check_interval = item['check_interval']
+        self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        self.ip_or_hostname = item["rest_of_line"]
+        self.ip_or_hostname = item['rest_of_line']
         if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
             logging.error (f"  ERROR:  <{self.key}> CAN'T PARSE IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL
     
-        self.timeout = str(int((timevalue(globvars.config.getcfg("pinghost_plugin_timeout", TIMEOUT)).seconds)))
-
         return RTN_PASS
 
 
@@ -95,21 +95,26 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ["ping", "-c", "1", "-w", self.timeout, self.ip_or_hostname]
-        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
+        # cmd = ['ping', '-c', '1', '-w', self.timeout, self.ip_or_hostname]
+        cmd = ['ping', '-c', '1', self.ip_or_hostname]
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_PASS:
             ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
             if ping_rslt:
-                return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
+                return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
             else:
-                return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  UNKNOWN ERROR"}  # This should not happen
+                return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  UNKNOWN ERROR"}  # This should not happen
 
         elif rslt[0] == RTN_WARNING:
             error_msg = rslt[1].stderr.replace('\n','')
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
 
-        else:
-            error_msg = "Cannot contact target host"  if rslt[1].stderr == ''  else  rslt[1].stderr.replace('\n','')
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
+        else: # RTN_FAIL
+            # error_msg = "Cannot contact target host"  if rslt[1].stderr == ''  else  rslt[1].stderr.replace('\n','')
+            if rslt[1].stderr == ""  or  "cmd_check subprocess.run timeout" in rslt[1].stderr:
+                error_msg = "Cannot contact target host"
+            else:
+                error_msg = rslt[1].stderr.replace('\n','')
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}

@@ -6,7 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2024
 #
-# 3.1 230320 - Added cfg param ssh_timeout, fixed cmd_check command fail retry bug, 
+# 3.1 230320 - Added cfg param SSH_timeout, fixed cmd_check command fail retry bug, 
 #   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
 # 3.0 230301 - Packaged
 # 1.4 221120 - Summaries optional if SummaryDays is not defined.
@@ -33,10 +33,18 @@ import lanmonitor.globvars as globvars
 
 # Configs / Constants
 NOTIF_SUBJ = "LAN Monitor"
-RTN_PASS     = 0
-RTN_WARNING  = 1
-RTN_FAIL     = 2
-RTN_CRITICAL = 3
+RTN_PASS     =          0
+RTN_WARNING  =          1
+RTN_FAIL     =          2
+RTN_CRITICAL =          3
+
+NTRIES =                2           # Default value.  May be set in config with nTries
+RETRY_INTERVAL =        '0.5s'      # Default value.  May be set in config with RetryInterval
+SSH_TIMEOUT =           '1.0s'      # Default value.  May be set in config with SSH_timeout
+GATEWAY_TIMEOUT =       '1.0s'      # Default value.  May be set in config with Gateway_timeout
+
+RTNCODE_TIMEOUT =       254
+RTNCODE_ERROR =         253
 
 
 #=====================================================================================
@@ -73,11 +81,11 @@ def split_user_host_port(u_h_p):
             ("local", "local", "")
     ```
     """
-    user_host_noport = u_h_p.split(":")[0]
+    user_host_noport = u_h_p.split(':')[0]
     host = u_h_p
-    port = ""
-    if host != "local":
-        port = "22"
+    port = ''
+    if host != 'local':
+        port = '22'
         out = USER_HOST_FORMAT.match(u_h_p)
         if out:
             host = out.group(1)
@@ -98,13 +106,31 @@ def split_user_host_port(u_h_p):
 #  c m d _ c h e c k
 #=====================================================================================
 #=====================================================================================
-def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expected_text=None, not_text=None):
+def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=None, expected_text=None, not_text=None):
     """
     ## cmd_check (cmd, user_host_port, return_type=None, check_line_text=None, expected_text=None, not_text=None) - Runs the cmd and operates on the response based on return_type
 
+    The `cmd` is executed by a call to subprocess.run().  If `user_host_port` is not `local`, then `cmd` is executed on the
+    remote host via ssh.  If there is no subprocess.run() exception then cmd_check checks the run response per the 
+    `return_type` selection.
+
+    If the cmd run is not successful (exception, cmd_timeout, subprocess.run returncode != 0, or failed text match checks)
+    after `nTries` attempts, and the target is a remote host, then a simple ssh access is attempted for `nTries` using 
+    the `SSH_timeout` limit.  The goal is to distinguish between a basic remote access timeout and a real command failure 
+    on the remote host.  RTN_WARNING is returned if the issue is an ssh access problem, else a RTN_FAIL is returned.
+
+    The total execution time of a failing local cmd_check call can be as long as:
+
+        nTries*cmd_timeout + (nTries-1)*RetryInterval
+
+    For cmd_checks calls on remote systems, the simple ssh access check can add this additional execution time:
+
+        nTries*SSH_timeout 
+
     ### Parameters
     `cmd`
-    - Command to be passed to subprocess() in list form
+    - Command to be passed to subprocess.run() in list form
+    - The `cmd` execution must have a passing (0) exit status, else it will be retried and possibly result in a non-RTN_PASS response.
 
     `user_host_port`
     - Str for the target machine to execute cmd on.  Port optional (default 22).  `local`
@@ -112,10 +138,13 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
 
     `return_type`
     - "cmdrun" or "check_string"
-    - If "cmdrun" then the `cmd` execution status (`True` if no error) and subprocess
-    return structure is returned.
-    - If "check_string" then the following parameters are used to evaluate the `cmd` response.
+    - If "cmdrun" then the `cmd` execution status and subprocess return structure is returned
+    - If "check_string" then the following parameters are used to evaluate the subprocess return structure `stdout` field
    
+    `cmd_timeout`
+    - subprocess.run call timeout value in float seconds
+    - This param is set within lanmonitor.py when instantiating a monitor item
+
     `check_line_text` (default None)
     - A qualifier for which line of the `cmd` response to look for `expected_text` and/or `not_text`
     - If provided, only the first line containing this text is checked.  If not provided then
@@ -127,47 +156,61 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
     `not_text`  (default None)
     - Text that must NOT be found
     
-    ### cfg dictionary param
-    `ssh_timeout` (default 1s)
-    - Timeout for completion of all operations on remote hosts (a global setting)
+    ### cfg dictionary params
+    nTries (default 2)
+    - Total number of times to attempt to execute the `cmd` or ssh access check
+
+    `RetryInterval` (default 0.5s)
+    - Wait time between subprocess.run `cmd` retries (not used for simple ssh access retries)
+
+    `SSH_timeout` (default 1s)
+    - Timeout used for a simple ssh access check 
 
     ### Returns
-    - 2-tuple of (success_status, subprocess run return structure)
-    - If `user_host_port` is a remote host but a ssh connection was not successful then 
-    success_status = RTN_WARNING.
-    - If `return_type` = "cmdrun" then success_status = RTN_PASS if the subprocess run returns a 
-    passing status (0), else success_status = RTN_FAIL.
-    - If `return_type` = "check_string" then success_status = RTN_PASS if the `cmd` stdout response
-    contains `expected_text` and not `not_text` (response line qualified by `check_line_text`),
-    else success_status = RTN_FAIL.
+    - 2-tuple of (success_status, subprocess.CompletedProcess structure)
+    - success_status
+        `return_type` | returned value for success_status
+        -- | --
+        cmdrun | RTN_PASS if the `cmd` executed by the subprocess run has a passing exit status (returncode = 0), else success_status = RTN_FAIL
+        check_string | RTN_PASS if the `cmd` stdout response contains `expected_text` and not `not_text` (response line qualified by `check_line_text`), else success_status = RTN_FAIL
+      - If `user_host_port` is a remote host but a ssh connection was not successful then success_status = RTN_WARNING. 
+
+    - The subprocess.CompletedProcess normally carries the full subprocess.run return structure, including `args`, `returncode`, `stdout`, and `stderr` fields. 
+    If an exception is raised when trying to execute the `cmd` then the subprocess.CompletedProcess `returncode` field is set to
+    RTNCODE_TIMEOUT or RTNCODE_ERROR, and the `stderr` field carries the details.  If used, these codes should be imported from this module.
     """
 
-    if return_type not in ["check_string", "cmdrun"]:
+
+    if return_type not in ['check_string', 'cmdrun']:
         _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
         logging.error (f"ERROR:  {_msg}")
         raise ValueError (_msg)
 
-    if user_host_port != "local":
+    if user_host_port != 'local':
         u_h, host, port = split_user_host_port(user_host_port)
-        ct = str(int((timevalue(globvars.config.getcfg("ssh_timeout", "1s")).seconds)))
-        cmd = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T"] + cmd
+        cmd = ['ssh', u_h, '-p' + port, '-T'] + cmd
 
-    for nTry in range (globvars.config.getcfg('nRetries')):
+    for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
         try:
             logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
-            # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
-            runtry = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+            run_try = subprocess.run(cmd, timeout=cmd_timeout,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
             # logging.debug(f"cmd_check subprocess.run returned <{runtry}>")              # Commented out since response can be huge.
+        except subprocess.TimeoutExpired as e:
+            logging.debug(f"cmd_check subprocess.run of cmd timeout.\n  {e}")
+            run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check subprocess.run timeout:  {e}')
+            continue
         except Exception as e:
             logging.debug(f"cmd_check subprocess.run of cmd <{cmd}> failed.\n  {e}")
+            run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check subprocess.run failed:  {e}')
             continue
 
-        if return_type == "check_string":
+        if return_type == 'check_string':
             if check_line_text is None:
-                text_to_check = runtry.stdout
+                text_to_check = run_try.stdout
             else:
-                text_to_check = ""
-                for line in runtry.stdout.split("\n"):
+                text_to_check = ''
+                for line in run_try.stdout.split('\n'):
                     if check_line_text in line:
                         text_to_check = line
                         break
@@ -175,34 +218,42 @@ def cmd_check(cmd, user_host_port, return_type=None, check_line_text=None, expec
             if expected_text in text_to_check:
                 if not_text is not None:
                     if not_text not in text_to_check:
-                        return (RTN_PASS, runtry)
+                        return (RTN_PASS, run_try)
                 else:
-                    return (RTN_PASS, runtry)
+                    return (RTN_PASS, run_try)
 
-        elif return_type == "cmdrun":
-            if runtry.returncode == 0:
-                return (RTN_PASS, runtry)
+        elif return_type == 'cmdrun':
+            if run_try.returncode == 0:
+                return (RTN_PASS, run_try)
+        
+        else:
+            raise ValueError (f"Invalid return_type <{return_type}> passed to cmd_check")
 
-        time.sleep (timevalue(globvars.config.getcfg('RetryInterval')).seconds)
+        time.sleep (timevalue(globvars.config.getcfg('RetryInterval', RETRY_INTERVAL)).seconds)
 
-    if user_host_port == "local":
-        return (RTN_FAIL, runtry)
+    if user_host_port == 'local':
+        return (RTN_FAIL, run_try)
     
 
-    logging.debug(f"cmd_check command failed on remote system - attempting simple ssh connection to {u_h}")
-    simplessh = ["ssh", u_h, "-p" + port, "-o", "ConnectTimeout=" + ct, "-T", "echo", "hello"]
-    simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=255, stdout='', stderr='Connection failed.')     # define default fail message
+    logging.debug(f"cmd_check command failed on remote system - attempting simple ssh connection to <{u_h}>")
+    simplessh = ['ssh', u_h, '-p' + port, '-T', 'echo', 'hello']
 
-    for nTry in range (globvars.config.getcfg('nRetries')):
+    for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
         try:
             logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
-            # runtry = subprocess.run(cmd, capture_output=True, text=True)  # Py 3.7+
-            simplessh_try = subprocess.run(simplessh, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
-            # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")       # Commented out since response can be huge.
-            if simplessh_try.returncode == 0:                                           # ssh access works - return original cmd fail info
-                return (RTN_FAIL, runtry)
+            simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+            # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")     # Uncomment for debug
+            if simplessh_try.returncode == 0:                                           # ssh access works so return original cmd fail info
+                logging.debug(f"simplessh access passes.  Return original command failure record.")
+                return (RTN_FAIL, run_try)
+        except subprocess.TimeoutExpired as e:
+            logging.debug(f"cmd_check subprocess.run of simplessh cmd <{simplessh}> timeout")
+            simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check simplessh timeout:  {e}')
+            continue
         except Exception as e:
             logging.debug(f"cmd_check subprocess.run of cmd <{simplessh}> failed.\n  {e}")
+            simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check simplessh connection failed:  {e}')     # define default fail message
             continue
 
     return (RTN_WARNING, simplessh_try)
@@ -235,7 +286,7 @@ def check_LAN_access(host=None):
     - Returns True if the `host` or config `Gateway` host can be pinged, else False.
     """
 
-    ip_or_hostname = globvars.config.getcfg("Gateway", host)
+    ip_or_hostname = globvars.config.getcfg('Gateway', host)
     if not ip_or_hostname:
         logging.error (f"  ERROR:  PARAMETER 'Gateway' NOT DEFINED IN CONFIG FILE - Aborting.")
         sys.exit(1)
@@ -244,8 +295,10 @@ def check_LAN_access(host=None):
         logging.error (f"  ERROR:  INVALID IP ADDRESS OR HOSTNAME <{ip_or_hostname}> - Aborting.")
         sys.exit(1)
 
-    pingrslt = cmd_check(["ping", "-c", "1", "-W", "1", globvars.config.getcfg("Gateway")], 
-                         user_host_port="local", return_type="cmdrun")
+    gateway_timeout = timevalue(globvars.config.getcfg('Gateway_timeout', GATEWAY_TIMEOUT)).seconds
+    # pingrslt = cmd_check(['ping', '-c', '1', '-W', '1', globvars.config.getcfg('Gateway')],
+    pingrslt = cmd_check(['ping', '-c', '1', globvars.config.getcfg('Gateway')],
+                         cmd_timeout=gateway_timeout, user_host_port='local', return_type='cmdrun')
     if pingrslt[0] == RTN_PASS:
         return True
     else:
@@ -273,16 +326,16 @@ def next_summary_timestring():
     ### Returns
     - datetime of next summary
     """
-    if globvars.config.getcfg("SummaryDays", None) is None:
+    if globvars.config.getcfg('SummaryDays', None) is None:
         logging.debug(f"SummaryDays not defined.  Summaries are disabled.")
         return None
     try:
-        target_hour   = int(globvars.config.getcfg("SummaryTime","").split(":")[0])
-        target_minute = int(globvars.config.getcfg("SummaryTime","").split(":")[1])
+        target_hour   = int(globvars.config.getcfg('SummaryTime','').split(':')[0])
+        target_minute = int(globvars.config.getcfg('SummaryTime','').split(':')[1])
         today_day_num = datetime.datetime.today().isoweekday()
         now = datetime.datetime.now().replace(second=0, microsecond=0)
         next_summary = now + datetime.timedelta(days=30)
-        xx = globvars.config.getcfg("SummaryDays")
+        xx = globvars.config.getcfg('SummaryDays')
         days = [xx]  if type(xx) is int  else [int(day) for day in xx.split()]
         for daynum in days:
             offset_num_days = daynum - today_day_num

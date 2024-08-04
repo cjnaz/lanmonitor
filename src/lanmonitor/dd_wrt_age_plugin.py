@@ -4,6 +4,7 @@
 Check the age of the dd-wrt version on the specified router.  The routerIP may be a hostname.
 
 Typical config file lines:
+
     MonType_DD-wrt_age  dd-wrt_age_plugin
     DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
     DD-wrt_age_Router  local  CRITICAL  1d  30d  192.168.1.1
@@ -48,26 +49,28 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
+            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
 
         logging.debug (f"{item['key']} - {__name__}.setup() called:\n  {item}")
 
-        self.key            = item["key"]                           # vvvv These items don't need to be modified
+        self.key            = item['key']                           # vvvv These items don't need to be modified
         self.key_padded     = self.key.ljust(globvars.keylen)
-        self.tag            = item["tag"]
-        self.user_host_port = item["user_host_port"]
-        self.host           = item["host"]
+        self.tag            = item['tag']
+        self.user_host_port = item['user_host_port']
+        self.host           = item['host']
         self.host_padded    = self.host.ljust(globvars.hostlen)
-        if item["critical"]:
+        if item['critical']:
             self.failtype = RTN_CRITICAL
-            self.failtext = "CRITICAL"
+            self.failtext = 'CRITICAL'
         else:
             self.failtype = RTN_FAIL
-            self.failtext = "FAIL"
+            self.failtext = 'FAIL'
         self.next_run       = datetime.datetime.now().replace(microsecond=0)
-        self.check_interval = item['check_interval']                # ^^^^ These items don't need to be modified
+        self.check_interval = item['check_interval']
+        self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
         try:
             xx = item["rest_of_line"].split(maxsplit=1)
@@ -94,7 +97,7 @@ class monitor:
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
         cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]
-        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun")
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun", cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_WARNING:
