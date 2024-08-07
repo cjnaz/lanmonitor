@@ -1,25 +1,38 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - dd-wrt_age_plugin
-
-Check the age of the dd-wrt version on the specified router.  The routerIP may be a hostname.
-
-Typical config file lines:
-
-    MonType_DD-wrt_age  dd-wrt_age_plugin
-    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
-    DD-wrt_age_Router  local  CRITICAL  1d  30d  192.168.1.1
 """
-__version__ = "3.1"
+### dd_wrt_age_plugin
+
+The dd-wrt router is checked for the age of the currently installed dd-wrt version by reading the
+/Info.htm page for the date on the top right of the page, eg: <DD-WRT v3.0-r46885 std (06/05/21)>.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_DD-wrt_age           =  dd_wrt_age_plugin
+    # DD-wrt_age_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
+    DD-wrt_age_Router            =  local  CRITICAL  1d  30d  192.168.1.1
+    DD-wrt_age_Router2           =  {'recheck':'1d', 'rol':'30d  192.168.1.1'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`age` (timevalue, or int/float seconds)
+- Max time allowed since last dd-wrt software upgrade
+
+`routerIP` (str)
+- IP address or hostname of the router
+
+Note:  I no longer have a dd-wrt router for testing this plugin.
+"""
+
+__version__ = '3.3'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
-# NOTE:  I no longer have a dd-wrt router to test this on.  Consider adding --max-time to the curl command.
-#
 #==========================================================
 
 import datetime
@@ -73,12 +86,12 @@ class monitor:
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
         try:
-            xx = item["rest_of_line"].split(maxsplit=1)
+            xx = item['rest_of_line'].split(maxsplit=1)
             maxagevar = timevalue(xx[0])
             self.maxage_sec = maxagevar.seconds
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
-            self.url = xx[1] + "/Info.htm"
+            self.url = xx[1] + '/Info.htm'
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
             return RTN_FAIL
@@ -96,28 +109,29 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ["curl", self.url, "--connect-timeout", "10", "--max-time", "10"]
-        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun", cmd_timeout=self.cmd_timeout)
+        # cmd = ['curl', self.url, '--connect-timeout', '10', '--max-time', '10']  # lanmonitor V3.3 enforces timeout/max-time
+        cmd = ['curl', self.url]
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_WARNING:
             errro_msg = rslt[1].stderr.replace('\n','')
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
 
         out = LINEFORMAT.match(rslt[1].stdout)
         if out:
             dd_wrt_version = out.group(1)
             dd_wrt_date = out.group(2)
-            dd_wrt_timestamp = (datetime.datetime.strptime(dd_wrt_date, "%m/%d/%y")).timestamp()
+            dd_wrt_timestamp = (datetime.datetime.strptime(dd_wrt_date, '%m/%d/%y')).timestamp()
             dd_wrt_age = datetime.datetime.now().timestamp() - dd_wrt_timestamp
 
             if dd_wrt_age < self.maxage_sec:
-                return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - "
+                return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - "
                     + f"{retime(dd_wrt_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  "
                     + f"{self.url} - r{dd_wrt_version} - {dd_wrt_date}"}
             else:
-                return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key}  DD-WRT STALE - {self.host} - "
+                return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  DD-WRT STALE - {self.host} - "
                     + f"{retime(dd_wrt_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  "
                     + f"{self.url} - r{dd_wrt_version} - {dd_wrt_date}"}
 
-        return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - NO VALID RESPONSE FROM ROUTER <{self.url}>"}
+        return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - NO VALID RESPONSE FROM ROUTER <{self.url}>"}

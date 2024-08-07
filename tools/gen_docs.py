@@ -117,11 +117,8 @@ for plugin implementation details.
 
             imported_module = lazy_import(module['module_name'])
 
-            ofile.write(f"""
 ### {module['module_name']}
-
-{imported_module.__doc__}
-
+            ofile.write(f"""{imported_module.__doc__}
 <br/>
 
 ---

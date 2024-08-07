@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - process_plugin
-
-Each process is checked by seeing if the `<executable path>` occurs in the output of a `ps -Af` call.  
-
-      MonType_Process		process_plugin
-      Process_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <executable path>
-      Process_x11vnc		local       CRITICAL  5m  /usr/bin/x11vnc
 """
-__version__ = "3.1"
+### process_plugin
+
+Check that the specified process is alive by searching for the `executable_path` is in the output of a `ps -Af` call.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_Process		      =  process_plugin
+    # Process_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <executable_path>
+    Process_x11vnc            =  local       CRITICAL  5m  /usr/bin/x11vnc
+    Process_cups              =  {'u@h:p':'me@testhost2', 'recheck':'1h', 'rol':'/usr/sbin/cupsd'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`executable_path` (str)
+- Full process path as shown in `ps`
+"""
+
+__version__ = '3.3'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
@@ -63,7 +74,7 @@ class monitor:
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        self.process_path   = item["rest_of_line"]
+        self.process_path   = item['rest_of_line']
 
         return RTN_PASS
 
@@ -78,14 +89,14 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ["ps", "-Af"]
-        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", expected_text=self.process_path, cmd_timeout=self.cmd_timeout)
+        cmd = ['ps', '-Af']
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='check_string', expected_text=self.process_path, cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_PASS:
-            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.process_path}"}
+            return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.process_path}"}
         elif rslt[0] == RTN_WARNING:
             errro_msg = rslt[1].stderr.replace('\n','')
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - PROCESS <{self.process_path}> IS NOT RUNNING"}
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - PROCESS <{self.process_path}> IS NOT RUNNING"}

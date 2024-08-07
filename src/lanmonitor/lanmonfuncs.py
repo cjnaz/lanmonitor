@@ -119,6 +119,12 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     the `SSH_timeout` limit.  The goal is to distinguish between a basic remote access timeout and a real command failure 
     on the remote host.  RTN_WARNING is returned if the issue is an ssh access problem, else a RTN_FAIL is returned.
 
+    Note that the `cmd` cannot utilize wildcard file expansion for the local host because shell=False on the subprocess call.
+    To implement local wildcard expansion the plugin can pre-expand with list with glob.glob.  Wildcard expansion works
+    as expected for executing commands on remote hosts.  See apt_upgrade_history_plugin.py for an example.
+
+    Note that the `cmd` cannot utilize pipes to string together commands.  cmd_check executes a single monolithic subprocess call.
+
     The total execution time of a failing local cmd_check call can be as long as:
 
         nTries*cmd_timeout + (nTries-1)*RetryInterval
@@ -193,15 +199,16 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
         try:
             logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
-            run_try = subprocess.run(cmd, timeout=cmd_timeout,
-                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+            # run_try = subprocess.run(cmd, timeout=cmd_timeout,                                                                
+            #                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+            run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
             # logging.debug(f"cmd_check subprocess.run returned <{runtry}>")              # Commented out since response can be huge.
         except subprocess.TimeoutExpired as e:
-            logging.debug(f"cmd_check subprocess.run of cmd timeout.\n  {e}")
+            logging.debug(f"cmd_check subprocess.run timeout:  {e}")
             run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check subprocess.run timeout:  {e}')
             continue
         except Exception as e:
-            logging.debug(f"cmd_check subprocess.run of cmd <{cmd}> failed.\n  {e}")
+            logging.debug(f"cmd_check subprocess.run of cmd <{cmd}> failed:  {e}")
             run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check subprocess.run failed:  {e}')
             continue
 
@@ -241,18 +248,20 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
         try:
             logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
+            # simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
+            #                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
             simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
-                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
+                                           capture_output=True, text=True)
             # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")     # Uncomment for debug
             if simplessh_try.returncode == 0:                                           # ssh access works so return original cmd fail info
                 logging.debug(f"simplessh access passes.  Return original command failure record.")
                 return (RTN_FAIL, run_try)
         except subprocess.TimeoutExpired as e:
-            logging.debug(f"cmd_check subprocess.run of simplessh cmd <{simplessh}> timeout")
+            logging.debug(f"cmd_check subprocess.run of simplessh cmd <{simplessh}> timeout:  {e}")
             simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check simplessh timeout:  {e}')
             continue
         except Exception as e:
-            logging.debug(f"cmd_check subprocess.run of cmd <{simplessh}> failed.\n  {e}")
+            logging.debug(f"cmd_check subprocess.run of simplessh cmd <{simplessh}> failed:  {e}")
             simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check simplessh connection failed:  {e}')     # define default fail message
             continue
 

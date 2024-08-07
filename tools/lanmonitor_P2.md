@@ -103,6 +103,8 @@ $ lanmonitor --verbose
 
    `PrintLogLength`, `ConsoleLogFormat`, and `FileLogFormat` may also be customized.
 
+   NOTE that the config file parser accepts either whitespace, '=', or ':' between the param name (the first token on the line) and its value (the remainder of the line).
+
 <br/>
 
 - Edit `lanmonitor.cfg` for the **Notification handler parameters**:
@@ -178,34 +180,38 @@ For monitored items, the _string-style_ format of a line is:
 
 **This example definition executes the `pinghost_plugin` on the `local` machine, every `5 minutes`, checking for a response from `testhost2.lan`.  If testhost2.lan is not available a notification is sent to the config file `NotifList`.  The `CRITICAL` tag indicates that repeat notifications will be sent per the config file `CriticalReNotificationInterval` param.**
 
-Breaking down the definition line syntax:
+Breaking down the definition line syntax terms:
 
 1. `<type>` matches the corresponding `MonType_<type>` line.
 2. `<friendly_name>` is arbitrary and is used for notifications, logging, etc. `<type>_<friendly_name>` must be unique.
 3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line below specifies that `Yahoo.com` will be pinged from the `RPi2.mylan` host by doing an `ssh me@RPi2.mylan ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
 4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.  (For critical-tagged items their `check_interval` should be less than the `CriticalReNotificationInterval`.)
 5. `<check_interval>` is the wait time between rechecks for this specific item.  Each item is checked at its own check_interval.
-6. `<rest_of_line>` are the monitored type-specific settings.
+6. `<rest_of_line>` are the plugin-specific settings/content.
 
 <br/>
 
 As of version 3.3, an alternate monitored items setup format is supported in the form of a _Python dictionary_, eg:
 
+      String-style item definition:
+      Host_testhost2    local  CRITICAL  5m  testhost2.lan
+
+      Equivalent dictionary-style definition:
       Host_testhost2    {'u@h:p':'local', 'critical':True, 'timeout':'1s', 'recheck':'5m', 'rol':'testhost2.lan'}
 
       Same definition while utilizing the defaults:
       Host_testhost2    {'critical':True, 'recheck':'5m', 'rol':'testhost2.lan'}
 
-- The dictionary format supports setting the Cmd_timeout setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string style format.
+- The dictionary format supports setting the `Cmd_timeout` setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string-style format.
 - The dictionary format is parsed directly by Python, and thus follows all of the formatting rules, notably:
-  - Key:Value terms are separated by `:`, and Key:Value pairs are separated by `,`.  Keys are quoted.  String values are quoted, while boolean, integer, and float values are unquoted.  The order of key:value pairs is flexible (notably fixed in the string-sytle format).
+  - Key:Value terms are separated by `:`, and Key:Value pairs are separated by `,`.  Keys are quoted.  String values are quoted, while boolean, integer, and float values are unquoted.  The order of key:value pairs is flexible (versus fixed in the string-sytle format).  lanmonitor also supports default values for several of the terms
 - Notable aspects of each Key:Value pair:
 
-   Key | Default | Notes
-   -- | -- | --
-   `u@h:p` | `local` |
-   `critical` | `False` | Boolean True or False (unquoted)
-   `timeout` | `Cmd_timeout` value in the config file | Not supported using the string-style format
-   `recheck` | Required | timevalue string (eg: '5m'), or integer or float seconds
-   `rol` | Required | rest_of_line, as defined by each specific monitoring plugin
+   Key | String-style term name | Default | Notes
+   -- | -- | -- |--
+   `u@h:p` | `local or user@host[:port]` | `local` | 
+   `critical` | `CRITICAL` | `False` | Boolean True or False (unquoted)
+   `timeout` | NA | `Cmd_timeout` value in the config file | Not supported using the string-style format
+   `recheck` | `check_interval` | Required | timevalue string (eg: '5m'), or integer or float seconds
+   `rol` | `rest_of_line` | Required | Plugin-specific settings/content
 

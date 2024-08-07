@@ -7,7 +7,7 @@ critical items, such as firewalld being down, and summary reports are generated 
 - A configuration file is used for all setups - no coding required for use.  The config file may be modified on-th-fly while lanmonitor is running as a service.
 - Checks may be executed from the local machine, or from any remote host (with ssh access).  For example, you can check the health of a service running on another machine, or check that a webpage is accessible from another machine.
 
-**NOTE:**  Due to as-of-yet unsolved problems with Python 3.6 and import_resources, the `--setup-user` and `--setup-site` switches are not working on Py 3.6.  Manually grab the files from the [github](https://github.com/cjnaz/lanmonitor) `src/deployment_files` directory and place them in the `~\.config\lanmonitor` directory.  These command line switches work correctly on Python 3.7+.
+Supports Python 3.7+.
 
 <br/>
 
@@ -139,6 +139,8 @@ $ lanmonitor --verbose
 
    `PrintLogLength`, `ConsoleLogFormat`, and `FileLogFormat` may also be customized.
 
+   NOTE that the config file parser accepts either whitespace, '=', or ':' between the param name (the first token on the line) and its value (the remainder of the line).
+
 <br/>
 
 - Edit `lanmonitor.cfg` for the **Notification handler parameters**:
@@ -214,36 +216,40 @@ For monitored items, the _string-style_ format of a line is:
 
 **This example definition executes the `pinghost_plugin` on the `local` machine, every `5 minutes`, checking for a response from `testhost2.lan`.  If testhost2.lan is not available a notification is sent to the config file `NotifList`.  The `CRITICAL` tag indicates that repeat notifications will be sent per the config file `CriticalReNotificationInterval` param.**
 
-Breaking down the definition line syntax:
+Breaking down the definition line syntax terms:
 
 1. `<type>` matches the corresponding `MonType_<type>` line.
 2. `<friendly_name>` is arbitrary and is used for notifications, logging, etc. `<type>_<friendly_name>` must be unique.
 3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line below specifies that `Yahoo.com` will be pinged from the `RPi2.mylan` host by doing an `ssh me@RPi2.mylan ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
 4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.  (For critical-tagged items their `check_interval` should be less than the `CriticalReNotificationInterval`.)
 5. `<check_interval>` is the wait time between rechecks for this specific item.  Each item is checked at its own check_interval.
-6. `<rest_of_line>` are the monitored type-specific settings.
+6. `<rest_of_line>` are the plugin-specific settings/content.
 
 <br/>
 
 As of version 3.3, an alternate monitored items setup format is supported in the form of a _Python dictionary_, eg:
 
+      String-style item definition:
+      Host_testhost2    local  CRITICAL  5m  testhost2.lan
+
+      Equivalent dictionary-style definition:
       Host_testhost2    {'u@h:p':'local', 'critical':True, 'timeout':'1s', 'recheck':'5m', 'rol':'testhost2.lan'}
 
       Same definition while utilizing the defaults:
       Host_testhost2    {'critical':True, 'recheck':'5m', 'rol':'testhost2.lan'}
 
-- The dictionary format supports setting the Cmd_timeout setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string style format.
+- The dictionary format supports setting the `Cmd_timeout` setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string-style format.
 - The dictionary format is parsed directly by Python, and thus follows all of the formatting rules, notably:
-  - Key:Value terms are separated by `:`, and Key:Value pairs are separated by `,`.  Keys are quoted.  String values are quoted, while boolean, integer, and float values are unquoted.  The order of key:value pairs is flexible (notably fixed in the string-sytle format).
+  - Key:Value terms are separated by `:`, and Key:Value pairs are separated by `,`.  Keys are quoted.  String values are quoted, while boolean, integer, and float values are unquoted.  The order of key:value pairs is flexible (versus fixed in the string-sytle format).  lanmonitor also supports default values for several of the terms
 - Notable aspects of each Key:Value pair:
 
-   Key | Default | Notes
-   -- | -- | --
-   `u@h:p` | `local` |
-   `critical` | `False` | Boolean True or False (unquoted)
-   `timeout` | `Cmd_timeout` value in the config file | Not supported using the string-style format
-   `recheck` | Required | timevalue string (eg: '5m'), or integer or float seconds
-   `rol` | Required | rest_of_line, as defined by each specific monitoring plugin
+   Key | String-style term name | Default | Notes
+   -- | -- | -- |--
+   `u@h:p` | `local or user@host[:port]` | `local` | 
+   `critical` | `CRITICAL` | `False` | Boolean True or False (unquoted)
+   `timeout` | NA | `Cmd_timeout` value in the config file | Not supported using the string-style format
+   `recheck` | `check_interval` | Required | timevalue string (eg: '5m'), or integer or float seconds
+   `rol` | `rest_of_line` | Required | Plugin-specific settings/content
 
 
 
@@ -257,17 +263,25 @@ As of version 3.3, an alternate monitored items setup format is supported in the
 
 ### apt_upgrade_history_plugin
 
-LAN Monitor plugin - apt_upgrade_history_plugin
+apt history files at /var/log/apt/* are checked for the specific `apt_command` text and the date is extracted from
+the most recent occurrence of this text, then compared to the `age` limit.  May require root access in order to read apt history.
 
-apt history files at /var/log/apt/* are checked for the specific <apt_command> text and the date is extracted from
-the most recent occurrence of this text.  May require root access in order to read apt history.
+**Typical string and dictionary-style config file lines:**
 
-Typical config file lines:
+    MonType_AptUpgrade           =  apt_upgrade_history_plugin
+    # AptUpgrade_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>    <age>  <apt_command>
+    AptUpgrade_testhost          =  local  1d  30d  apt full-upgrade
+    AptUpgrade_testhost2         =  {'u@h:p':'me@testhost2', 'recheck':'1d', 'rol':'30d  apt full-upgrade'}
 
-    MonType_AptUpgrade  apt_upgrade_history_plugin
-    AptUpgrade_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>    <age>  <apt_command>
-    AptUpgrade_MyHost  local  CRITICAL  1d  30d  apt full-upgrade
+**Plugin-specific _rest-of-line_ params:**
 
+`age` (timevalue, or int/float seconds)
+- Max time allowed since last execution of the apt_command
+
+`apt_command` (str)
+- The apt history is scanned for this specific string
+
+Note: The apt history file formatting may be locale specific.  This plugin is currently hardcoded to US locale.
 
 <br/>
 
@@ -275,16 +289,25 @@ Typical config file lines:
 
 ### dd_wrt_age_plugin
 
-LAN Monitor plugin - dd-wrt_age_plugin
+The dd-wrt router is checked for the age of the currently installed dd-wrt version by reading the
+/Info.htm page for the date on the top right of the page, eg: <DD-WRT v3.0-r46885 std (06/05/21)>.
 
-Check the age of the dd-wrt version on the specified router.  The routerIP may be a hostname.
+**Typical string and dictionary-style config file lines:**
 
-Typical config file lines:
+    MonType_DD-wrt_age           =  dd_wrt_age_plugin
+    # DD-wrt_age_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
+    DD-wrt_age_Router            =  local  CRITICAL  1d  30d  192.168.1.1
+    DD-wrt_age_Router2           =  {'recheck':'1d', 'rol':'30d  192.168.1.1'}
 
-    MonType_DD-wrt_age  dd-wrt_age_plugin
-    DD-wrt_age_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <routerIP>
-    DD-wrt_age_Router  local  CRITICAL  1d  30d  192.168.1.1
+**Plugin-specific _rest-of-line_ params:**
 
+`age` (timevalue, or int/float seconds)
+- Max time allowed since last dd-wrt software upgrade
+
+`routerIP` (str)
+- IP address or hostname of the router
+
+Note:  I no longer have a dd-wrt router for testing this plugin.
 
 <br/>
 
@@ -292,19 +315,25 @@ Typical config file lines:
 
 ### freespace_plugin
 
-LAN Monitor plugin - freespace_plugin
+The free space on the file system that holds the specified `path` on the specified `u@h:p` is checked. 
+Expected free space may be an absolute value or a percentage. If the path does not exist, setup() will
+pass but eval_status() will return RTN_WARNING and retry on each check_interval. This allows for 
+intermittently missing paths.
 
-Free space at the specified path is checked.  The `friendly_name` is user defined (not the real path).
-Expected free space may be an absolute value or a percentage.
+**Typical string and dictionary-style config file lines:**
 
-      MonType_Free		freespace_plugin
-      Free_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <free_amount>  <path>
-      Free_RPi3    pi@RPi3    CRITICAL   5m   20%         /home/pi
-      Free_share   local                 1d   1000000000  /mnt/share
+    MonType_Free		   =  freespace_plugin
+    # Free_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <free_amount>  <path>
+    Free_testhost2         =  me@testhost2    CRITICAL   5m   20%         /home/me
+    Free_root              =  {'u@h:p':'local',  'recheck':'1d', 'rol':'10000000  /'}
 
-If the path does not exist, setup() will pass but eval_status() will return RTN_WARNING and retry on each
-check_interval.  This allows for intermittently missing paths.
+**Plugin-specific _rest-of-line_ params:**
 
+`free_amount` (integer or percentage)
+- Minimum free number of 1K-blocks or percentage
+
+`path` (str)
+- Directory path on the specified `u@h:p` host
 
 <br/>
 
@@ -312,19 +341,24 @@ check_interval.  This allows for intermittently missing paths.
 
 ### fsactivity_plugin
 
-LAN Monitor plugin - fsactivity_plugin
-
-The age of files in a directory is checked for at least one file being more recent than `<age>` ago.
+The age of files in a directory is checked for at least one file being more recent than `age` ago.
 Note that sub-directories are not recursed - only the specified top-level directory is checked for the newest file.
 Alternately, the age of a specific individual file may be checked.
-A path to a directory is specified by ending the path with a `/`, else the path is taken as an individual file.
 
-      MonType_Activity	fsactivity_plugin
-      Activity_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <path to directory or file>
-      Activity_MyServer_backups  local                    1h   8d  /mnt/share/MyServerBackups/
-      Activity_RPi2_log.csv      me@rpi2.mylan  CRITICAL  30s  5m  /mnt/RAMDRIVE/log.csv
+**Typical string and dictionary-style config file lines:**
 
+    MonType_Activity	       =  fsactivity_plugin
+    # Activity_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <path>
+    Activity_RAMDRIVE          =  local                    1h   15m  /mnt/RAMDRIVE/
+    Activity_testhost2_log.csv =  {'u@h:p':'me@testhost2', 'critical':True, 'recheck':'30m', 'rol':'5m  /mnt/RAMDRIVE/log.csv'}
 
+**Plugin-specific _rest-of-line_ params:**
+
+`age` (timevalue, or int/float seconds)
+- Max age of the path (newest file in the path directory or specific file)
+
+`path` (str)
+- A path to a directory is specified by ending the path with a `/`, else the path is taken as an individual file.
 
 <br/>
 
@@ -332,14 +366,21 @@ A path to a directory is specified by ending the path with a `/`, else the path 
 
 ### interface_plugin
 
-LAN Monitor plugin - interface_plugin
+The specified interface is queried with `ifconfig <interface_name>`, checking for 'UP' and 'RUNNING'.
 
-Each interface is checked with a `ifconfig <interface name>`, checking for 'UP' and 'RUNNING'.
+**Typical string and dictionary-style config file lines:**
 
-      MonType_Interface		interface_plugin
-      Interface_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <interface name>
-      Interface_router_vlan0       local			CRITICAL  1m  vlan0
+    MonType_Interface           =  interface_plugin
+    # Interface_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <interface_name>
+    Interface_testhost2_wlan0   =  me@testhost2  CRITICAL  1m  wlan0
+    Interface_local_lo          =  {'recheck':'5m', 'rol':'lo'}
 
+**Plugin-specific _rest-of-line_ params:**
+
+`interface_name` (str)
+- Name of the interface to be checked
+
+Note: See README note regarding adding the ifconfig command path to the ssh session path environment.
 
 <br/>
 
@@ -347,21 +388,18 @@ Each interface is checked with a `ifconfig <interface name>`, checking for 'UP' 
 
 ### pinghost_plugin
 
-LAN Monitor plugin - pinghost_plugin
+Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or external.
 
-Each host is pinged.  The `friendly_name` is user defined (not the real hostname).
-<IP address or hostname> may be internal (local LAN) or external.
+**Typical string and dictionary-style config file lines:**
 
-      MonType_Host		pinghost_plugin
-      Host_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <IP address or hostname>
-      Host_RPi1_HP1018    local    CRITICAL   1h   192.168.1.44
-      Host_Yahoo          me@RPi2.mylan       15m  Yahoo.com
+    MonType_Host		        =  pinghost_plugin
+    # Host_<friendly_name>      =  <local or user@host>  [CRITICAL]  <check_interval>  <IPaddress_or_hostname>
+    Host_local_to_testhost2     =  local    CRITICAL   1h   testhost2
+    Host_testhost2_to_yahoo.com =  {'u@h:p':'me@testhost2', 'recheck':'10m', 'rol':'yahoo.com'}
 
-The default timeout for ping commands is 1 seconds.  pinghost_plugin_timeout may be set in the config file 
-to override the default, eg:
-      pinghost_plugin_timeout 5s
+**Plugin-specific _rest-of-line_ params:**
 
-
+`IPaddress_or_hostname` (str)
 
 <br/>
 
@@ -369,21 +407,23 @@ to override the default, eg:
 
 ### process_plugin
 
-LAN Monitor plugin - process_plugin
+Check that the specified process is alive by searching for the `executable_path` is in the output of a `ps -Af` call.
 
-Each process is checked by seeing if the `<executable path>` occurs in the output of a `ps -Af` call.  
+**Typical string and dictionary-style config file lines:**
 
-      MonType_Process		process_plugin
-      Process_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <executable path>
-      Process_x11vnc		local       CRITICAL  5m  /usr/bin/x11vnc
+    MonType_Process		      =  process_plugin
+    # Process_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <executable_path>
+    Process_x11vnc            =  local       CRITICAL  5m  /usr/bin/x11vnc
+    Process_cups              =  {'u@h:p':'me@testhost2', 'recheck':'1h', 'rol':'/usr/sbin/cupsd'}
 
+**Plugin-specific _rest-of-line_ params:**
+
+`executable_path` (str)
+- Full process path as shown in `ps`
 
 <br/>
 
 ---
-
-### selinux_plugin
-
 LAN Monitor plugin - selinux_plugin
 
 Checks that the sestatus Current mode: value matches the config file value.
@@ -392,13 +432,9 @@ Checks that the sestatus Current mode: value matches the config file value.
       SELinux_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <enforcing or permissive>
       SELinux_localhost     local      5m       enforcing
 
-
 <br/>
 
 ---
-
-### service_plugin
-
 LAN Monitor plugin - service_plugin
 
 Check that the specified service is active and running. Checking is done via systemctl status 
@@ -409,13 +445,9 @@ Check that the specified service is active and running. Checking is done via sys
       Service_firewalld       local			CRITICAL  1m  firewalld
       Service_RPi1_HP1018     me@RPi1.mylan           5m  cups
 
-
 <br/>
 
 ---
-
-### webpage_plugin
-
 LAN Monitor plugin - webpage_plugin
 
 The specified web page <url> is retrieved and checked that it contains the <expected text>. 
@@ -426,13 +458,9 @@ The url may be on a local or remote server.
       Page_WeeWX              local             15m  http://localhost/weewx/             Current Conditions
       Page_xBrowserSync       me@RPi2.mylan     1h   https://www.xbrowsersync.org/       Browser syncing as it should be: secure, anonymous and free
 
-
 <br/>
 
 ---
-
-### yum_update_history_plugin
-
 LAN Monitor plugin - yum_update_history_plugin
 
 yum history output is checked for the specific <yum_command> text and the date is extracted from 
@@ -444,7 +472,6 @@ Typical config file lines:
     MonType_YumUpdate  yum_update_history_plugin
     YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
     YumUpdate_MyHost  local  CRITICAL  1d  15d  update --skip-broken
-
 
 <br/>
 

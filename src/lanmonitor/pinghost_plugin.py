@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - pinghost_plugin
-
-Each host is pinged.  The `friendly_name` is user defined (not the real hostname).
-<IP address or hostname> may be internal (local LAN) or external.
-
-      MonType_Host		pinghost_plugin
-      Host_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <IP address or hostname>
-      Host_RPi1_HP1018    local    CRITICAL   1h   192.168.1.44
-      Host_Yahoo          me@RPi2.mylan       15m  Yahoo.com
-
-The default timeout for ping commands is 1 seconds.  pinghost_plugin_timeout may be set in the config file 
-to override the default, eg:
-      pinghost_plugin_timeout 5s
-
 """
-__version__ = '3.1'
+### pinghost_plugin
+
+Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or external.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_Host		        =  pinghost_plugin
+    # Host_<friendly_name>      =  <local or user@host>  [CRITICAL]  <check_interval>  <IPaddress_or_hostname>
+    Host_local_to_testhost2     =  local    CRITICAL   1h   testhost2
+    Host_testhost2_to_yahoo.com =  {'u@h:p':'me@testhost2', 'recheck':'10m', 'rol':'yahoo.com'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`IPaddress_or_hostname` (str)
+"""
+
+__version__ = "3.3"
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3.  Removed pinghost_plugin_timeout.
 # 3.1 230320 - Added config param pinghost_plugin_timeout, Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
@@ -37,7 +40,6 @@ import lanmonitor.globvars as globvars
 IP_RE = re.compile(r"[\d]+\.[\d]+\.[\d]+\.[\d]+")   # Validity checks are rudimentary
 HOSTNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 PING_RESPONSE_RE = re.compile(r"([\d.]+)\)*:.+time=([\d.]+) ms")
-TIMEOUT = '1s'  #TODO cleanup
 
 
 class monitor:
@@ -95,10 +97,9 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        # cmd = ['ping', '-c', '1', '-w', self.timeout, self.ip_or_hostname]
         cmd = ['ping', '-c', '1', self.ip_or_hostname]
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        logging.debug (f"cmd_check response:  {rslt}")
+        # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_PASS:
             ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
@@ -112,7 +113,6 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
 
         else: # RTN_FAIL
-            # error_msg = "Cannot contact target host"  if rslt[1].stderr == ''  else  rslt[1].stderr.replace('\n','')
             if rslt[1].stderr == ""  or  "cmd_check subprocess.run timeout" in rslt[1].stderr:
                 error_msg = "Cannot contact target host"
             else:

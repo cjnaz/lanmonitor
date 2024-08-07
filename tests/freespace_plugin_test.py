@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
@@ -20,10 +21,11 @@ try:
 except:
     from lanmonitor.freespace_plugin import monitor
 
-set_toolname("tool")
+set_toolname('tool')
 globvars.config = config_item()
-globvars.config.cfg["nRetries"]         = 1
-globvars.config.cfg["RetryInterval"]    = "0s"
+globvars.config.cfg['nTries']           = 1
+globvars.config.cfg['RetryInterval']    = '0s'
+globvars.config.cfg['SSH_timeout']      = '2s'
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -36,28 +38,28 @@ def dotest (tnum, desc, test):
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
 dotest (1, "Freespace as a percentage - OK",
-        {"key":"Free_Per_pass", "tag":"Per_pass", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+        {'key':'Free_Per_pass', 'tag':'Per_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home'})
 
 dotest (2, "Freespace as a percentage - CRITICAL",
-        {"key":"Free_Per_fail", "tag":"Per_fail", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"100% /home"})
+        {'key':'Free_Per_fail', 'tag':'Per_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'100% /home'})
 
-dotest (3, "Freespace as a absolute min - OK",
-        {"key":"Free_Abs_pass", "tag":"Abs_pass", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"18000 /mnt/RAMDRIVE"})
+dotest (3, "Freespace as a absolute min remote - OK",
+        {'key':'Free_Abs_pass', 'tag':'Abs_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000 /mnt/RAMDRIVE'})
 
-dotest (4, "Freespace as a absolute min - CRITICAL",
-        {"key":"Free_Abs_fail", "tag":"Abs_fail", "host":"testhost", "user_host_port":"me@testhost", "critical":True, "check_interval":1, "rest_of_line":"30000 /mnt/RAMDRIVE"})
+dotest (4, "Freespace as a absolute min remote - CRITICAL",
+        {'key':'Free_Abs_fail', 'tag':'Abs_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'300000 /mnt/RAMDRIVE'})
 
 dotest (5, "Known host, No such path - WARNING",
-        {"key":"Free_nosuchpath", "tag":"nosuchpath", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/nosuchpath"})
+        {'key':'Free_nosuchpath', 'tag':'nosuchpath', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10% /mnt/nosuchpath'})
 
 dotest (6, "Space in path - OK",
-        {"key":"Free_pathWithSpaces", "tag":"pathWithSpaces", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10% /mnt/share/tmp/Ripped videos"})
+        {'key':'Free_pathWithSpaces', 'tag':'pathWithSpaces', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10% /mnt/share/tmp/Ripped videos'})
 
 dotest (7, "Bad limit value - setup ERROR",
-        {"key":"Free_badlimit", "tag":"badlimit", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"10x% /home"})
+        {'key':'Free_badlimit', 'tag':'badlimit', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10x% /home'})
 
 dotest (8, "No such host - WARNING",
-        {"key":"Free_Unknown", "tag":"Unknown", "host":"nosuchhost", "user_host_port":"me@nosuchhost", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+        {'key':'Free_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home'})
 
 dotest (9, "Known host, unavailable - WARNING",
-        {"key":"Free_Unavailable", "tag":"Unavailable", "host":"testhostX", "user_host_port":"me@testhostX", "critical":True, "check_interval":1, "rest_of_line":"30% /home"})
+        {'key':'Free_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home'})

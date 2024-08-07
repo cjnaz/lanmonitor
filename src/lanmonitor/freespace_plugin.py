@@ -1,23 +1,35 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - freespace_plugin
-
-Free space at the specified path is checked.  The `friendly_name` is user defined (not the real path).
-Expected free space may be an absolute value or a percentage.
-
-      MonType_Free		freespace_plugin
-      Free_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <free_amount>  <path>
-      Free_RPi3    pi@RPi3    CRITICAL   5m   20%         /home/pi
-      Free_share   local                 1d   1000000000  /mnt/share
-
-If the path does not exist, setup() will pass but eval_status() will return RTN_WARNING and retry on each
-check_interval.  This allows for intermittently missing paths.
 """
-__version__ = "3.1"
+### freespace_plugin
+
+The free space on the file system that holds the specified `path` on the specified `u@h:p` is checked. 
+Expected free space may be an absolute value or a percentage. If the path does not exist, setup() will
+pass but eval_status() will return RTN_WARNING and retry on each check_interval. This allows for 
+intermittently missing paths.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_Free		   =  freespace_plugin
+    # Free_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <free_amount>  <path>
+    Free_testhost2         =  me@testhost2    CRITICAL   5m   20%         /home/me
+    Free_root              =  {'u@h:p':'local',  'recheck':'1d', 'rol':'10000000  /'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`free_amount` (integer or percentage)
+- Minimum free number of 1K-blocks or percentage
+
+`path` (str)
+- Directory path on the specified `u@h:p` host
+"""
+
+__version__ = '3.3'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3.  Bug fix enable age check on local machine.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
@@ -74,7 +86,7 @@ class monitor:
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        percent_form = re.search("^([\d]+)%\s+(.+)", item["rest_of_line"])
+        percent_form = re.search('^([\d]+)%\s+(.+)', item['rest_of_line'])
         if percent_form:
             self.minfree   = int(percent_form.group(1))
             self.free_type = 'percent'
@@ -82,7 +94,7 @@ class monitor:
             return RTN_PASS
 
         else:
-            absolute_form = re.search("^([\d]+)\s+(.+)", item["rest_of_line"])
+            absolute_form = re.search('^([\d]+)\s+(.+)', item['rest_of_line'])
             if absolute_form:
                 self.minfree   = int(absolute_form.group(1))
                 self.free_type = 'absolute'
@@ -103,31 +115,31 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ["df", self.path]
-        df_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="cmdrun", cmd_timeout=self.cmd_timeout)
+        cmd = ['df', self.path]
+        df_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {df_rslt}")
 
         if df_rslt[0] == RTN_WARNING:
             errro_msg = df_rslt[1].stderr.replace('\n','')
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
 
         if df_rslt[0] != RTN_PASS:
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - COULD NOT GET df OF PATH <{self.path}>"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET df OF PATH <{self.path}>"}
 
         out = SPACE_RE.search(df_rslt[1].stdout)
         if out:
             if self.free_type == 'absolute':
                 abs_free = int(out.group(1))
                 if abs_free > self.minfree:
-                    return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
+                    return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
                 else:
-                    return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
+                    return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
             else:   # percent case
                 percent_free = 100 - int(out.group(2))
                 if percent_free > self.minfree:
-                    return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
+                    return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
                 else:
-                    return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
+                    return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
         else:
             logging.debug (f"df of <{self.path}> not parsable - returned\n  {df_rslt[1].stdout}")
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - df OF PATH <{self.path}> not parsable"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - df OF PATH <{self.path}> not parsable"}
