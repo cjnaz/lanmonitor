@@ -38,13 +38,13 @@ def dotest (tnum, desc, test):
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
 dotest (1, "Freespace as a percentage - OK",
-        {'key':'Free_Per_pass', 'tag':'Per_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home'})
+        {'key':'Free_Per_pass', 'tag':'Per_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home   '})
 
 dotest (2, "Freespace as a percentage - CRITICAL",
         {'key':'Free_Per_fail', 'tag':'Per_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'100% /home'})
 
 dotest (3, "Freespace as a absolute min remote - OK",
-        {'key':'Free_Abs_pass', 'tag':'Abs_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000 /mnt/RAMDRIVE'})
+        {'key':'Free_Abs_pass', 'tag':'Abs_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000 /mnt/RAMDRIVE   '})
 
 dotest (4, "Freespace as a absolute min remote - CRITICAL",
         {'key':'Free_Abs_fail', 'tag':'Abs_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'300000 /mnt/RAMDRIVE'})

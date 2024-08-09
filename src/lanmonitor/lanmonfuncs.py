@@ -196,19 +196,32 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         u_h, host, port = split_user_host_port(user_host_port)
         cmd = ['ssh', u_h, '-p' + port, '-T'] + cmd
 
-    for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
+    error_msg = ''
+    # for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
+    ntries = globvars.config.getcfg('nTries', NTRIES)
+    for nTry in range (ntries):
         try:
-            logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
+            # logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
+            logging.debug(f"cmd try {nTry+1} <{cmd}>")
             # run_try = subprocess.run(cmd, timeout=cmd_timeout,                                                                
             #                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
             run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
-            # logging.debug(f"cmd_check subprocess.run returned <{runtry}>")              # Commented out since response can be huge.
+            if run_try.returncode > 0:  #== 255:
+                error_msg = run_try.stderr.replace('\n','')
+                # logging.debug(f"cmd_check subprocess.run try {nTry+1} of cmd <{cmd}> failed:  {error_msg}")
+                # logging.debug(f"cmd try {nTry+1} failed (returncode=255) <{cmd}>:  {error_msg}")
+                logging.debug(f"cmd try {nTry+1} failed (returncode={run_try.returncode}) <{cmd}>:  {error_msg}")
+            # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")              # Commented out since response can be huge.
         except subprocess.TimeoutExpired as e:
-            logging.debug(f"cmd_check subprocess.run timeout:  {e}")
+            error_msg = e
+            # logging.debug(f"cmd_check subprocess.run try {nTry+1} timeout:  {e}")
+            logging.debug(f"cmd try {nTry+1} timeout:  {e}")
             run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check subprocess.run timeout:  {e}')
             continue
         except Exception as e:
-            logging.debug(f"cmd_check subprocess.run of cmd <{cmd}> failed:  {e}")
+            error_msg = e
+            # logging.debug(f"cmd_check subprocess.run try {nTry+1} of cmd <{cmd}> failed:  {e}")
+            logging.debug(f"cmd try {nTry+1} failed (exception) <{cmd}>:  {e}")
             run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check subprocess.run failed:  {e}')
             continue
 
@@ -228,6 +241,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                         return (RTN_PASS, run_try)
                 else:
                     return (RTN_PASS, run_try)
+            error_msg = "check_string mode mismatch"
 
         elif return_type == 'cmdrun':
             if run_try.returncode == 0:
@@ -236,35 +250,50 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         else:
             raise ValueError (f"Invalid return_type <{return_type}> passed to cmd_check")
 
-        time.sleep (timevalue(globvars.config.getcfg('RetryInterval', RETRY_INTERVAL)).seconds)
+        if nTry < ntries-1:
+            time.sleep (timevalue(globvars.config.getcfg('RetryInterval', RETRY_INTERVAL)).seconds)
 
     if user_host_port == 'local':
         return (RTN_FAIL, run_try)
     
 
-    logging.debug(f"cmd_check command failed on remote system - attempting simple ssh connection to <{u_h}>")
+    # logging.debug(f"cmd_check command failed on remote system with <{error_msg}> - attempting simple ssh connection to <{u_h}>")
+    logging.debug(f"cmd failed on remote system with <{error_msg}> - attempting simplessh connection to <{u_h}>")
     simplessh = ['ssh', u_h, '-p' + port, '-T', 'echo', 'hello']
 
-    for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
+    # for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
+    error_msg = ''
+    for nTry in range (ntries):
         try:
-            logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
+            # logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
+            logging.debug(f"simplessh try {nTry+1} <{simplessh}>")
             # simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
             #                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
             simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
                                            capture_output=True, text=True)
             # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")     # Uncomment for debug
             if simplessh_try.returncode == 0:                                           # ssh access works so return original cmd fail info
-                logging.debug(f"simplessh access passes.  Return original command failure record.")
+                logging.debug(f"simplessh connection passes.  Return original cmd failure record.")
                 return (RTN_FAIL, run_try)
+            if simplessh_try.returncode > 0: #== 255:
+                error_msg = simplessh_try.stderr.replace('\n','')
+                # logging.debug(f"cmd_check subprocess.run try {nTry+1} of simplessh <{simplessh}> failed:  {error_msg}")
+                logging.debug(f"simplessh try {nTry+1} failed (returncode={simplessh_try.returncode}) <{simplessh}>:  {error_msg}")
         except subprocess.TimeoutExpired as e:
-            logging.debug(f"cmd_check subprocess.run of simplessh cmd <{simplessh}> timeout:  {e}")
+            error_msg = e
+            # logging.debug(f"cmd_check subprocess.run try {nTry+1} of simplessh timeout:  {e}")
+            logging.debug(f"simplessh try {nTry+1} timeout:  {e}")
             simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check simplessh timeout:  {e}')
             continue
         except Exception as e:
-            logging.debug(f"cmd_check subprocess.run of simplessh cmd <{simplessh}> failed:  {e}")
+            error_msg = e
+            # logging.debug(f"cmd_check subprocess.run try {nTry+1} of simplessh <{simplessh}> failed:  {e}")
+            logging.debug(f"simplessh try {nTry+1} failed (exception) <{simplessh}>:  {e}")
             simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check simplessh connection failed:  {e}')     # define default fail message
             continue
 
+    # logging.debug(f"cmd_check simplessh failed with <{error_msg}>")
+    logging.debug(f"simplessh failed with <{error_msg}>")
     return (RTN_WARNING, simplessh_try)
 
 

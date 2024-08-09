@@ -29,7 +29,7 @@ __version__ = '3.3'
 #
 #  Chris Nelson, Copyright 2021-2024
 #
-# 3.3 240805 - Updated to lanmonitor V3.3.  Bug fix enable age check on local machine.
+# 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
@@ -90,7 +90,7 @@ class monitor:
         if percent_form:
             self.minfree   = int(percent_form.group(1))
             self.free_type = 'percent'
-            self.path = percent_form.group(2)
+            self.path = percent_form.group(2).strip()
             return RTN_PASS
 
         else:
@@ -98,7 +98,7 @@ class monitor:
             if absolute_form:
                 self.minfree   = int(absolute_form.group(1))
                 self.free_type = 'absolute'
-                self.path = absolute_form.group(2)
+                self.path = absolute_form.group(2).strip()
                 return RTN_PASS
 
         logging.error (f"  ERROR:  <{self.key}> COULD NOT PARSE SETTINGS <{item['rest_of_line']}>")
@@ -120,8 +120,8 @@ class monitor:
         # logging.debug (f"cmd_check response:  {df_rslt}")
 
         if df_rslt[0] == RTN_WARNING:
-            errro_msg = df_rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = df_rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         if df_rslt[0] != RTN_PASS:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET df OF PATH <{self.path}>"}

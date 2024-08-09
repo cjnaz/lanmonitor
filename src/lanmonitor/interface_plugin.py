@@ -25,7 +25,7 @@ __version__ = '3.3'
 #
 #  Chris Nelson, Copyright 2021-2024
 #
-# 3.3 240805 - Updated to lanmonitor V3.3.  Bug fix enable age check on local machine.
+# 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #
@@ -99,8 +99,8 @@ class monitor:
         # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_WARNING:
-            errro_msg = rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         if rslt[0] == RTN_PASS:
             if 'UP' not in rslt[1].stdout:

@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - selinux_plugin
-
-Checks that the sestatus Current mode: value matches the config file value.
-
-      MonType_SELinux		selinux_plugin
-      SELinux_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <enforcing or permissive>
-      SELinux_localhost     local      5m       enforcing
 """
-__version__ = "3.1"
+### selinux_plugin
+
+Checks that the `sestatus` _Current mode:_ value matches the `expected_mode`.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_SELinux		      =  selinux_plugin
+    # SELinux_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <expected_mode>
+    SELinux_localhost         =  local      5m       enforcing
+    SELinux_localhost2        =  {'critical':True, 'recheck':'5m', 'rol':'enforcing'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`expected_mode` (str)
+- 'enforcing' or 'permissive'
+
+Note: If selinux is not installed on the target host, then this plugin reports "NOT IN EXPECTED STATE...".
+"""
+
+__version__ = '3.3'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
 #   
@@ -25,7 +38,7 @@ from cjnfuncs.core import logging
 
 
 # Configs / Constants
-SEMODES = ["enforcing", "permissive"]
+SEMODES = ['enforcing', 'permissive']
 
 
 class monitor:
@@ -65,7 +78,7 @@ class monitor:
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        self.expected_mode  = item["rest_of_line"]
+        self.expected_mode  = item['rest_of_line'].strip()
 
         if self.expected_mode not in SEMODES:
             logging.error (f"  ERROR:  <{self.key}> INVALID EXPECTED sestatus MODE <{self.expected_mode}> PROVIDED - EXPECTING <{SEMODES}>")
@@ -83,14 +96,14 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ["sestatus"]
-        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type="check_string", check_line_text="Current mode:", expected_text=self.expected_mode, cmd_timeout=self.cmd_timeout)
+        cmd = ['sestatus']
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='check_string', check_line_text='Current mode:', expected_text=self.expected_mode, cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_PASS:
-            return {"rslt":RTN_PASS, "notif_key":self.key, "message":f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
+            return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
         elif rslt[0] == RTN_WARNING:
-            errro_msg = rslt[1].stderr.replace('\n','')
-            return {"rslt":RTN_WARNING, "notif_key":self.key, "message":f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
         else:
-            return {"rslt":self.failtype, "notif_key":self.key, "message":f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting <{self.expected_mode}>)"}
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting <{self.expected_mode}>)"}

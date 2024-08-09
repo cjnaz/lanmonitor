@@ -25,7 +25,7 @@ set_toolname('tool')
 globvars.config = config_item()
 globvars.config.cfg['nTries']           = 1
 globvars.config.cfg['RetryInterval']    = '0s'
-globvars.config.cfg['SSH_timeout']      = '2s'
+globvars.config.cfg['SSH_timeout']      = '4s'
 
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 logging.getLogger().setLevel(logging.DEBUG)
@@ -39,7 +39,7 @@ def dotest (tnum, desc, test):
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
 dotest (1, "Local pass - OK",
-        {'key':'AptUpgrade_Pass', 'tag':'Pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'500w apt full-upgrade'})
+        {'key':'AptUpgrade_Pass', 'tag':'Pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'500w apt full-upgrade   '})
 
 dotest (2, "Local too old - CRITICAL",
         {'key':'AptUpgrade_TooOld', 'tag':'TooOld', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m apt full-upgrade'})
@@ -60,7 +60,7 @@ dotest (7, "No such host - WARNING",
         {'key':'AptUpgrade_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10h apt full-upgrade'})
 
 dotest (8, "Known host, unavailable - WARNING",
-        {'key':'AptUpgrade_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10h apt full-upgrade'})
+        {'key':'AptUpgrade_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'10h apt full-upgrade'})
 
 dotest (9, "Bad (no) check command - setup ERROR",
         {'key':'AptUpgrade_baddef', 'tag':'badline', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10m'})

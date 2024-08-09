@@ -94,7 +94,7 @@ class monitor:
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
 
-            self.path = xx[1]
+            self.path = xx[1].strip()
             if self.path.endswith('/'):     # Dir case path ends with '/'
                 self.path_to_dir = True
                 self.dir = self.path
@@ -103,13 +103,6 @@ class monitor:
                 self.path_to_dir = False    # File case path ends without '/'
                 self.dir = str(pathlib.PurePath(self.path).parent)
                 self.filename = pathlib.PurePath(self.path).name
-
-            cmd = ['ls', self.dir]          # Confirm that the directory is accessible/readable
-            ls_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-            # logging.debug (f"cmd_check response:  {ls_rslt}")
-            
-            if ls_rslt[0] != RTN_PASS:      # Can't access target directory - force retries
-                return RTN_WARNING
 
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -133,8 +126,8 @@ class monitor:
         # logging.debug (f"cmd_check response:  {ls_rslt}")
 
         if ls_rslt[0] == RTN_WARNING:           # ssh: Could not resolve hostname xxx: Name or service not known
-            errro_msg = ls_rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = ls_rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         if ls_rslt[0] != RTN_PASS:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET ls OF PATH <{self.dir}>"}

@@ -91,7 +91,7 @@ class monitor:
             self.maxage_sec = maxagevar.seconds
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
-            self.url = xx[1] + '/Info.htm'
+            self.url = xx[1].strip() + '/Info.htm'
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
             return RTN_FAIL
@@ -115,8 +115,8 @@ class monitor:
         # logging.debug (f"cmd_check response:  {rslt}")
 
         if rslt[0] == RTN_WARNING:
-            errro_msg = rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         out = LINEFORMAT.match(rslt[1].stdout)
         if out:

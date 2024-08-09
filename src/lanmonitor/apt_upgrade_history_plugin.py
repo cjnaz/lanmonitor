@@ -95,7 +95,7 @@ class monitor:
             self.maxage_sec = maxagevar.seconds
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
-            self.apt_command = xx[1]
+            self.apt_command = xx[1].strip()
             self.apt_RE = re.compile(APTLINEFORMAT + self.apt_command + '\n')
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -128,8 +128,8 @@ class monitor:
         # logging.debug (f"cmd_check response:  {rslt}")        # Uncomment for debug.  May be very verbose.
 
         if rslt[0] == RTN_WARNING:
-            errro_msg = rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         if rslt[0] != RTN_PASS:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET APT HISTORY"}

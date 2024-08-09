@@ -79,7 +79,7 @@ class monitor:
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        self.ip_or_hostname = item['rest_of_line']
+        self.ip_or_hostname = item['rest_of_line'].strip()
         if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
             logging.error (f"  ERROR:  <{self.key}> CAN'T PARSE IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL

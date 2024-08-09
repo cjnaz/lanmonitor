@@ -424,54 +424,102 @@ Check that the specified process is alive by searching for the `executable_path`
 <br/>
 
 ---
-LAN Monitor plugin - selinux_plugin
 
-Checks that the sestatus Current mode: value matches the config file value.
+### selinux_plugin
 
-      MonType_SELinux		selinux_plugin
-      SELinux_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <enforcing or permissive>
-      SELinux_localhost     local      5m       enforcing
+Checks that the `sestatus` _Current mode:_ value matches the `expected_mode`.
 
-<br/>
+**Typical string and dictionary-style config file lines:**
 
----
-LAN Monitor plugin - service_plugin
+    MonType_SELinux		      =  selinux_plugin
+    # SELinux_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <expected_mode>
+    SELinux_localhost         =  local      5m       enforcing
+    SELinux_localhost2        =  {'critical':True, 'recheck':'5m', 'rol':'enforcing'}
 
-Check that the specified service is active and running. Checking is done via systemctl status 
-<service name> (for systemd) or service <service_name> status (for init).
+**Plugin-specific _rest-of-line_ params:**
 
-      MonType_Service		service_plugin
-      Service_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <service name>
-      Service_firewalld       local			CRITICAL  1m  firewalld
-      Service_RPi1_HP1018     me@RPi1.mylan           5m  cups
+`expected_mode` (str)
+- 'enforcing' or 'permissive'
+
+Note: If selinux is not installed on the target host, then this plugin reports "NOT IN EXPECTED STATE...".
 
 <br/>
 
 ---
-LAN Monitor plugin - webpage_plugin
 
-The specified web page <url> is retrieved and checked that it contains the <expected text>. 
-The url may be on a local or remote server.
+### service_plugin
 
-      MonType_Page		webpage_plugin
-      Page_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <url>  <expected text>
-      Page_WeeWX              local             15m  http://localhost/weewx/             Current Conditions
-      Page_xBrowserSync       me@RPi2.mylan     1h   https://www.xbrowsersync.org/       Browser syncing as it should be: secure, anonymous and free
+Check that the specified service is active and running. Checking is done via `systemctl status 
+<service name>` (for systemd) or `service <service_name> status` (for init).
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_Service           =  service_plugin
+    # Service_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <service_name>
+    Service_firewalld         =  local  CRITICAL  1m  firewalld
+    Service_sshd              =  {'u@h:p':'me@testhost2', 'recheck':'10m', 'rol':'sshd'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`service_name` (str)
+- Service name to be checked
 
 <br/>
 
 ---
-LAN Monitor plugin - yum_update_history_plugin
 
-yum history output is checked for the specific <yum_command> text and the date is extracted from 
-the first occurrence this line, then compared to the <age> limit. May require root access in 
+### webpage_plugin
+
+The specified web page `url` is retrieved and checked that it contains the `expected_text`. 
+The `url` may be on a local or remote server.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_Page           =  webpage_plugin
+    # Page_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <url>  <expected_text>
+    Page_WeeWX             =  local  15m  http://localhost/weewx/  Current Conditions
+    Page_xBrowserSync      =  {'u@h:p':'me@testhost2', 'recheck':'1h', 'rol':'https://www.xbrowsersync.org/  Browser syncing as it should be: secure, anonymous and free'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`url` (str)
+- The local or remote url to be fetched
+
+`expected_text` (str)
+- Pass if the fetched url contains/includes the expected_text
+- All text after the url is taken as the expected_text
+- Leading and trailing whitespace is trimmed before the compare
+
+Note: If the `url` or `expected_text` contains a `#` character then use the dictionary-style definition syntax to avoid the config file parser taking the # as the start of a comment.
+
+<br/>
+
+---
+
+### yum_update_history_plugin
+
+yum history output is searched for the specific `yum_command` text and the date is extracted from 
+the first occurrence of this line, then compared to the `age` limit. May require root access in 
 order to read yum history.
 
-Typical config file lines:
+This plugin works equally well with newer Fedora-based systems (eg, RHEL 8+) that use the `dnf` command.  These
+systems save the history in the yum database, and `dnf history` and `yum history` output the same content.                 
 
-    MonType_YumUpdate  yum_update_history_plugin
-    YumUpdate_<friendly_name>  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
-    YumUpdate_MyHost  local  CRITICAL  1d  15d  update --skip-broken
+**Typical string and dictionary-style config file lines:**
+
+    MonType_YumUpdate           =  yum_update_history_plugin
+    # YumUpdate_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <yum_command>
+    YumUpdate_MyHost            =  local  CRITICAL  1d  15d  update --skip-broken
+    YumUpdate_MyHost2           =  {'recheck':'1d', 'rol':'30d  update'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`age` (timevalue, or int/float seconds)
+- Max time allowed since last execution of the apt_command
+
+`yum_command` (str)
+- The yum history is scanned for this specific string
+- Internal whitespace must match exactly.  Leading and trailing whitespace is trimmed off.
 
 <br/>
 

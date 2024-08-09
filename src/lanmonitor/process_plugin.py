@@ -74,7 +74,7 @@ class monitor:
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        self.process_path   = item['rest_of_line']
+        self.process_path   = item['rest_of_line'].strip()
 
         return RTN_PASS
 
@@ -96,7 +96,7 @@ class monitor:
         if rslt[0] == RTN_PASS:
             return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.process_path}"}
         elif rslt[0] == RTN_WARNING:
-            errro_msg = rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {errro_msg}"}
+            error_msg = rslt[1].stderr.replace('\n','')
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
         else:
             return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - PROCESS <{self.process_path}> IS NOT RUNNING"}
