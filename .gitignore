@@ -4,4 +4,3 @@ build/
 dist/
 log*.txt
 *.egg-info/
-*.golden

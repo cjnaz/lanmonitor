@@ -1,0 +1,50 @@
+
+Test 1 - Local process - OK --------------------------------------------------
+                     process_plugin.setup                -    DEBUG:  Process_local_pass - lanmonitor.process_plugin.setup() called:
+  {'key': 'Process_local_pass', 'tag': 'local_pass', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '/usr/sbin/sshd   '}
+                process_plugin_test.dotest               -    DEBUG:  Process_local_pass - setup() returned:  0
+                     process_plugin.eval_status          -    DEBUG:  Process_local_pass - lanmonitor.process_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ps', '-Af']>
+                process_plugin_test.dotest               -    DEBUG:  Process_local_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Process_local_pass', 'message': 'Process_local_pass  OK - local - /usr/sbin/sshd'}
+
+Test 2 - Remote process - OK --------------------------------------------------
+                     process_plugin.setup                -    DEBUG:  Process_remote_pass - lanmonitor.process_plugin.setup() called:
+  {'key': 'Process_remote_pass', 'tag': 'remote_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '   /usr/sbin/sshd'}
+                process_plugin_test.dotest               -    DEBUG:  Process_remote_pass - setup() returned:  0
+                     process_plugin.eval_status          -    DEBUG:  Process_remote_pass - lanmonitor.process_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ps', '-Af']>
+                process_plugin_test.dotest               -    DEBUG:  Process_remote_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Process_remote_pass', 'message': 'Process_remote_pass  OK - testhost2 - /usr/sbin/sshd'}
+
+Test 3 - Local process - CRITICAL --------------------------------------------------
+                     process_plugin.setup                -    DEBUG:  Process_local_fail - lanmonitor.process_plugin.setup() called:
+  {'key': 'Process_local_fail', 'tag': 'local_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '/usr/bin/XXX'}
+                process_plugin_test.dotest               -    DEBUG:  Process_local_fail - setup() returned:  0
+                     process_plugin.eval_status          -    DEBUG:  Process_local_fail - lanmonitor.process_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ps', '-Af']>
+                process_plugin_test.dotest               -    DEBUG:  Process_local_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Process_local_fail', 'message': '  CRITICAL: Process_local_fail - local - PROCESS </usr/bin/XXX> IS NOT RUNNING'}
+
+Test 4 - No such host - WARNING --------------------------------------------------
+                     process_plugin.setup                -    DEBUG:  Process_unknown_host - lanmonitor.process_plugin.setup() called:
+  {'key': 'Process_unknown_host', 'tag': 'unknown_host', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '/usr/bin/XXX'}
+                process_plugin_test.dotest               -    DEBUG:  Process_unknown_host - setup() returned:  0
+                     process_plugin.eval_status          -    DEBUG:  Process_unknown_host - lanmonitor.process_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'ps', '-Af']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'ps', '-Af']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <check_string mode mismatch> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+                process_plugin_test.dotest               -    DEBUG:  Process_unknown_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Process_unknown_host', 'message': '  WARNING: Process_unknown_host - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 5 - Known host, unavailable - WARNING --------------------------------------------------
+                     process_plugin.setup                -    DEBUG:  Process_unavailable_host - lanmonitor.process_plugin.setup() called:
+  {'key': 'Process_unavailable_host', 'tag': 'unavailable_host', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '/usr/bin/XXX'}
+                process_plugin_test.dotest               -    DEBUG:  Process_unavailable_host - setup() returned:  0
+                     process_plugin.eval_status          -    DEBUG:  Process_unavailable_host - lanmonitor.process_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'ps', '-Af']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'ps', '-Af']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <check_string mode mismatch> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
+                process_plugin_test.dotest               -    DEBUG:  Process_unavailable_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Process_unavailable_host', 'message': '  WARNING: Process_unavailable_host - testhostX - ssh: connect to host testhostx port 22: No route to host'}

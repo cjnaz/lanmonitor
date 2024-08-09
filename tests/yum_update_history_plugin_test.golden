@@ -1,0 +1,76 @@
+
+Test 1 - YumUpdate pass - OK --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_Pass - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_Pass', 'tag': 'Pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '   90d update  '}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - setup() returned:  0
+          yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_Pass - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['yum', 'history']>
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'YumUpdate_Pass', 'message': 'YumUpdate_Pass  OK - local -   36.2 days  (  90 days  max)'}
+
+Test 2 - YumUpdate too old - CRITICAL --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_TooOld - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_TooOld', 'tag': 'TooOld', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10m update'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_TooOld - setup() returned:  0
+          yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_TooOld - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['yum', 'history']>
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_TooOld', 'message': '  CRITICAL: YumUpdate_TooOld - local - YUM UPDATE TOO LONG AGO - 52171.5 mins  (  10 mins  max)'}
+
+Test 3 - Bad definition - setup ERROR --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_baddef - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_baddef', 'tag': 'badline', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10m'}
+          yum_update_history_plugin.setup                -    ERROR:    ERROR:  <YumUpdate_baddef> INVALID LINE SYNTAX <10m>
+  list index out of range
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_baddef - setup() returned:  2
+
+Test 4 - Bad time - setup ERROR --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_badtime - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_badtime', 'tag': 'badtime', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10y update'}
+          yum_update_history_plugin.setup                -    ERROR:    ERROR:  <YumUpdate_badtime> INVALID LINE SYNTAX <10y update>
+  Illegal time units <y> in time string <10y>
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_badtime - setup() returned:  2
+
+Test 5 - Remote not running yum - Can't get history - WARNING --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_remote - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_remote', 'tag': 'remote', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10m update'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_remote - setup() returned:  0
+          yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_remote - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'yum', 'history']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=127) <['ssh', 'me@testhost2', '-p22', '-T', 'yum', 'history']>:  bash: line 1: yum: command not found
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <bash: line 1: yum: command not found> - attempting simplessh connection to <me@testhost2>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh connection passes.  Return original cmd failure record.
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_remote - eval_status() returned:  {'rslt': 1, 'notif_key': 'YumUpdate_remote', 'message': '  WARNING: YumUpdate_remote - testhost2 - COULD NOT GET YUM HISTORY'}
+
+Test 6 - No matching command history - WARNING --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_noupdates - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_noupdates', 'tag': 'noupdates', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10m update xx'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_noupdates - setup() returned:  0
+          yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_noupdates - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['yum', 'history']>
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_noupdates - eval_status() returned:  {'rslt': 1, 'notif_key': 'YumUpdate_noupdates', 'message': '  WARNING: YumUpdate_noupdates - local - NO <update xx> UPDATES IN THE YUM HISTORY DB'}
+
+Test 7 - No such host - WARNING --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_Unknown - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_Unknown', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '90d update'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unknown - setup() returned:  0
+          yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_Unknown - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'yum', 'history']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'yum', 'history']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unknown - eval_status() returned:  {'rslt': 1, 'notif_key': 'YumUpdate_Unknown', 'message': '  WARNING: YumUpdate_Unknown - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 8 - Known host, unavailable - WARNING --------------------------------------------------
+          yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_Unavailable - lanmonitor.yum_update_history_plugin.setup() called:
+  {'key': 'YumUpdate_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '90d update'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unavailable - setup() returned:  0
+          yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_Unavailable - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'yum', 'history']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'yum', 'history']' timed out after 4 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <Command '['ssh', 'me@testhostX', '-p22', '-T', 'yum', 'history']' timed out after 4 seconds> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']' timed out after 4.0 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <Command '['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']' timed out after 4.0 seconds>
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unavailable - eval_status() returned:  {'rslt': 1, 'notif_key': 'YumUpdate_Unavailable', 'message': "  WARNING: YumUpdate_Unavailable - testhostX - cmd_check simplessh timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']' timed out after 4.0 seconds"}

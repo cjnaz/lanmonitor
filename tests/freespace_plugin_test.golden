@@ -1,0 +1,81 @@
+
+Test 1 - Freespace as a percentage - OK --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_Per_pass - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_Per_pass', 'tag': 'Per_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '30% /home   '}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Per_pass - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_Per_pass - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['df', '/home']>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Per_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_Per_pass', 'message': 'Free_Per_pass  OK - local - free 91%  (minfree 30%)  /home'}
+
+Test 2 - Freespace as a percentage - CRITICAL --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_Per_fail - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_Per_fail', 'tag': 'Per_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '100% /home'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Per_fail - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_Per_fail - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['df', '/home']>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Per_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Free_Per_fail', 'message': '  CRITICAL: Free_Per_fail - local - free 91%  (minfree 100%)  /home'}
+
+Test 3 - Freespace as a absolute min remote - OK --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_Abs_pass - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_Abs_pass', 'tag': 'Abs_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000 /mnt/RAMDRIVE   '}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Abs_pass - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_Abs_pass - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'df', '/mnt/RAMDRIVE']>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Abs_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_Abs_pass', 'message': 'Free_Abs_pass  OK - testhost2 - free 20476  (minfree 1000)  /mnt/RAMDRIVE'}
+
+Test 4 - Freespace as a absolute min remote - CRITICAL --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_Abs_fail - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_Abs_fail', 'tag': 'Abs_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '300000 /mnt/RAMDRIVE'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Abs_fail - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_Abs_fail - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'df', '/mnt/RAMDRIVE']>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Abs_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Free_Abs_fail', 'message': '  CRITICAL: Free_Abs_fail - testhost2 - free 20476  (minfree 300000)  /mnt/RAMDRIVE'}
+
+Test 5 - Known host, No such path - WARNING --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_nosuchpath - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_nosuchpath', 'tag': 'nosuchpath', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10% /mnt/nosuchpath'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_nosuchpath - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_nosuchpath - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['df', '/mnt/nosuchpath']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=1) <['df', '/mnt/nosuchpath']>:  df: /mnt/nosuchpath: No such file or directory
+              freespace_plugin_test.dotest               -    DEBUG:  Free_nosuchpath - eval_status() returned:  {'rslt': 1, 'notif_key': 'Free_nosuchpath', 'message': '  WARNING: Free_nosuchpath - local - COULD NOT GET df OF PATH </mnt/nosuchpath>'}
+
+Test 6 - Space in path - OK --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_pathWithSpaces - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_pathWithSpaces', 'tag': 'pathWithSpaces', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10% /mnt/share/tmp/Ripped videos'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_pathWithSpaces - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_pathWithSpaces - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['df', '/mnt/share/tmp/Ripped videos']>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_pathWithSpaces - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_pathWithSpaces', 'message': 'Free_pathWithSpaces  OK - local - free 31%  (minfree 10%)  /mnt/share/tmp/Ripped videos'}
+
+Test 7 - Bad limit value - setup ERROR --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_badlimit - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_badlimit', 'tag': 'badlimit', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10x% /home'}
+                   freespace_plugin.setup                -    ERROR:    ERROR:  <Free_badlimit> COULD NOT PARSE SETTINGS <10x% /home>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_badlimit - setup() returned:  2
+
+Test 8 - No such host - WARNING --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_Unknown - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_Unknown', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '30% /home'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Unknown - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_Unknown - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'df', '/home']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'df', '/home']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Unknown - eval_status() returned:  {'rslt': 1, 'notif_key': 'Free_Unknown', 'message': '  WARNING: Free_Unknown - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 9 - Known host, unavailable - WARNING --------------------------------------------------
+                   freespace_plugin.setup                -    DEBUG:  Free_Unavailable - lanmonitor.freespace_plugin.setup() called:
+  {'key': 'Free_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '30% /home'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Unavailable - setup() returned:  0
+                   freespace_plugin.eval_status          -    DEBUG:  Free_Unavailable - lanmonitor.freespace_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'df', '/home']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'df', '/home']' timed out after 2 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <Command '['ssh', 'me@testhostX', '-p22', '-T', 'df', '/home']' timed out after 2 seconds> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
+              freespace_plugin_test.dotest               -    DEBUG:  Free_Unavailable - eval_status() returned:  {'rslt': 1, 'notif_key': 'Free_Unavailable', 'message': '  WARNING: Free_Unavailable - testhostX - ssh: connect to host testhostx port 22: No route to host'}

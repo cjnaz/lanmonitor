@@ -1,0 +1,88 @@
+
+Test 1 - Local pass - OK --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_Pass - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_Pass', 'tag': 'Pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '500w apt full-upgrade'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Pass - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_Pass - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['zcat', '-qf', '/var/log/apt/history.log.5.gz', '/var/log/apt/history.log.3.gz', '/var/log/apt/history.log.1.gz', '/var/log/apt/history.log.2.gz', '/var/log/apt/history.log.4.gz', '/var/log/apt/history.log']>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'AptUpgrade_Pass', 'message': 'AptUpgrade_Pass  OK - local -   14.0 weeks ( 500 weeks max)'}
+
+Test 2 - Local too old - CRITICAL --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_TooOld - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_TooOld', 'tag': 'TooOld', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m apt full-upgrade'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_TooOld - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_TooOld - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['zcat', '-qf', '/var/log/apt/history.log.5.gz', '/var/log/apt/history.log.3.gz', '/var/log/apt/history.log.1.gz', '/var/log/apt/history.log.2.gz', '/var/log/apt/history.log.4.gz', '/var/log/apt/history.log']>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'AptUpgrade_TooOld', 'message': '  CRITICAL: AptUpgrade_TooOld - local - APT UPGRADE TOO LONG AGO - 140810.1 mins  (   1 mins  max)'}
+
+Test 3 - Local no Upgrades in history - WARNING --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_NoUpgrades - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_NoUpgrades', 'tag': 'NoUpgrades', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10h apt full-upgradeS'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_NoUpgrades - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_NoUpgrades - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['zcat', '-qf', '/var/log/apt/history.log.5.gz', '/var/log/apt/history.log.3.gz', '/var/log/apt/history.log.1.gz', '/var/log/apt/history.log.2.gz', '/var/log/apt/history.log.4.gz', '/var/log/apt/history.log']>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_NoUpgrades - eval_status() returned:  {'rslt': 1, 'notif_key': 'AptUpgrade_NoUpgrades', 'message': '  WARNING: AptUpgrade_NoUpgrades - local - NO <apt full-upgradeS> COMMANDS IN THE APT HISTORY LOGS'}
+
+Test 4 - Remote pass - OK --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_RemotePass - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_RemotePass', 'tag': 'RemotePass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '500w apt full-upgrade'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemotePass - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_RemotePass - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemotePass - eval_status() returned:  {'rslt': 0, 'notif_key': 'AptUpgrade_RemotePass', 'message': 'AptUpgrade_RemotePass  OK - testhost2 -   14.0 weeks ( 500 weeks max)'}
+
+Test 5 - Remote too old - CRITICAL --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_RemoteTooOld - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_RemoteTooOld', 'tag': 'RemoteTooOld', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m apt full-upgrade'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemoteTooOld - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_RemoteTooOld - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemoteTooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'AptUpgrade_RemoteTooOld', 'message': '  CRITICAL: AptUpgrade_RemoteTooOld - testhost2 - APT UPGRADE TOO LONG AGO - 140810.2 mins  (   1 mins  max)'}
+
+Test 6 - Remote no Upgrades in history - WARNING --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_RemoteNoUpgrades - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_RemoteNoUpgrades', 'tag': 'RemoteNoUpgrades', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10h apt full-upgradeS'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemoteNoUpgrades - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_RemoteNoUpgrades - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemoteNoUpgrades - eval_status() returned:  {'rslt': 1, 'notif_key': 'AptUpgrade_RemoteNoUpgrades', 'message': '  WARNING: AptUpgrade_RemoteNoUpgrades - testhost2 - NO <apt full-upgradeS> COMMANDS IN THE APT HISTORY LOGS'}
+
+Test 7 - No such host - WARNING --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_Unknown - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_Unknown', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10h apt full-upgrade'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Unknown - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_Unknown - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Unknown - eval_status() returned:  {'rslt': 1, 'notif_key': 'AptUpgrade_Unknown', 'message': '  WARNING: AptUpgrade_Unknown - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 8 - Known host, unavailable - WARNING --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_Unavailable - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '10h apt full-upgrade'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Unavailable - setup() returned:  0
+         apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_Unavailable - lanmonitor.apt_upgrade_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'zcat', '-qf', '/var/log/apt/history.log*']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: connect to host testhostx port 22: No route to host> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Unavailable - eval_status() returned:  {'rslt': 1, 'notif_key': 'AptUpgrade_Unavailable', 'message': '  WARNING: AptUpgrade_Unavailable - testhostX - ssh: connect to host testhostx port 22: No route to host'}
+
+Test 9 - Bad (no) check command - setup ERROR --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_baddef - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_baddef', 'tag': 'badline', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10m'}
+         apt_upgrade_history_plugin.setup                -    ERROR:    ERROR:  <AptUpgrade_baddef> INVALID LINE SYNTAX <10m>
+  list index out of range
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_baddef - setup() returned:  2
+
+Test 10 - Bad time limit - setup ERROR --------------------------------------------------
+         apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_badtime - lanmonitor.apt_upgrade_history_plugin.setup() called:
+  {'key': 'AptUpgrade_badtime', 'tag': 'badtime', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '10y apt full-upgrade'}
+         apt_upgrade_history_plugin.setup                -    ERROR:    ERROR:  <AptUpgrade_badtime> INVALID LINE SYNTAX <10y apt full-upgrade>
+  Illegal time units <y> in time string <10y>
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_badtime - setup() returned:  2

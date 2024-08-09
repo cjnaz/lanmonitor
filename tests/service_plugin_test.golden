@@ -1,0 +1,55 @@
+
+Test 1 - Service local - OK --------------------------------------------------
+                     service_plugin.setup                -    DEBUG:  Service_local - lanmonitor.service_plugin.setup() called:
+  {'key': 'Service_local', 'tag': 'local', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '   sshd'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ps', '-p1']>
+                     service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
+                service_plugin_test.dotest               -    DEBUG:  Service_local - setup() returned:  0
+                     service_plugin.eval_status          -    DEBUG:  Service_local - lanmonitor.service_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['systemctl', 'status', 'sshd']>
+                service_plugin_test.dotest               -    DEBUG:  Service_local - eval_status() returned:  {'rslt': 0, 'notif_key': 'Service_local', 'message': 'Service_local  OK - local - sshd'}
+
+Test 2 - Service remote - OK --------------------------------------------------
+                     service_plugin.setup                -    DEBUG:  Service_remote - lanmonitor.service_plugin.setup() called:
+  {'key': 'Service_remote', 'tag': 'remote', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'sshd   '}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ps', '-p1']>
+                     service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
+                service_plugin_test.dotest               -    DEBUG:  Service_remote - setup() returned:  0
+                     service_plugin.eval_status          -    DEBUG:  Service_remote - lanmonitor.service_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'systemctl', 'status', 'sshd']>
+                service_plugin_test.dotest               -    DEBUG:  Service_remote - eval_status() returned:  {'rslt': 0, 'notif_key': 'Service_remote', 'message': 'Service_remote  OK - testhost2 - sshd'}
+
+Test 3 - Service local fail - CRITICAL --------------------------------------------------
+                     service_plugin.setup                -    DEBUG:  Service_fail - lanmonitor.service_plugin.setup() called:
+  {'key': 'Service_fail', 'tag': 'fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'xx'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ps', '-p1']>
+                     service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
+                service_plugin_test.dotest               -    DEBUG:  Service_fail - setup() returned:  0
+                     service_plugin.eval_status          -    DEBUG:  Service_fail - lanmonitor.service_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['systemctl', 'status', 'xx']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=4) <['systemctl', 'status', 'xx']>:  Unit xx.service could not be found.
+                service_plugin_test.dotest               -    DEBUG:  Service_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Service_fail', 'message': '  CRITICAL: Service_fail - local - SERVICE <xx> IS NOT RUNNING'}
+
+Test 4 - No such host - setup WARNING --------------------------------------------------
+                     service_plugin.setup                -    DEBUG:  Service_Unknown - lanmonitor.service_plugin.setup() called:
+  {'key': 'Service_Unknown', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'xx'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'ps', '-p1']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'ps', '-p1']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+                     service_plugin.setup                -    ERROR:    WARNING:  <Service_Unknown> - nosuchhost - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)
+                service_plugin_test.dotest               -    DEBUG:  Service_Unknown - setup() returned:  1
+
+Test 5 - Known host, unavailable - setup WARNING --------------------------------------------------
+                     service_plugin.setup                -    DEBUG:  Service_Unavailable - lanmonitor.service_plugin.setup() called:
+  {'key': 'Service_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'xx'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'ps', '-p1']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'ps', '-p1']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: connect to host testhostx port 22: No route to host> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
+                     service_plugin.setup                -    ERROR:    WARNING:  <Service_Unavailable> - testhostX - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)
+                service_plugin_test.dotest               -    DEBUG:  Service_Unavailable - setup() returned:  1

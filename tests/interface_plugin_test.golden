@@ -1,0 +1,54 @@
+
+Test 1 - Loopback Interface local - OK --------------------------------------------------
+                   interface_plugin.setup                -    DEBUG:  Interface_local_lo - lanmonitor.interface_plugin.setup() called:
+  {'key': 'Interface_local_lo', 'tag': 'local_lo', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'lo'}
+              interface_plugin_test.dotest               -    DEBUG:  Interface_local_lo - setup() returned:  0
+                   interface_plugin.eval_status          -    DEBUG:  Interface_local_lo - lanmonitor.interface_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command try 1: <['ifconfig', 'lo']>
+              interface_plugin_test.dotest               -    DEBUG:  Interface_local_lo - eval_status() returned:  {'rslt': 0, 'notif_key': 'Interface_local_lo', 'message': 'Interface_local_lo  OK - local - Interface <lo> is Up and Running'}
+
+Test 2 - Loopback Interface remote - OK --------------------------------------------------
+                   interface_plugin.setup                -    DEBUG:  Interface_remote_lo - lanmonitor.interface_plugin.setup() called:
+  {'key': 'Interface_remote_lo', 'tag': 'remote_lo', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'lo'}
+              interface_plugin_test.dotest               -    DEBUG:  Interface_remote_lo - setup() returned:  0
+                   interface_plugin.eval_status          -    DEBUG:  Interface_remote_lo - lanmonitor.interface_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command try 1: <['ssh', 'me@testhost2', '-p22', '-T', 'ifconfig', 'lo']>
+              interface_plugin_test.dotest               -    DEBUG:  Interface_remote_lo - eval_status() returned:  {'rslt': 0, 'notif_key': 'Interface_remote_lo', 'message': 'Interface_remote_lo  OK - testhost2 - Interface <lo> is Up and Running'}
+
+Test 4 - Unknown local interface - CRITICAL --------------------------------------------------
+                   interface_plugin.setup                -    DEBUG:  Interface_bad_intf - lanmonitor.interface_plugin.setup() called:
+  {'key': 'Interface_bad_intf', 'tag': 'bad_intf', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'bad'}
+              interface_plugin_test.dotest               -    DEBUG:  Interface_bad_intf - setup() returned:  0
+                   interface_plugin.eval_status          -    DEBUG:  Interface_bad_intf - lanmonitor.interface_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command try 1: <['ifconfig', 'bad']>
+              interface_plugin_test.dotest               -    DEBUG:  Interface_bad_intf - eval_status() returned:  {'rslt': 3, 'notif_key': 'Interface_bad_intf', 'message': '  CRITICAL: Interface_bad_intf - local - UNABLE TO READ INTERFACE <bad> STATE'}
+
+Test 5 - Missing interface - CRITICAL --------------------------------------------------
+                   interface_plugin.setup                -    DEBUG:  Interface_no_interface - lanmonitor.interface_plugin.setup() called:
+  {'key': 'Interface_no_interface', 'tag': 'local', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': ''}
+              interface_plugin_test.dotest               -    DEBUG:  Interface_no_interface - setup() returned:  0
+                   interface_plugin.eval_status          -    DEBUG:  Interface_no_interface - lanmonitor.interface_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command try 1: <['ifconfig', '']>
+              interface_plugin_test.dotest               -    DEBUG:  Interface_no_interface - eval_status() returned:  {'rslt': 3, 'notif_key': 'Interface_no_interface', 'message': '  CRITICAL: Interface_no_interface - local - UNABLE TO READ INTERFACE <> STATE'}
+
+Test 6 - No such host - WARNING --------------------------------------------------
+                   interface_plugin.setup                -    DEBUG:  Interface_Unknown - lanmonitor.interface_plugin.setup() called:
+  {'key': 'Interface_Unknown', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'lo'}
+              interface_plugin_test.dotest               -    DEBUG:  Interface_Unknown - setup() returned:  0
+                   interface_plugin.eval_status          -    DEBUG:  Interface_Unknown - lanmonitor.interface_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command try 1: <['ssh', 'me@nosuchhost', '-p22', '-T', 'ifconfig', 'lo']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command failed on remote system - attempting simple ssh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check simplessh try 1: <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+              interface_plugin_test.dotest               -    DEBUG:  Interface_Unknown - eval_status() returned:  {'rslt': 1, 'notif_key': 'Interface_Unknown', 'message': '  WARNING: Interface_Unknown - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 7 - Known host, unavailable - WARNING --------------------------------------------------
+                   interface_plugin.setup                -    DEBUG:  Interface_Unavailable - lanmonitor.interface_plugin.setup() called:
+  {'key': 'Interface_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'lo'}
+              interface_plugin_test.dotest               -    DEBUG:  Interface_Unavailable - setup() returned:  0
+                   interface_plugin.eval_status          -    DEBUG:  Interface_Unavailable - lanmonitor.interface_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command try 1: <['ssh', 'me@testhostX', '-p22', '-T', 'ifconfig', 'lo']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check subprocess.run of cmd timeout.
+  Command '['ssh', 'me@testhostX', '-p22', '-T', 'ifconfig', 'lo']' timed out after 2 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check command failed on remote system - attempting simple ssh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd_check simplessh try 1: <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+              interface_plugin_test.dotest               -    DEBUG:  Interface_Unavailable - eval_status() returned:  {'rslt': 1, 'notif_key': 'Interface_Unavailable', 'message': '  WARNING: Interface_Unavailable - testhostX - ssh: connect to host testhostx port 22: No route to host'}

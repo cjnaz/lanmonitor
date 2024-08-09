@@ -1,0 +1,82 @@
+
+Test 1 - Local activity pass - OK --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '8d /etc/   '}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_pass - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', '/etc/']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 days  (   8 days  max)  /etc/'}
+
+Test 2 - Local activity fail - CRITICAL --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_dir_fail', 'tag': 'local_dir_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /etc/'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_fail - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', '/etc/']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_local_dir_fail', 'message': '  CRITICAL: Activity_local_dir_fail  STALE FILES - local - 1129.4 secs  (   1 secs  max)  /etc/'}
+
+Test 3 - Remote directory activity pass - OK --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '5m /mnt/RAMDRIVE/   '}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_pass - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE/']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 mins  (   5 mins  max)  /mnt/RAMDRIVE/'}
+
+Test 4 - Remote file activity pass - OK --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_file_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_file_pass', 'tag': 'remote_file_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '5m /mnt/RAMDRIVE/touchfile'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_file_pass - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_file_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_file_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Activity_remote_file_pass', 'message': 'Activity_remote_file_pass  OK - testhost2 -    0.0 mins  (   5 mins  max)  /mnt/RAMDRIVE/touchfile'}
+
+Test 5 - Remote activity fail - CRITICAL --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_dir_fail', 'tag': 'remote_dir_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_fail - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE/']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_remote_dir_fail', 'message': '  CRITICAL: Activity_remote_dir_fail  STALE FILES - testhost2 -    5.1 secs  (   1 secs  max)  /mnt/RAMDRIVE/'}
+
+Test 6 - Local empty dir - CRITICAL --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_empty_dir - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_empty_dir', 'tag': 'empty_dir', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1h junkdir/'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_empty_dir - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_empty_dir - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', 'junkdir/']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_empty_dir - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_empty_dir', 'message': '  CRITICAL: Activity_empty_dir  STALE FILES - local - junkdir/ no files found'}
+
+Test 7 - Local no such file - CRITICAL --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_no_such_file - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_no_such_file', 'tag': 'no_such_file', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1h junkdir/xxx'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_no_such_file - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_no_such_file - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', 'junkdir']>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_no_such_file - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_no_such_file', 'message': '  CRITICAL: Activity_no_such_file  STALE FILES - local - junkdir/xxx file not found'}
+
+Test 8 - No such host - WARNING --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_Unknown_host - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_Unknown_host', 'tag': 'Unknown_host', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1h /mnt/RAMDRIVE/xxx'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unknown_host - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_Unknown_host - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unknown_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Activity_Unknown_host', 'message': '  WARNING: Activity_Unknown_host - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 9 - Known host, unavailable - WARNING --------------------------------------------------
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_Unavailable_host - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_Unavailable_host', 'tag': 'Unavailable_host', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '1h /mnt/RAMDRIVE/xxx'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unavailable_host - setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_Unavailable_host - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: connect to host testhostx port 22: No route to host> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
+             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unavailable_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Activity_Unavailable_host', 'message': '  WARNING: Activity_Unavailable_host - testhostX - ssh: connect to host testhostx port 22: No route to host'}

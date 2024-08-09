@@ -1,0 +1,58 @@
+
+Test 1 - Local, page found - OK --------------------------------------------------
+                     webpage_plugin.setup                -    DEBUG:  Page_WeeWX - lanmonitor.webpage_plugin.setup() called:
+  {'key': 'Page_WeeWX', 'tag': 'WeeWX', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '   http://localhost/weewx/ Current Conditions   '}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_WeeWX - setup() returned:  0
+                     webpage_plugin.eval_status          -    DEBUG:  Page_WeeWX - lanmonitor.webpage_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['curl', 'http://localhost/weewx/']>
+                webpage_plugin_test.dotest               -    DEBUG:  Page_WeeWX - eval_status() returned:  {'rslt': 0, 'notif_key': 'Page_WeeWX', 'message': 'Page_WeeWX  OK - local - http://localhost/weewx/'}
+
+Test 2 - Local, page found, no match - CRITICAL --------------------------------------------------
+                     webpage_plugin.setup                -    DEBUG:  Page_WeeWX-X - lanmonitor.webpage_plugin.setup() called:
+  {'key': 'Page_WeeWX-X', 'tag': 'WeeWX-X', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'http://localhost/weewx/ XCurrent Conditions'}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_WeeWX-X - setup() returned:  0
+                     webpage_plugin.eval_status          -    DEBUG:  Page_WeeWX-X - lanmonitor.webpage_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['curl', 'http://localhost/weewx/']>
+                webpage_plugin_test.dotest               -    DEBUG:  Page_WeeWX-X - eval_status() returned:  {'rslt': 3, 'notif_key': 'Page_WeeWX-X', 'message': '  CRITICAL: Page_WeeWX-X - local - WEBPAGE <http://localhost/weewx/> NOT AS EXPECTED'}
+
+Test 3 - Local, page not found - ERROR --------------------------------------------------
+                     webpage_plugin.setup                -    DEBUG:  Page_Bogus - lanmonitor.webpage_plugin.setup() called:
+  {'key': 'Page_Bogus', 'tag': 'Bogus', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'http://localhost/bogus/ whatever'}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Bogus - setup() returned:  0
+                     webpage_plugin.eval_status          -    DEBUG:  Page_Bogus - lanmonitor.webpage_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['curl', 'http://localhost/bogus/']>
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Bogus - eval_status() returned:  {'rslt': 2, 'notif_key': 'Page_Bogus', 'message': '  FAIL: Page_Bogus - local - WEBPAGE <http://localhost/bogus/> NOT FOUND'}
+
+Test 4 - Remote, page found - OK --------------------------------------------------
+                     webpage_plugin.setup                -    DEBUG:  Page_xBrowserSync - lanmonitor.webpage_plugin.setup() called:
+  {'key': 'Page_xBrowserSync', 'tag': 'xBrowserSync', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '   https://www.xbrowsersync.org/ Browser syncing as it should be: secure, anonymous and   '}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_xBrowserSync - setup() returned:  0
+                     webpage_plugin.eval_status          -    DEBUG:  Page_xBrowserSync - lanmonitor.webpage_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'curl', 'https://www.xbrowsersync.org/']>
+                webpage_plugin_test.dotest               -    DEBUG:  Page_xBrowserSync - eval_status() returned:  {'rslt': 0, 'notif_key': 'Page_xBrowserSync', 'message': 'Page_xBrowserSync  OK - testhost2 - https://www.xbrowsersync.org/'}
+
+Test 5 - No such host - WARNING --------------------------------------------------
+                     webpage_plugin.setup                -    DEBUG:  Page_Unknown - lanmonitor.webpage_plugin.setup() called:
+  {'key': 'Page_Unknown', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'http://localhost/weewx/ Current Conditions'}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Unknown - setup() returned:  0
+                     webpage_plugin.eval_status          -    DEBUG:  Page_Unknown - lanmonitor.webpage_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'curl', 'http://localhost/weewx/']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'curl', 'http://localhost/weewx/']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <check_string mode mismatch> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Unknown - eval_status() returned:  {'rslt': 1, 'notif_key': 'Page_Unknown', 'message': '  WARNING: Page_Unknown - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 6 - Known host, unavailable - WARNING --------------------------------------------------
+                     webpage_plugin.setup                -    DEBUG:  Page_Unavailable - lanmonitor.webpage_plugin.setup() called:
+  {'key': 'Page_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'http://localhost/weewx/ Current Conditions'}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Unavailable - setup() returned:  0
+                     webpage_plugin.eval_status          -    DEBUG:  Page_Unavailable - lanmonitor.webpage_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'curl', 'http://localhost/weewx/']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'curl', 'http://localhost/weewx/']' timed out after 4 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <Command '['ssh', 'me@testhostX', '-p22', '-T', 'curl', 'http://localhost/weewx/']' timed out after 4 seconds> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']' timed out after 4.0 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <Command '['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']' timed out after 4.0 seconds>
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Unavailable - eval_status() returned:  {'rslt': 1, 'notif_key': 'Page_Unavailable', 'message': "  WARNING: Page_Unavailable - testhostX - cmd_check simplessh timeout:  Command '['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']' timed out after 4.0 seconds"}

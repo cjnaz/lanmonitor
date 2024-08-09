@@ -1,0 +1,86 @@
+
+Test 1 - Local to testhost2 by name - OK --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_local_to_testhost2 - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_local_to_testhost2', 'tag': 'local_to_testhost2', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'testhost2   '}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_testhost2 - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_testhost2 - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ping', '-c', '1', 'testhost2']>
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_testhost2 - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_local_to_testhost2', 'message': 'Host_local_to_testhost2  OK - local - testhost2 (192.168.15.42 / 42.4 ms)'}
+
+Test 2 - Local to testhost2 by IP address - OK --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_local_to_IP - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_local_to_IP', 'tag': 'local_to_IP', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': '   192.168.15.42'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_IP - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_IP - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ping', '-c', '1', '192.168.15.42']>
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_IP - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_local_to_IP', 'message': 'Host_local_to_IP  OK - local - 192.168.15.42 (192.168.15.42 / 2.36 ms)'}
+
+Test 3 - Remote to other host (testhost) - OK --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_testhost2_to_testhost - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_testhost2_to_testhost', 'tag': 'testhost2_to_testhost', 'host': 'testhost2', 'user_host_port': 'me@testhost2:22', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'testhost'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_testhost - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_testhost2_to_testhost - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ping', '-c', '1', 'testhost']>
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_testhost - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_testhost2_to_testhost', 'message': 'Host_testhost2_to_testhost  OK - testhost2 - testhost (192.168.15.40 / 1.92 ms)'}
+
+Test 4 - Local to invalid hostname - setup ERROR --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_local_to_INV - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_local_to_INV', 'tag': 'local_to_INV', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'invalid@hostname'}
+                    pinghost_plugin.setup                -    ERROR:    ERROR:  <Host_local_to_INV> CAN'T PARSE IP OR HOSTNAME <invalid@hostname>
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_INV - setup() returned:  2
+
+Test 5 - Local to unknown host - CRITICAL --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_local_to_Unknown - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_local_to_Unknown', 'tag': 'local_to_Unknown', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'XX.lan'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unknown - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_Unknown - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ping', '-c', '1', 'XX.lan']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=2) <['ping', '-c', '1', 'XX.lan']>:  ping: XX.lan: Name or service not known
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'Host_local_to_Unknown', 'message': '  CRITICAL: Host_local_to_Unknown - local - HOST <XX.lan>  ping: XX.lan: Name or service not known'}
+
+Test 6 - Local to known unavailable host - ERROR --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_local_to_Unavailable - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_local_to_Unavailable', 'tag': 'local_to_Unavailable', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhostX'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_Unavailable - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ping', '-c', '1', 'testhostX']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=1) <['ping', '-c', '1', 'testhostX']>:  
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_local_to_Unavailable', 'message': '  FAIL: Host_local_to_Unavailable - local - HOST <testhostX>  Cannot contact target host'}
+
+Test 7 - Remote to known unavailable remote - ERROR --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_testhost2_to_Unavailable - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_testhost2_to_Unavailable', 'tag': 'testhost2_to_Unavailable', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhostX'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_testhost2_to_Unavailable - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ping', '-c', '1', 'testhostX']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 timeout:  Command '['ssh', 'me@testhost2', '-p22', '-T', 'ping', '-c', '1', 'testhostX']' timed out after 4 seconds
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <Command '['ssh', 'me@testhost2', '-p22', '-T', 'ping', '-c', '1', 'testhostX']' timed out after 4 seconds> - attempting simplessh connection to <me@testhost2>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh connection passes.  Return original cmd failure record.
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_testhost2_to_Unavailable', 'message': '  FAIL: Host_testhost2_to_Unavailable - testhost2 - HOST <testhostX>  Cannot contact target host'}
+
+Test 8 - Attempt to run on unknown remote - WARNING --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_Unknown_remote - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_Unknown_remote', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhost'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unknown_remote - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_Unknown_remote - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'ping', '-c', '1', 'testhost']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'ping', '-c', '1', 'testhost']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unknown_remote - eval_status() returned:  {'rslt': 1, 'notif_key': 'Host_Unknown_remote', 'message': '  WARNING: Host_Unknown_remote - nosuchhost - HOST <testhost>  ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+
+Test 9 - Attempt to run on known unavailable remote - WARNING --------------------------------------------------
+                    pinghost_plugin.setup                -    DEBUG:  Host_Unavailable_remote - lanmonitor.pinghost_plugin.setup() called:
+  {'key': 'Host_Unavailable_remote', 'tag': 'Unavailable_to_Known', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhost'}
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unavailable_remote - setup() returned:  0
+                    pinghost_plugin.eval_status          -    DEBUG:  Host_Unavailable_remote - lanmonitor.pinghost_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'ping', '-c', '1', 'testhost']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'ping', '-c', '1', 'testhost']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: connect to host testhostx port 22: No route to host> - attempting simplessh connection to <me@testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
+                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unavailable_remote - eval_status() returned:  {'rslt': 1, 'notif_key': 'Host_Unavailable_remote', 'message': '  WARNING: Host_Unavailable_remote - testhostX - HOST <testhost>  ssh: connect to host testhostx port 22: No route to host'}
