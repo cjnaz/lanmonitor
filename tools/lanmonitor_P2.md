@@ -29,7 +29,7 @@ Operates interactively or as a service (loop forever and controlled via systemd 
 In service mode
     kill -SIGUSR1 <pid>   outputs a summary to the log file
     kill -SIGUSR2 <pid>   outputs monitored items current status to the log file
-3.2
+3.3
 
 options:
   -h, --help            show this help message and exit
@@ -135,9 +135,9 @@ $ lanmonitor --verbose
 - Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided in the config directory.  Note that the config file may be modified while the service is running, with changes taking effect on the next ServiceLoopTime.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.
 - stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
-- NOTE:  All timevalues in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6.5h` is 6.5 hours.  If no suffix is provided the time value is taken as seconds.
-- NOTE:  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router (DHCP / DNS resolver) reboot.
-- NOTE:  Some remote hosts may not have needed commands available for ssh login.  This is a known issue for the interface_plugin: the ifconfig command is not available on a Raspberry Pi via ssh.  To resolve this issue, add the missing command's path to /etc/ssh/sshd_config, eg:
+- **NOTE timevalues:**  All timevalues in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6.5h` is 6.5 hours.  If no suffix is provided the time value is taken as seconds.
+- **NOTE static leases:**  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router (DHCP / DNS resolver) reboot.
+- **NOTE remote commands missing:**  Some remote hosts may not have needed commands available for ssh login.  This is a known issue for the interface_plugin: the ifconfig command is not available on a Raspberry Pi via ssh.  To resolve this issue, add the missing command's path to /etc/ssh/sshd_config, eg:
 
       $ ssh user@host env
       ...
@@ -150,6 +150,8 @@ $ lanmonitor --verbose
 
       $ sudo systemctl restart sshd
 
+- **NOTE remote ssh access:** For whatever local user the service is run under (suggested root on the local machine), that local user needs its ssh public key pushed to the target remote user's `/home/<user>/.ssh/authorized_keys` file.  Also, on first access to the remote host the user will be prompted to confirm the identity of the remote host, which places an entry in the local machine's `/home/<user>/.ssh/known_hosts` file.
+Suggest testing if you have ssh access set up correctly by running the script as the service's local user:  `sudo -u root /<path_to>/lanmonitor --verbose`.  _There must be no prompts for remote users' login password or acceptance of the the remote host id key when running lanmonitor._
 
 <br/>
 
@@ -177,16 +179,17 @@ For monitored items, the _string-style_ format of a line is:
 
       eg:
       Host_testhost2    local  CRITICAL  5m  testhost2.lan
+      Host_Yahoo        me@testhost2     1h  yahoo.com
 
-**This example definition executes the `pinghost_plugin` on the `local` machine, every `5 minutes`, checking for a response from `testhost2.lan`.  If testhost2.lan is not available a notification is sent to the config file `NotifList`.  The `CRITICAL` tag indicates that repeat notifications will be sent per the config file `CriticalReNotificationInterval` param.**
+**The `Host_testhost2` example definition executes the `pinghost_plugin` on the `local` machine, every `5 minutes`, checking for a response from `testhost2.lan`.  If testhost2.lan is not available a notification is sent to the config file `NotifList`.  The `CRITICAL` tag indicates that repeat notifications will be sent per the config file `CriticalReNotificationInterval` param.**
 
 Breaking down the definition line syntax terms:
 
 1. `<type>` matches the corresponding `MonType_<type>` line.
 2. `<friendly_name>` is arbitrary and is used for notifications, logging, etc. `<type>_<friendly_name>` must be unique.
-3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line below specifies that `Yahoo.com` will be pinged from the `RPi2.mylan` host by doing an `ssh me@RPi2.mylan ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
+3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line above specifies that `Yahoo.com` will be pinged from the `testhost2` host by doing an `ssh me@testhost2 ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
 4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.  (For critical-tagged items their `check_interval` should be less than the `CriticalReNotificationInterval`.)
-5. `<check_interval>` is the wait time between rechecks for this specific item.  Each item is checked at its own check_interval.
+5. `<check_interval>` is the wait time between rechecks for this specific item.  Each monitored item is checked at its own check_interval.
 6. `<rest_of_line>` are the plugin-specific settings/content.
 
 <br/>

@@ -34,7 +34,7 @@ except:
     __version__ = importlib_metadata.version(__package__ or __name__)
     # print ("Using importlib_metadata for __version__ assignment")
 
-from cjnfuncs.core import logging, set_toolname
+from cjnfuncs.core import logging, set_toolname, ConfigError
 from cjnfuncs.configman import config_item
 from cjnfuncs.timevalue import timevalue
 from cjnfuncs.mungePath import mungePath
@@ -61,10 +61,29 @@ def main():
     inst_dict = {}
     notif_handlers_list = []
     monline = {}
+    missing_config_file = False
 
 
     while 1:
-        reloaded = globvars.config.loadconfig(flush_on_reload=True, call_logfile=None, call_logfile_wins=logfile_override)
+
+        try:
+            # This code allows the config file to disappear (ie, network dropped) without
+            # aborting.  Unhandled side effect:  If an _imported_ config file is not available then
+            # the cfg will have been flushed and only partially reloaded, likely leading to a crash.
+            reloaded = globvars.config.loadconfig(flush_on_reload=True,
+                                         tolerate_missing=True,
+                                         call_logfile_wins=call_logfile_override) #, ldcfg_ll=20)
+            if reloaded == -1:      # config file not found
+                if not missing_config_file:
+                    missing_config_file = True
+                    logging.warning(f"Can't find or load the config file <{globvars.config.config_full_path}> - skipping reload check.")
+            else:                   # config file found
+                if missing_config_file:
+                    missing_config_file = False
+                    logging.warning(f"Config file <{globvars.config.config_full_path}> found again.")
+        except ConfigError as e:
+            logging.error(f"Error when loading config file.  Aborting.:\n  {e}")
+            sys.exit()
 
         if not globvars.args.service:               # In service mode, logging level is set from config file
             if globvars.args.verbose == 1:
@@ -77,10 +96,10 @@ def main():
         if first:
             if globvars.args.service:
                 time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY)).seconds)
-            reloaded = True                         # Force calc of key and host padding lengths
+            reloaded = 1                            # Force calc of key and host padding lengths
 
 
-        if reloaded:
+        if reloaded == 1:
             if not first:
                 logging.warning(f"NOTE - The config file has been reloaded.")
             
@@ -149,7 +168,6 @@ def main():
                                 monline.clear()
                                 monline['key'] = key
                                 monline['tag'] = key.split('_', maxsplit=1)[1]
-                                # line = inst_dict[key]
                                 xx = globvars.config.cfg[key]
 
                                 if isinstance(xx, dict):
@@ -166,7 +184,6 @@ def main():
 
                                     # Optional settings
                                     for line_key in xx:
-                                        # if line_key.lower() == 'u_h_p':
                                         if line_key.lower() == 'u@h:p':
                                             monline['user_host_port'] = xx[line_key]
                                             _, monline['host'], _ = lanmonfuncs.split_user_host_port(xx[line_key])
@@ -196,7 +213,6 @@ def main():
                                     u_h_p = xx[0]
                                     monline['user_host_port'] =     u_h_p
                                     _, monline['host'], _ =         lanmonfuncs.split_user_host_port(u_h_p)
-                                    # monline['host'] = host
                                     monline['critical'] =           False
                                     yy = xx[1]
                                     if yy.lower().startswith('critical'):
@@ -207,7 +223,7 @@ def main():
                                     monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
 
                                 inst = plugin.monitor()
-                                rslt = inst.setup(monline)          # SETUP() CALL
+                                rslt = inst.setup(monline)                                  # *****  SETUP() CALL  *****
                                     # setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
                                     # setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
                                     # Some plugins may need to interrogate the target host during setup.
@@ -250,7 +266,7 @@ def main():
                                 # inst.next_run += datetime.timedelta(seconds=60)  # for debug
 
                                 # For items that run >= daily, set the daily run time, if defined
-                                if (first or reloaded)  and  globvars.config.getcfg('DailyRuntime', False)  and  (inst.check_interval >= 86400):
+                                if (first or reloaded == 1)  and  globvars.config.getcfg('DailyRuntime', False)  and  (inst.check_interval >= 86400):
                                     try:
                                         target_hour   = int(globvars.config.getcfg('DailyRuntime').split(':')[0])
                                         target_minute = int(globvars.config.getcfg('DailyRuntime').split(':')[1])
@@ -262,7 +278,7 @@ def main():
                                 logging.debug(f"{key} - Next runtime: {inst.next_run}")
 
                                 # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host, if defined.  Do only once per active serviceloop.
-                                if (first or reloaded)  and  globvars.config.getcfg('Gateway', False) == False:
+                                if (first or reloaded == 1)  and  globvars.config.getcfg('Gateway', False) == False:
                                     checked_have_LAN_access = True
                                     have_LAN_access = True
                                 if inst.host != 'local'  and  not checked_have_LAN_access:
@@ -274,7 +290,7 @@ def main():
                                         logging.debug(f"LAN access confirmed.  Proceeding with checks run on remote hosts.")
 
                                 if inst.host == 'local' or have_LAN_access: 
-                                    rslt = inst.eval_status()                               # EVAL_STATUS() CALL
+                                    rslt = inst.eval_status()                               # *****  EVAL_STATUS() CALL  *****
                                     logging.debug (f"{key} - eval_status() returned:  {rslt}")
 
                                     for notif_handler in notif_handlers_list:
@@ -318,7 +334,7 @@ signal.signal(signal.SIGUSR2, int_handler)      # User 2  (12)
 
 
 def cli():
-    global logfile_override
+    global call_logfile_override
     set_toolname (TOOLNAME)
 
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
@@ -358,10 +374,10 @@ def cli():
 
 
     # Load config file and setup logging
-    logfile_override = True  if not globvars.args.service  else False
+    call_logfile_override = True  if not globvars.args.service  else False
     try:
         globvars.config = config_item(globvars.args.config_file)
-        globvars.config.loadconfig(call_logfile_wins=logfile_override)
+        globvars.config.loadconfig(call_logfile_wins=call_logfile_override)
     except Exception as e:
         logging.error(f"Failed loading config file <{globvars.args.config_file}>. \
 \n  Run with  '--setup-user' or '--setup-site' to install starter files.\n  {e}\n  Aborting.")

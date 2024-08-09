@@ -6,6 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Reworked debug level logging in cmd_check, Added cmd_timeout for each monitored item.
 # 3.1 230320 - Added cfg param SSH_timeout, fixed cmd_check command fail retry bug, 
 #   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
 # 3.0 230301 - Packaged
@@ -111,7 +112,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     ## cmd_check (cmd, user_host_port, return_type=None, check_line_text=None, expected_text=None, not_text=None) - Runs the cmd and operates on the response based on return_type
 
     The `cmd` is executed by a call to subprocess.run().  If `user_host_port` is not `local`, then `cmd` is executed on the
-    remote host via ssh.  If there is no subprocess.run() exception then cmd_check checks the run response per the 
+    remote host via ssh.  If there is no subprocess.run() exception or executed command error then cmd_check checks the run response per the 
     `return_type` selection.
 
     If the cmd run is not successful (exception, cmd_timeout, subprocess.run returncode != 0, or failed text match checks)
@@ -120,7 +121,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     on the remote host.  RTN_WARNING is returned if the issue is an ssh access problem, else a RTN_FAIL is returned.
 
     Note that the `cmd` cannot utilize wildcard file expansion for the local host because shell=False on the subprocess call.
-    To implement local wildcard expansion the plugin can pre-expand with list with glob.glob.  Wildcard expansion works
+    To implement local wildcard expansion the plugin can pre-expand the list with glob.glob.  Wildcard expansion works
     as expected for executing commands on remote hosts.  See apt_upgrade_history_plugin.py for an example.
 
     Note that the `cmd` cannot utilize pipes to string together commands.  cmd_check executes a single monolithic subprocess call.
@@ -129,7 +130,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
         nTries*cmd_timeout + (nTries-1)*RetryInterval
 
-    For cmd_checks calls on remote systems, the simple ssh access check can add this additional execution time:
+    For cmd_check calls on remote systems, the simple ssh access check can add this additional execution time:
 
         nTries*SSH_timeout 
 
@@ -149,7 +150,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
    
     `cmd_timeout`
     - subprocess.run call timeout value in float seconds
-    - This param is set within lanmonitor.py when instantiating a monitor item
+    - This param is set within lanmonitor.py when instantiating each monitored item
 
     `check_line_text` (default None)
     - A qualifier for which line of the `cmd` response to look for `expected_text` and/or `not_text`
@@ -197,30 +198,22 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         cmd = ['ssh', u_h, '-p' + port, '-T'] + cmd
 
     error_msg = ''
-    # for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
     ntries = globvars.config.getcfg('nTries', NTRIES)
     for nTry in range (ntries):
         try:
-            # logging.debug(f"cmd_check command try {nTry+1}: <{cmd}>")
             logging.debug(f"cmd try {nTry+1} <{cmd}>")
-            # run_try = subprocess.run(cmd, timeout=cmd_timeout,                                                                
-            #                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
             run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
-            if run_try.returncode > 0:  #== 255:
+            if run_try.returncode > 0:
                 error_msg = run_try.stderr.replace('\n','')
-                # logging.debug(f"cmd_check subprocess.run try {nTry+1} of cmd <{cmd}> failed:  {error_msg}")
-                # logging.debug(f"cmd try {nTry+1} failed (returncode=255) <{cmd}>:  {error_msg}")
                 logging.debug(f"cmd try {nTry+1} failed (returncode={run_try.returncode}) <{cmd}>:  {error_msg}")
-            # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")              # Commented out since response can be huge.
+            # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")              # Uncomment for debug.  Response can be huge.
         except subprocess.TimeoutExpired as e:
             error_msg = e
-            # logging.debug(f"cmd_check subprocess.run try {nTry+1} timeout:  {e}")
             logging.debug(f"cmd try {nTry+1} timeout:  {e}")
             run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check subprocess.run timeout:  {e}')
             continue
         except Exception as e:
             error_msg = e
-            # logging.debug(f"cmd_check subprocess.run try {nTry+1} of cmd <{cmd}> failed:  {e}")
             logging.debug(f"cmd try {nTry+1} failed (exception) <{cmd}>:  {e}")
             run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check subprocess.run failed:  {e}')
             continue
@@ -257,42 +250,33 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         return (RTN_FAIL, run_try)
     
 
-    # logging.debug(f"cmd_check command failed on remote system with <{error_msg}> - attempting simple ssh connection to <{u_h}>")
     logging.debug(f"cmd failed on remote system with <{error_msg}> - attempting simplessh connection to <{u_h}>")
     simplessh = ['ssh', u_h, '-p' + port, '-T', 'echo', 'hello']
 
-    # for nTry in range (globvars.config.getcfg('nTries', NTRIES)):
     error_msg = ''
     for nTry in range (ntries):
         try:
-            # logging.debug(f"cmd_check simplessh try {nTry+1}: <{simplessh}>")
             logging.debug(f"simplessh try {nTry+1} <{simplessh}>")
-            # simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
-            #                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)   #Py3.6 requires old-style params
             simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
                                            capture_output=True, text=True)
             # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")     # Uncomment for debug
             if simplessh_try.returncode == 0:                                           # ssh access works so return original cmd fail info
                 logging.debug(f"simplessh connection passes.  Return original cmd failure record.")
                 return (RTN_FAIL, run_try)
-            if simplessh_try.returncode > 0: #== 255:
+            if simplessh_try.returncode > 0:
                 error_msg = simplessh_try.stderr.replace('\n','')
-                # logging.debug(f"cmd_check subprocess.run try {nTry+1} of simplessh <{simplessh}> failed:  {error_msg}")
                 logging.debug(f"simplessh try {nTry+1} failed (returncode={simplessh_try.returncode}) <{simplessh}>:  {error_msg}")
         except subprocess.TimeoutExpired as e:
             error_msg = e
-            # logging.debug(f"cmd_check subprocess.run try {nTry+1} of simplessh timeout:  {e}")
             logging.debug(f"simplessh try {nTry+1} timeout:  {e}")
             simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check simplessh timeout:  {e}')
             continue
         except Exception as e:
             error_msg = e
-            # logging.debug(f"cmd_check subprocess.run try {nTry+1} of simplessh <{simplessh}> failed:  {e}")
             logging.debug(f"simplessh try {nTry+1} failed (exception) <{simplessh}>:  {e}")
             simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check simplessh connection failed:  {e}')     # define default fail message
             continue
 
-    # logging.debug(f"cmd_check simplessh failed with <{error_msg}>")
     logging.debug(f"simplessh failed with <{error_msg}>")
     return (RTN_WARNING, simplessh_try)
 
@@ -334,7 +318,6 @@ def check_LAN_access(host=None):
         sys.exit(1)
 
     gateway_timeout = timevalue(globvars.config.getcfg('Gateway_timeout', GATEWAY_TIMEOUT)).seconds
-    # pingrslt = cmd_check(['ping', '-c', '1', '-W', '1', globvars.config.getcfg('Gateway')],
     pingrslt = cmd_check(['ping', '-c', '1', globvars.config.getcfg('Gateway')],
                          cmd_timeout=gateway_timeout, user_host_port='local', return_type='cmdrun')
     if pingrslt[0] == RTN_PASS:

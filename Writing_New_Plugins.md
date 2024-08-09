@@ -5,6 +5,8 @@
 New plugins may be added easily.  The core lanmonitor code provides a framework for configuration, logging, command retries, and parsing components.  The general process for creating a new plugin is:
 
 - Copy an existing plugin, such as the `lanmonitor/src/lanmonitor/webpage_plug.py` to a working directory as `mynewitem_plugin.py`.
+  - If the new plugin name is the same as a plugin in the lanmonitor distribution then the distribution version will
+  be used and your new version will ignored.
 - Adjust the \<newitem> comment block to describe the functionality and config file details.
 - Within the `setup()` function:
   - Adjust the `rest_of_line` parsing, creating new vars as needed.
@@ -48,19 +50,25 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
       - If the host is not `local` then the lanmonitor core will check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access()` check is performed only once per check iteration.  Thus, your eval_status() code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check (using the pinghost plugin) earlier in the config file to limit fail ambiguity.
       - In addition to the `Gateway` access check, if a monitor item is to be executed on a remote host (not `local`) and the results are not passing, then `cmd_check` double checks that ssh-based access to the target host is working.  `cmd_check` returns RTN_WARNING if there is an ssh access issue, versus RTN_PASS/RTN_FAIL for the specific checked item.  Your plugin should distinguish between ssh access vs. real failures.
 
-3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `"check_interval":1` as a placeholder.)
+3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `'check_interval':1` as a placeholder.)
 
-            dotest ({"key":"SELinux_local", "tag":"local", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+        dotest (1, "SELinux local - OK",
+                {'key':'SELinux_local', 'tag':'local', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'  enforcing  '})
 
-            dotest ({"key":"SELinux_RPi3", "tag":"RPi3", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":False, "check_interval":1, "rest_of_line":"enforcing"})
+        dotest (2, "SELinux remote not running - ERROR",
+                {'key':'SELinux_remote', 'tag':'remote', 'host':'testhost', 'user_host_port':'me@testhost', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcing'})
 
-            dotest ({"key":"SELinux_RPi3_CRIT", "tag":"RPi3_CRIT", "host":"rpi3", "user_host_port":"pi@rpi3", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+        dotest (3, "SELinux remote not running - CRITICAL",
+                {'key':'SELinux_remote_CRIT', 'tag':'remote_CRIT', 'host':'testhost', 'user_host_port':'me@testhost', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcing'})
 
-            dotest ({"key":"SELinux_badmode", "tag":"Shop2", "host":"local", "user_host_port":"local", "critical":True, "check_interval":1, "rest_of_line":"enforcingX"})
+        dotest (4, "SELinux expected badmode - setup ERROR",
+                {'key':'SELinux_badmode', 'tag':'badmode', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcingX'})
 
-            dotest ({"key":"SELinux_Unknown", "tag":"Unknown", "host":"RPiX", "user_host_port":"pi@rpiX", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+        dotest (5, "No such host - WARNING",
+                {'key':'SELinux_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'enforcing'})
 
-            dotest ({"key":"SELinux_Unavailable", "tag":"Unavailable", "host":"shopcam", "user_host_port":"me@shopcam", "critical":True, "check_interval":1, "rest_of_line":"enforcing"})
+        dotest (6, "Known host, unavailable - WARNING",
+                {'key':'SELinux_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'enforcing'})
 
 
 <br/>
