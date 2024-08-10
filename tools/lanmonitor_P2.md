@@ -93,7 +93,7 @@ $ lanmonitor --verbose
    `nTries` | 2 |sets how many tries will be made to accomplish each monitored item.
    `RetryInterval` | 0.5s | sets the time between nTries.
    `Cmd_timeout` | 1.0s | sets the _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
-   `SSH_timeout` | 1.0s | sets the max time for ssh connections to non-local hosts.
+   `SSH_timeout` | 1.0s | sets the max time for ssh connections to non-local hosts. **
    `StartupDelay` | 0s | is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
    `DailyRuntime` | | is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
    `Gateway` | | is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
@@ -104,6 +104,9 @@ $ lanmonitor --verbose
    `PrintLogLength`, `ConsoleLogFormat`, and `FileLogFormat` may also be customized.
 
    NOTE that the config file parser accepts either whitespace, '=', or ':' between the param name (the first token on the line) and its value (the remainder of the line).
+   
+   NOTE **: An SSH access failure message to a remote host can vary based on the `SSH_timeout` setting.  Shorter times (<2s) can 
+   return "timed out after X seconds", while longer times will return "ssh: connect to host \<hostname> port 22: No route to host".  Both return a warning level result.
 
 <br/>
 

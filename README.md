@@ -19,6 +19,7 @@ Supports Python 3.7+.
 |-----|-----|
 apt_upgrade_history_plugin | Checks that the most recent apt upgrade operation was more recent than a given age
 dd_wrt_age_plugin | Checks that the dd-wrt version on the target router is more recent than a given age
+freemem_plugin | Checks that available RAM memory and swap space are at safe levels
 freespace_plugin | Checks that the filesystem of the given path has a minimum of free space
 fsactivity_plugin | Checks that a target file or directory has at least one file newer than a given age
 interface_plugin | Checks that a given network interface (i.e., eth2) is up and running
@@ -129,7 +130,7 @@ $ lanmonitor --verbose
    `nTries` | 2 |sets how many tries will be made to accomplish each monitored item.
    `RetryInterval` | 0.5s | sets the time between nTries.
    `Cmd_timeout` | 1.0s | sets the _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
-   `SSH_timeout` | 1.0s | sets the max time for ssh connections to non-local hosts.
+   `SSH_timeout` | 1.0s | sets the max time for ssh connections to non-local hosts. **
    `StartupDelay` | 0s | is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
    `DailyRuntime` | | is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
    `Gateway` | | is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
@@ -140,6 +141,9 @@ $ lanmonitor --verbose
    `PrintLogLength`, `ConsoleLogFormat`, and `FileLogFormat` may also be customized.
 
    NOTE that the config file parser accepts either whitespace, '=', or ':' between the param name (the first token on the line) and its value (the remainder of the line).
+   
+   NOTE **: An SSH access failure message to a remote host can vary based on the `SSH_timeout` setting.  Shorter times (<2s) can 
+   return "timed out after X seconds", while longer times will return "ssh: connect to host \<hostname> port 22: No route to host".  Both return a warning level result.
 
 <br/>
 
@@ -311,6 +315,38 @@ The dd-wrt router is checked for the age of the currently installed dd-wrt versi
 - IP address or hostname of the router
 
 Note:  I no longer have a dd-wrt router for testing this plugin.
+
+<br/>
+
+---
+
+### freemem_plugin
+
+System memory on the target system is checked for a minimum amount of 'available' RAM memory and swap space,
+as shown by the `free` command.
+The limits may be specified as either a minimum percentage free or a minimum number of Ki/Mi/Gi/Ti bytes free.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_Freemem           =  freemem_plugin
+    # Freemem_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <free_mem> [<free_swap>]
+    Freemem_testhost2         =  me@testhost2    CRITICAL   5m   20% 50%
+    Freemem_root              =  {'recheck':'5m', 'rol':'100Mi 30%'}
+
+**Plugin-specific _rest-of-line_ params:**
+
+`free_mem` (str, absolute or percentage)
+- Minimum required free RAM
+
+`free_swap` (Optional, str, absolute or percentage)
+- Minimum required free swap space, if specified
+
+For both:
+- The percentage minimum limit is specified with a `%` suffix, eg `20%`
+- The absolute minimum limit is specified with a `Ki`/`Mi`/`Gi`/`Ti` suffix (case insensitive), eg `5Gi`
+- If absolute minimum limits are used for both `free_mem` and `free_swap`, then they both must have the same suffix, eg `5Gi, 1Gi`.
+One may be an absolute limit while the other is a percentage limit, eg `5Gi 20%`.
+- No whitespace between value and suffix
 
 <br/>
 

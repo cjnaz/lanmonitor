@@ -25,6 +25,7 @@ OUTFILE =       '../README.md'
 plugin_modules = [
     {'module_name':'apt_upgrade_history_plugin',    'oneliner':"Checks that the most recent apt upgrade operation was more recent than a given age"},
     {'module_name':'dd_wrt_age_plugin',             'oneliner':"Checks that the dd-wrt version on the target router is more recent than a given age"},
+    {'module_name':'freemem_plugin',                'oneliner':"Checks that available RAM memory and swap space are at safe levels"},
     {'module_name':'freespace_plugin',              'oneliner':"Checks that the filesystem of the given path has a minimum of free space"},
     {'module_name':'fsactivity_plugin',             'oneliner':"Checks that a target file or directory has at least one file newer than a given age"},
     {'module_name':'interface_plugin',              'oneliner':"Checks that a given network interface (i.e., eth2) is up and running"},
