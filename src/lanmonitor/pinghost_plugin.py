@@ -14,6 +14,10 @@ Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or 
 **Plugin-specific _rest-of-line_ params:**
 
 `IPaddress_or_hostname` (str)
+
+**Plugin-specific fail response:**
+
+- If the ping of the `IPaddress_or_hostname` times out (subprocess.run() timeout) then 'Cannot contact target host' is the fail message.
 """
 
 __version__ = "3.3"

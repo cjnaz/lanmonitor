@@ -2,12 +2,13 @@
 """LAN monitor stock notifications handler
 """
 
-__version__ = '3.1'
+__version__ = '3.3'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Debug mode status dump 
 # 3.0 230301 - Packaged
 # V2.0  221130  Dropped --once, added --service.  Added on-demand summary.

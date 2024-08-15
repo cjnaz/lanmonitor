@@ -40,6 +40,9 @@ def dotest (tnum, desc, test):
 dotest (1, "SELinux local - OK",
         {'key':'SELinux_local', 'tag':'local', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'  enforcing  '})
 
+dotest ('1a', "SELinux local - CRITICAL",
+        {'key':'SELinux_local', 'tag':'local', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'permissive'})
+
 dotest (2, "SELinux remote not running - ERROR",
         {'key':'SELinux_remote', 'tag':'remote', 'host':'testhost', 'user_host_port':'me@testhost', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcing'})
 
