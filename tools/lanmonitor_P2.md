@@ -3,12 +3,10 @@
 ---
 
 ## Notable changes since prior release
-- V3.2
-  - Adjusted for cjnfuncs V2.1 (module partitioning).
-  - SMTP params must be in the [SMTP] config file section.
-  - fsactivity plugin supports missing file.
-  - yum_update_history_plugin now requires full command match.
-
+- V3.3
+  - New freemem_plugin
+  - Support dictionary-style monitor item definitions, which adds support for cmd_timeout per monitored item
+  - Tolerate temporarily missing config file
 
 <br/>
 
@@ -50,7 +48,7 @@ options:
 ## Example output
 ```
 $ lanmonitor --verbose
- WARNING:  ========== lanmonitor 3.2, pid 26032 ==========
+ WARNING:  ========== lanmonitor 3.3, pid 26032 ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
     INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)

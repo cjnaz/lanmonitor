@@ -110,4 +110,4 @@ class monitor:
             for line in rslt[1].stdout.split('\n'):
                 if 'Current mode:' in line:
                     current_mode = line.split(maxsplit=2)[2]
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE (expecting <{self.expected_mode}>), found <{current_mode}>"}
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE - expecting <{self.expected_mode}>, found <{current_mode}>"}

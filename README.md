@@ -40,12 +40,10 @@ for plugin implementation details.
 ---
 
 ## Notable changes since prior release
-- V3.2
-  - Adjusted for cjnfuncs V2.1 (module partitioning).
-  - SMTP params must be in the [SMTP] config file section.
-  - fsactivity plugin supports missing file.
-  - yum_update_history_plugin now requires full command match.
-
+- V3.3
+  - New freemem_plugin
+  - Support dictionary-style monitor item definitions, which adds support for cmd_timeout per monitored item
+  - Tolerate temporarily missing config file
 
 <br/>
 
@@ -87,7 +85,7 @@ options:
 ## Example output
 ```
 $ lanmonitor --verbose
- WARNING:  ========== lanmonitor 3.2, pid 26032 ==========
+ WARNING:  ========== lanmonitor 3.3, pid 26032 ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
     INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)
@@ -440,6 +438,10 @@ Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or 
 
 `IPaddress_or_hostname` (str)
 
+**Plugin-specific fail response:**
+
+- If the ping of the `IPaddress_or_hostname` times out (subprocess.run() timeout) then 'Cannot contact target host' is the fail message.
+
 <br/>
 
 ---
@@ -584,7 +586,7 @@ systems save the history in the yum database, and `dnf history` and `yum history
 ---
 
 ## Version history
-- 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, 
+- 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, New freemem_plugin.
 - 3.2.2 240526 - yum_update_history_plugin command match bug fixes.
 - 3.2 240105 - Adjusted for cjnfuncs V2.1. fsactivity plugin supports missing file. yum_update_history_plugin now requires full command match.
 - 3.1 230320 - Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  

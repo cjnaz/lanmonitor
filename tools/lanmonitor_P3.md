@@ -19,7 +19,7 @@
 ---
 
 ## Version history
-- 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, 
+- 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, New freemem_plugin.
 - 3.2.2 240526 - yum_update_history_plugin command match bug fixes.
 - 3.2 240105 - Adjusted for cjnfuncs V2.1. fsactivity plugin supports missing file. yum_update_history_plugin now requires full command match.
 - 3.1 230320 - Plugins now distinguish between ssh access issues and real failures when checking on remote hosts.  
