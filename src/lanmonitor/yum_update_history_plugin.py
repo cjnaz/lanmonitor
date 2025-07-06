@@ -32,6 +32,7 @@ __version__ = '3.3'
 #
 #  Chris Nelson, Copyright 2021-2024
 #
+# 3.3.1 240823 - Added '--cacheonly' to yum history command to avoid temporary database updates
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.2.1 240116 - Bug fix yum command match .strip()
 # 3.2 240105 - Bug fix yum command must now completely match

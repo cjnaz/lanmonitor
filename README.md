@@ -40,6 +40,11 @@ for plugin implementation details.
 ---
 
 ## Notable changes since prior release
+
+- V3.3.2
+  - yum_update_history_plugin - Added '--cacheonly' to yum history command to avoid temporary database updates
+  - cjnfuncs 3.0 dependency
+
 - V3.3
   - New freemem_plugin
   - Support dictionary-style monitor item definitions, which adds support for cmd_timeout per monitored item
@@ -586,6 +591,7 @@ systems save the history in the yum database, and `dnf history` and `yum history
 ---
 
 ## Version history
+- 3.3.2 250706 - yumupdate history --cacheonly, cjnfuncs 3.0 dependency
 - 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, New freemem_plugin.
 - 3.2.2 240526 - yum_update_history_plugin command match bug fixes.
 - 3.2 240105 - Adjusted for cjnfuncs V2.1. fsactivity plugin supports missing file. yum_update_history_plugin now requires full command match.

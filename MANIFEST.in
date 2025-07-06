@@ -1,1 +1,3 @@
-include src/wanstatus/deployment_files/*
+include src/lanmonitor/deployment_files/*
+include LICENSE
+include *.md

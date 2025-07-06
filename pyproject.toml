@@ -6,11 +6,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lanmonitor"
 version = "3.3.2"
+    # 3.3.2 - yum_update_history_plugin - Added '--cacheonly', cjnfuncs 3.0 dependency, release
+    # 3.3
+    #   New freemem_plugin
+    #   Dictionary-style monitor item definitions
+    #   Support for cmd_timeout per monitored item
+    #   Tolerate temporarily missing config file
 description = "Monitor the state of services, processes, web pages, file system, etc. on your server and LAN"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"       # RHEL 9 uses 3.9
 authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
-license = {file = "LICENSE.txt"}
+license = "MIT"
 dependencies = [
     'cjnfuncs >= 3.0',
     'importlib-metadata; python_version<"3.8"',
