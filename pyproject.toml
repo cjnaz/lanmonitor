@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.4a2"
+version = "3.4rc1"
+    # 3.4rc1 - Cleanup
     # 3.4a2 - Refactored lanmonitor.py, added cli sub-string match mode
     # 3.4a1 - command line run individual check items initial working version
     # 3.3.2 - yum_update_history_plugin - Added '--cacheonly', cjnfuncs 3.0 dependency, release

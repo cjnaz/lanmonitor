@@ -6,9 +6,9 @@ See README.md for descriptions of available plugins.
 
 Operates interactively or as a service (loop forever and controlled via systemd or other).
 
-CLI modes
+CLI (interactive) modes
     No Items positional arg:  Run all monitor items once
-    Given Items positional arg "xyz host":  Run all monitor item params containing either 'xyz' or 'host' substrings, case insensitive.
+    Given Items positional arg "xyz host":  Run all monitor items containing either 'xyz' or 'host' substrings (case insensitive)
 
 In service mode
     kill -SIGUSR1 <pid>   outputs a summary to the log file
@@ -29,16 +29,14 @@ import os.path
 import signal
 import collections
 
-try:        # running as script not supported, so no default __version__ assignment
+try:
     import importlib.metadata
     __version__ = importlib.metadata.version(__package__ or __name__)
-    # print ("Using importlib.metadata for __version__ assignment")
 except:
     import importlib_metadata
     __version__ = importlib_metadata.version(__package__ or __name__)
-    # print ("Using importlib_metadata for __version__ assignment")
 
-from cjnfuncs.core import logging, set_toolname, ConfigError, set_logging_level
+from cjnfuncs.core import logging, set_toolname, set_logging_level
 from cjnfuncs.configman import config_item
 from cjnfuncs.timevalue import timevalue
 from cjnfuncs.mungePath import mungePath
@@ -56,7 +54,7 @@ TOOLNAME =              'lanmonitor'
 CONFIG_FILE =           'lanmonitor.cfg'
 PRINTLOGLENGTH  =       40
 CMD_TIMEOUT =           '1.0s'          # Default value.  May be set in config with Cmd_timeout
-STARTUP_DELAY =         '0s'
+STARTUP_DELAY =         '0s'            # Default value.  May be set in config with StartupDelay
 
 
 
@@ -117,8 +115,7 @@ def service():
     missing_config_file = False
 
 
-    while 1:
-
+    while True:
         try:
             # This code allows the config file to disappear (ie, network dropped) without
             # aborting.  Unhandled side effect:  If an _imported_ config file is not available then
@@ -134,9 +131,9 @@ def service():
                 if missing_config_file:
                     missing_config_file = False
                     logging.warning(f"Config file <{globvars.config.config_full_path}> found again.")
-        except ConfigError as e:
-            logging.error(f"Error when loading config file.  Aborting.:\n  {e}")
-            sys.exit()
+        except Exception as e:
+            logging.error(f"Error when loading config file.  Aborting.\n  {type(e).__name__}: {e}")
+            sys.exit(1)
 
         if not globvars.args.service:               # In service mode, logging level is set from config file
             set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)
@@ -187,7 +184,7 @@ def service():
             notif_handler.summary()
 
         if not globvars.args.service:                       # interactive mode run all exit
-            sys.exit(0)
+            return 0
 
         first = False
         time.sleep (timevalue(globvars.config.getcfg('ServiceLoopTime')).seconds)
@@ -218,9 +215,15 @@ def setup_notif_handlers():
                 notif_inst = notif_plugin.notif_class()
                 notif_handlers_list.extend([notif_inst])
     except Exception as e:
-        logging.error (f"Unable to load notification handler <{handler}> - Aborting.\n  {e}")
+        logging.error (f"Unable to load notification handler <{handler}>.  Aborting.\n  {type(e).__name__}: {e}")
         sys.exit(1)
 
+
+#=====================================================================================
+#=====================================================================================
+#   s e t _ p r i n t _ l e n g t h s
+#=====================================================================================
+#=====================================================================================
 
 def set_print_lengths():
     # Get keylen and hostlen field widths across all monitored items for pretty printing
@@ -256,37 +259,56 @@ def run_item(item_key):                                                 # Given 
         global inst_dict
         global checked_have_LAN_access, have_LAN_access
 
-        # Import monitor plugin if not already imported
-        plugin_name = 'MonType_' + item_key.split('_', maxsplit=1)[0]   # 'MonType_Host'
-        try:
-            montype_plugin = globvars.config.getcfg(plugin_name)        # 'pinghost_plugin'
-            plugin = sys.modules.get(montype_plugin)
-            if not plugin:
-                montype_plugin_mp = mungePath(montype_plugin)           # Allow for abs or rel path to lanmonitor dir
-                montype_plugin_parent = str(montype_plugin_mp.parent)   # montype_plugin_parent == '.' if no path specified
-                if montype_plugin_parent != '.'  and  montype_plugin_parent not in sys.path:
-                    sys.path.append(montype_plugin_parent)
-                plugin = __import__(montype_plugin_mp.name)
-                logging.debug (f"Imported <{plugin_name}> monitor plugin <{montype_plugin_mp.full_path}>, version <{plugin.__version__}>")
-        except Exception as e:
-            logging.exception (f"Could not find monitor plugin <{plugin_name}>")
-            sys.exit(1)
+        # # Import monitor plugin if not already imported
+        # plugin_name = 'MonType_' + item_key.split('_', maxsplit=1)[0]   # 'MonType_Host'
+        # try:
+        #     montype_plugin = globvars.config.getcfg(plugin_name)        # 'pinghost_plugin'
+        #     plugin = sys.modules.get(montype_plugin)
+        #     if not plugin:
+        #         montype_plugin_mp = mungePath(montype_plugin)           # Allow for abs or rel path to lanmonitor dir
+        #         montype_plugin_parent = str(montype_plugin_mp.parent)   # montype_plugin_parent == '.' if no path specified
+        #         if montype_plugin_parent != '.'  and  montype_plugin_parent not in sys.path:
+        #             sys.path.append(montype_plugin_parent)
+        #         plugin = __import__(montype_plugin_mp.name)
+        #         logging.debug (f"Imported <{plugin_name}> monitor plugin <{montype_plugin_mp.full_path}>, version <{plugin.__version__}>")
+        # except Exception as e:
+        #     logging.exception (f"Could not find monitor plugin <{plugin_name}>.  Aborting.\n  {type(e).__name__}: {e}")
+        #     sys.exit(1)
 
 
-        # Instantiate the monitor item
+        # Do one-time setup related stuff
         did_setup = False
         if item_key not in inst_dict:
             did_setup = True
-            monline = {}
-            monline['key'] = item_key                                   # 'Host_hostxyz'
-            monline['tag'] = item_key.split('_', maxsplit=1)[1]         # 'hostxyz'
-            item_def = globvars.config.cfg[item_key]
 
+
+            # Import monitor plugin if not already imported
+            plugin_name = 'MonType_' + item_key.split('_', maxsplit=1)[0]   # 'MonType_Host'
+            try:
+                montype_plugin = globvars.config.getcfg(plugin_name)        # 'pinghost_plugin'
+                plugin = sys.modules.get(montype_plugin)
+                if not plugin:
+                    montype_plugin_mp = mungePath(montype_plugin)           # Allow for abs or rel path to lanmonitor dir
+                    montype_plugin_parent = str(montype_plugin_mp.parent)   # montype_plugin_parent == '.' if no path specified
+                    if montype_plugin_parent != '.'  and  montype_plugin_parent not in sys.path:
+                        sys.path.append(montype_plugin_parent)
+                    plugin = __import__(montype_plugin_mp.name)
+                    logging.debug (f"Imported <{plugin_name}> monitor plugin <{montype_plugin_mp.full_path}>, version <{plugin.__version__}>")
+            except Exception as e:
+                logging.exception (f"Could not find monitor plugin <{plugin_name}>.  Aborting.\n  {type(e).__name__}: {e}")
+                sys.exit(1)
+
+
+            # Instantiate the monitor item and call setup()
+            monline = {}
+            monline['key'] = item_key                                       # 'Host_hostxyz'
+            monline['tag'] = item_key.split('_', maxsplit=1)[1]             # 'hostxyz'
+            item_def = globvars.config.cfg[item_key]
 
             try:
                 if isinstance(item_def, dict):
-                    # ***** Monitor item dict format *****
-                    # Host_testhostY   {'u_h_p': 'local', 'critical':False, 'timeout':'1s', 'recheck':'1m', 'rol':'testhostY.cjn.lan'}
+                    # Monitor item dict format
+                        # Host_testhostY   {'u_h_p': 'local', 'critical':False, 'timeout':'1s', 'recheck':'1m', 'rol':'testhostY.cjn.lan'}
                     
                     # Required settings
                     monline['check_interval'] =     timevalue(item_def['recheck']).seconds
@@ -312,8 +334,7 @@ def run_item(item_key):                                                 # Given 
                             raise ValueError (f"Error in line <{item_key}>:  Unknown key <{line_key}>")
 
                 else:
-                    # ***** Monitor item str format *****
-                        # Line parsing (monline dict keys):
+                    # Monitor item str format
                         #   montype_xyz   pi@rpi3:80 CRITICAL  5m  xyz config specific
                         #   ^^^^^^^^^^^  key
                         #           ^^^  tag
@@ -337,9 +358,9 @@ def run_item(item_key):                                                 # Given 
                     monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
 
 
-                # *****  call setup()  *****
+                # Do setup()
                 item_inst = plugin.monitor()
-                rslt = item_inst.setup(monline)
+                rslt = item_inst.setup(monline)             # <<<<  setup() call
                 logging.debug (f"{item_key} - setup() returned:  {rslt}")
                     # setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
                     # setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
@@ -371,13 +392,12 @@ def run_item(item_key):                                                 # Given 
                     sys.exit(1)
 
             except Exception as e:
-                logging.exception (f"Malformed monitor item <{item_key}> - skipped:\n  {type(e).__name__}: {e}")
+                logging.exception (f"Malformed monitor item <{item_key}>.  Skipped.\n  {type(e).__name__}: {e}")
                 inst_dict[item_key] = False
-                # continue
                 return lanmonfuncs.RTN_FAIL
 
 
-        # *****  call eval_status()  *****
+        # Check monitor item status
         item_inst = inst_dict.get(item_key, False)
         if item_inst is not False:                      # See above setup() call notes
             if datetime.datetime.now() < item_inst.next_run:
@@ -387,14 +407,14 @@ def run_item(item_key):                                                 # Given 
                 item_inst.next_run += datetime.timedelta(seconds=item_inst.check_interval)
                 # inst.next_run += datetime.timedelta(seconds=60)  # for debug
 
-                # For items that run >= daily, set next_run to the daily run time, if defined
+                # For items that run >= daily, set next_run to the daily run time, if defined (Needs to only be done once.)
                 if did_setup  and  globvars.config.getcfg('DailyRuntime', False)  and  (item_inst.check_interval >= 86400):
                     try:
                         target_hour   = int(globvars.config.getcfg('DailyRuntime').split(':')[0])
                         target_minute = int(globvars.config.getcfg('DailyRuntime').split(':')[1])
                         item_inst.next_run = item_inst.next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
                     except Exception as e:
-                        logging.error (f"Cannot parse <DailyRuntime> in config:  {globvars.config.getcfg('DailyRuntime')} - Aborting")
+                        logging.error (f"Cannot parse <DailyRuntime> in config:  {globvars.config.getcfg('DailyRuntime')}.  Aborting.\n  {type(e).__name__}: {e}")
                         sys.exit(1)
                 logging.debug(f"{item_key} - Next runtime: {item_inst.next_run}")
 
@@ -409,7 +429,7 @@ def run_item(item_key):                                                 # Given 
 
                 # Do the check
                 if item_inst.host == 'local' or have_LAN_access: 
-                    rslt = item_inst.eval_status()
+                    rslt = item_inst.eval_status()          # <<<<  eval_status() call
                     logging.debug (f"{item_key} - eval_status() returned:  {rslt}")
 
                     for notif_handler in notif_handlers_list:
@@ -474,7 +494,7 @@ def cli():
             { 'source': 'creds_SMTP',         'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o600},
             { 'source': 'lanmonitor.service', 'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644},
             ])
-        sys.exit()
+        sys.exit(0)
 
     if globvars.args.setup_site:
         deploy_files([
@@ -482,7 +502,7 @@ def cli():
             { 'source': 'creds_SMTP',         'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o600},
             { 'source': 'lanmonitor.service', 'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644},
             ])
-        sys.exit()
+        sys.exit(0)
 
 
     # Load config file and setup logging
@@ -492,7 +512,7 @@ def cli():
         globvars.config.loadconfig(call_logfile_wins=call_logfile_override)
     except Exception as e:
         logging.error(f"Failed loading config file <{globvars.args.config_file}>. \
-\n  Run with  '--setup-user' or '--setup-site' to install starter files.\n  {e}\n  Aborting.")
+\n  Run with  '--setup-user' or '--setup-site' to install starter files.  Aborting.\n  {type(e).__name__}: {e}")
         sys.exit(1)
 
 
@@ -509,8 +529,8 @@ def cli():
             for line in _xx:
                 print (line, end='')
         except Exception as e:
-            print (f"Couldn't print the log file.  LogFile defined in the config file?\n  {e}")
-        sys.exit()
+            print (f"Couldn't print the log file.  LogFile defined in the config file?\n  {type(e).__name__}: {e}")
+        sys.exit(1)
 
 
     # Run in service or interactive modes
@@ -518,12 +538,12 @@ def cli():
         service()
         sys.exit(0)
 
-    if len(globvars.args.Items) == 0:
+    if len(globvars.args.Items) == 0:   # Interactive mode run all.  Force default INFO level logging.
         if globvars.args.verbose is None:
-            globvars.args.verbose = 1   # Force INFO level logging
+            globvars.args.verbose = 1
         service()
     else:
-        main()
+        main()                          # Interactive mode for specified items
 
     
 if __name__ == '__main__':
