@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lanmonitor"
 version = "3.5a1"
-    # 3.5a1 - Fabric/paramiko incorporation
+    # 3.5a1 - Fabric/paramiko incorporation - functional
     # 3.4rc1 - Cleanup
     # 3.4a2 - Refactored lanmonitor.py, added cli sub-string match mode
     # 3.4a1 - command line run individual check items initial working version
@@ -23,6 +23,7 @@ authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
 license = "MIT"
 dependencies = [
     'cjnfuncs >= 3.0',
+    'fabric >= 3.2.2',
     'importlib-metadata; python_version<"3.8"',
     ]
 classifiers = [                 # https://pypi.org/classifiers/
