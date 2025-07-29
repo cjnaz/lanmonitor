@@ -108,7 +108,7 @@ from fabric import Connection
 class connections:
     def __init__(self):
         global host_connections
-        logging.getLogger("fabric").setLevel(logging.WARNING)
+        logging.getLogger("fabric").setLevel(logging.WARNING)       # TODO settable
         logging.getLogger("invoke").setLevel(logging.WARNING)
         logging.getLogger("paramiko").setLevel(logging.WARNING)
         self.connections_dict = {}
@@ -256,7 +256,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             logging.debug(f"cmd try {nTry+1} <{cmd}>")
             # run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
             if user_host_port == 'local':
-                run_try = connectionX.local(cmd, hide=True)
+                run_try = connectionX.local(cmd, hide=True)     # TODO timeout
             else:
                 # logging.getLogger("fabric").setLevel(logging.WARNING)
                 # logging.getLogger("invoke").setLevel(logging.WARNING)
