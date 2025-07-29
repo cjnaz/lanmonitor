@@ -4,8 +4,9 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250728 - Fabric/paramiko incorporation
 # 3.3 240805 - Reworked debug level logging in cmd_check, Added cmd_timeout for each monitored item.
 # 3.1 230320 - Added cfg param SSH_timeout, fixed cmd_check command fail retry bug, 
 #   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
@@ -26,7 +27,7 @@ import datetime
 import time
 import re
 
-from cjnfuncs.core import logging
+from cjnfuncs.core import logging, set_logging_level, restore_logging_level
 from cjnfuncs.timevalue import timevalue
 
 import lanmonitor.globvars as globvars
@@ -102,6 +103,54 @@ def split_user_host_port(u_h_p):
     return (user_host_noport, host, port)
 
 
+from fabric import Connection
+
+class connections:
+    def __init__(self):
+        global host_connections
+        logging.getLogger("fabric").setLevel(logging.WARNING)
+        logging.getLogger("invoke").setLevel(logging.WARNING)
+        logging.getLogger("paramiko").setLevel(logging.WARNING)
+        self.connections_dict = {}
+        self.connections_dict['local'] = Connection('localhost')
+        host_connections = self #.connections_dict
+
+    def connect(self, uhp):
+        # uhp = user_host_port.lower()
+        self.connections_dict[uhp] = Connection(uhp) #, connect_kwargs={'set_keepalive': 30})
+        self.connections_dict[uhp].open()
+        transport = self.connections_dict[uhp].transport.set_keepalive(30)
+        # self.connections_dict[uhp].get_transport().set_keepalive(30)
+        logging.warning (f"Connection (re)established:  <{uhp}> - {self.connections_dict[uhp]}")
+        return self.connections_dict[uhp]
+
+    def get(self, user_host_port):
+        uhp = user_host_port.lower()
+        # print (self.list())
+        if uhp == 'local':
+            return self.connections_dict[uhp]
+        else:
+            if uhp not in self.connections_dict  or  not self.connections_dict[uhp].is_connected:
+                self.connect(uhp)
+            return self.connections_dict[uhp]
+
+    def list(self):
+        print ("Current connections:")
+        print (self.connections_dict)
+        for key in self.connections_dict:
+            print (f"  <{key}>:  <{self.connections_dict[key]}>")
+
+    def closeall(self):
+        for key in self.connections_dict:
+            if key != 'local':
+                self.connections_dict[key].close()
+        self.connections_dict.clear()
+
+# host_connections = connections()
+# print (host_connections)
+
+
+
 #=====================================================================================
 #=====================================================================================
 #  c m d _ c h e c k
@@ -137,11 +186,11 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     ### Parameters
     `cmd`
     - Command to be passed to subprocess.run() in list form
-    - The `cmd` execution must have a passing (0) exit status, else it will be retried and possibly result in a non-RTN_PASS response.
+    - The `cmd` execution must have a passing (0) exit status else it will be retried and possibly result in a non-RTN_PASS response.
 
     `user_host_port`
-    - Str for the target machine to execute cmd on.  Port optional (default 22).  `local`
-    indicates run the cmd on the local machine.
+    - Str for the target machine to execute cmd on.  Port optional (default 22).
+    - `local` indicates run the cmd on the local machine
 
     `return_type`
     - "cmdrun" or "check_string"
@@ -187,22 +236,38 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     RTNCODE_TIMEOUT or RTNCODE_ERROR, and the `stderr` field carries the details.  If used, these codes should be imported from this module.
     """
 
+    global host_connections
 
     if return_type not in ['check_string', 'cmdrun']:
         _msg = f"Invalid return_type <{return_type}> passed to cmd_check"
         logging.error (f"ERROR:  {_msg}")
         raise ValueError (_msg)
 
-    if user_host_port != 'local':
-        u_h, host, port = split_user_host_port(user_host_port)
-        cmd = ['ssh', u_h, '-p' + port, '-T'] + cmd
+    # if user_host_port != 'local':
+    u_h, host, port = split_user_host_port(user_host_port)
+    # cmd = ['ssh', u_h, '-p' + port, '-T'] + cmd
+    connectionX = host_connections.get(user_host_port)
 
+    cmd = ' '.join(cmd)
     error_msg = ''
     ntries = globvars.config.getcfg('nTries', NTRIES)
     for nTry in range (ntries):
         try:
             logging.debug(f"cmd try {nTry+1} <{cmd}>")
-            run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
+            # run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
+            if user_host_port == 'local':
+                run_try = connectionX.local(cmd, hide=True)
+            else:
+                # logging.getLogger("fabric").setLevel(logging.WARNING)
+                # logging.getLogger("invoke").setLevel(logging.WARNING)
+                # logging.getLogger("paramiko").setLevel(logging.WARNING)
+                # set_logging_level(logging.WARNING)
+                run_try = connectionX.run(cmd, hide=True)
+                # restore_logging_level()
+            run_try.returncode = run_try.exited     # Difference between subprocess and fabric 
+            # print (run_try)
+
+
             if run_try.returncode > 0:
                 error_msg = run_try.stderr.replace('\n','')
                 logging.debug(f"cmd try {nTry+1} failed (returncode={run_try.returncode}) <{cmd}>:  {error_msg}")

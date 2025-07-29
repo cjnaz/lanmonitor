@@ -91,6 +91,8 @@ def main():
     else:
         checked_have_LAN_access = have_LAN_access = True
 
+    lanmonfuncs.connections() # = lanmonfuncs.connections()
+
     for item in globvars.args.Items:                    # Given CLI Items:  [ 'apt', 'host3' ]
         item = item.lower()
         for mon_item in monitor_items_list:
@@ -98,6 +100,7 @@ def main():
                 logging.debug ("")
                 run_item(mon_item)
 
+    cleanup()
 
 
 #=====================================================================================
@@ -126,14 +129,14 @@ def service():
             if reloaded == -1:      # config file not found
                 if not missing_config_file:
                     missing_config_file = True
-                    logging.warning(f"Can't find or load the config file <{globvars.config.config_full_path}> - skipping reload check.")
+                    logging.warning(f"Can't find or load the config file <{globvars.config.config_full_path}> - skipping reload check")
             else:                   # config file found
                 if missing_config_file:
                     missing_config_file = False
-                    logging.warning(f"Config file <{globvars.config.config_full_path}> found again.")
+                    logging.warning(f"Config file <{globvars.config.config_full_path}> found again")
         except Exception as e:
             logging.error(f"Error when loading config file.  Aborting.\n  {type(e).__name__}: {e}")
-            sys.exit(1)
+            sys.exit(1)     # TODO cleanup
 
         if not globvars.args.service:               # In service mode, logging level is set from config file
             set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)
@@ -142,13 +145,16 @@ def service():
         if first:
             if globvars.args.service:
                 time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY)).seconds)
+            lanmonfuncs.host_connections = lanmonfuncs.connections()
             reloaded = 1                            # Force calc of key and host padding lengths
 
 
         if reloaded == 1:
             if not first:
-                logging.warning(f"NOTE - The config file has been reloaded.")
+                logging.warning(f"NOTE - The config file has been reloaded")
             
+                lanmonfuncs.host_connections.closeall()
+                lanmonfuncs.host_connections = lanmonfuncs.connections()
             setup_notif_handlers()                  # Refresh the notifications handlers
             inst_dict.clear()                       # Clear out all current instances, forcing re-setup
             set_print_lengths()                     # Set pretty print field widths
@@ -184,6 +190,7 @@ def service():
             notif_handler.summary()
 
         if not globvars.args.service:                       # interactive mode run all exit
+            cleanup()
             return 0
 
         first = False
@@ -388,7 +395,8 @@ def run_item(item_key):                                                 # Given 
                     inst_dict[item_key] = item_inst
 
                 else:
-                    logging.critical (f"Setup for <{item_key}> returned illegal value {rslt} - Aborting.")
+                    logging.critical (f"Setup for <{item_key}> returned illegal value {rslt}.  Aborting.")
+                    cleanup()
                     sys.exit(1)
 
             except Exception as e:
@@ -439,6 +447,16 @@ def run_item(item_key):                                                 # Given 
 
 #=====================================================================================
 #=====================================================================================
+#   c l e a n u p
+#=====================================================================================
+#=====================================================================================
+
+def cleanup():
+    lanmonfuncs.host_connections.closeall()
+
+
+#=====================================================================================
+#=====================================================================================
 #   tool script infrastructure stuff
 #=====================================================================================
 #=====================================================================================
@@ -455,6 +473,7 @@ def int_handler(sig, frame):
         globvars.sig_status = True
         return
     else:
+        lanmonfuncs.host_connections.closeall()
         sys.exit(1)
 
 signal.signal(signal.SIGINT,  int_handler)      # Ctrl-C  (2)
