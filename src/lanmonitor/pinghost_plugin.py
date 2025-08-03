@@ -101,7 +101,9 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ['ping', '-c', '1', self.ip_or_hostname]
+        # cmd = ['ping', '-c', '1', self.ip_or_hostname]
+        # cmd = 'sleep 4'
+        cmd = 'ping -c 1 ' + self.ip_or_hostname
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
 
@@ -117,7 +119,8 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
 
         else: # RTN_FAIL
-            if rslt[1].stderr == ""  or  "cmd_check subprocess.run timeout" in rslt[1].stderr:
+            # if rslt[1].stderr == ""  or  "cmd_check subprocess.run timeout" in rslt[1].stderr:
+            if rslt[1].stderr == ""  or  "cmd_check command run timeout" in rslt[1].stderr:
                 error_msg = "Cannot contact target host"
             else:
                 error_msg = rslt[1].stderr.replace('\n','')

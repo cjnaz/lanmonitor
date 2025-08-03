@@ -27,6 +27,9 @@ import datetime
 import time
 import re
 
+from fabric import Connection
+from invoke import CommandTimedOut
+
 from cjnfuncs.core import logging, set_logging_level, restore_logging_level
 from cjnfuncs.timevalue import timevalue
 
@@ -47,6 +50,7 @@ GATEWAY_TIMEOUT =       '1.0s'      # Default value.  May be set in config with 
 
 RTNCODE_TIMEOUT =       254
 RTNCODE_ERROR =         253
+RTNCODE_REMOTE_TIMEOUT= 252
 
 
 #=====================================================================================
@@ -54,8 +58,8 @@ RTNCODE_ERROR =         253
 #  s p l i t _ u s e r _ h o s t _ p o r t
 #=====================================================================================
 #=====================================================================================
-USER_HOST_FORMAT = re.compile(r"[\w.-]+@([\w.-]+)$")
-USER_HOST_PORT_FORMAT = re.compile(r"[\w.-]+@([\w.-]+):([\d]+)$")
+USER_HOST_FORMAT = re.compile(r"([\w.-]+)@([\w.-]+)$")
+USER_HOST_PORT_FORMAT = re.compile(r"([\w.-]+)@([\w.-]+):([\d]+)$")
 
 def split_user_host_port(u_h_p):
     """
@@ -70,84 +74,104 @@ def split_user_host_port(u_h_p):
     ### Returns
     - 3-tuple
       - user@host (without port), or `local`
-      - host (without user or port), or `local`
+      - user or `local` (cast to lower case)
+      - host or `local` (cast to lower case)
       - port number
     
     ### Examples
     ```
         "xyz@host15:4455" returns:
-            ("xyz@host15", "host15", "4455")
+            ("xyz", "host15", "4455")
         "xyz@host15" returns:
-            ("xyz@host15", "host15", "22")  (the default port is "22" for ssh)
+            ("xyz", "host15", "22")  (the default port is "22" for ssh)
         "local" returns:
             ("local", "local", "")
     ```
     """
-    user_host_noport = u_h_p.split(':')[0]
-    host = u_h_p
-    port = ''
-    if host != 'local':
-        port = '22'
-        out = USER_HOST_FORMAT.match(u_h_p)
+    # user_host_noport = u_h_p.split(':')[0]
+    # host = u_h_p
+    # port = ''
+    u_h_p = u_h_p.lower().strip()
+    if u_h_p == 'local':
+        return ('local', 'local', '')
+
+    else:
+        if ':' not in u_h_p:
+            u_h_p += ':22'
+    # port = '22'
+    # out = USER_HOST_FORMAT.match(u_h_p)
+    # if out:
+    #     user = out.group(1).lower()
+    #     host = out.group(2).lower()
+    # else:
+        out = USER_HOST_PORT_FORMAT.match(u_h_p)
         if out:
-            host = out.group(1)
+            user = out.group(1).lower()
+            host = out.group(2).lower()
+            port = out.group(3)
         else:
-            out = USER_HOST_PORT_FORMAT.match(u_h_p)
-            if out:
-                host = out.group(1)
-                port = out.group(2)
-            else:
-                _msg = f"Expecting <user@host> or <user@host:port> format, but found <{u_h_p}>."
-                # logging.error(f"ERROR:  {_msg}")
-                raise ValueError (_msg)
-    return (user_host_noport, host, port)
+            _msg = f"Expecting <user@host> or <user@host:port> format, but found <{u_h_p}>."
+            # logging.error(f"ERROR:  {_msg}")
+            raise ValueError (_msg)
+    return (user, host, port)
 
 
-from fabric import Connection
-
-class connections:
-    def __init__(self):
+#=====================================================================================
+#=====================================================================================
+#  c o n n e c t i o n s _ m a n a g e r
+#=====================================================================================
+#=====================================================================================
+class connections_manager:
+    def __init__(self): #, timeout=1):
         global host_connections
         logging.getLogger("fabric").setLevel(logging.WARNING)       # TODO settable
         logging.getLogger("invoke").setLevel(logging.WARNING)
         logging.getLogger("paramiko").setLevel(logging.WARNING)
         self.connections_dict = {}
         self.connections_dict['local'] = Connection('localhost')
-        host_connections = self #.connections_dict
+        # self.connect_timeout = timeout
+        host_connections = self
 
-    def connect(self, uhp):
-        # uhp = user_host_port.lower()
-        self.connections_dict[uhp] = Connection(uhp) #, connect_kwargs={'set_keepalive': 30})
-        self.connections_dict[uhp].open()
-        transport = self.connections_dict[uhp].transport.set_keepalive(30)
-        # self.connections_dict[uhp].get_transport().set_keepalive(30)
-        logging.warning (f"Connection (re)established:  <{uhp}> - {self.connections_dict[uhp]}")
-        return self.connections_dict[uhp]
-
-    def get(self, user_host_port):
+    def get(self, user_host_port, connection_timeout=1):
         uhp = user_host_port.lower()
-        # print (self.list())
         if uhp == 'local':
             return self.connections_dict[uhp]
         else:
-            if uhp not in self.connections_dict  or  not self.connections_dict[uhp].is_connected:
-                self.connect(uhp)
-            return self.connections_dict[uhp]
+            if ':' not in uhp:
+                uhp += ':22'
 
-    def list(self):
-        print ("Current connections:")
-        print (self.connections_dict)
+            if uhp not in self.connections_dict  or  not self.connections_dict[uhp].is_connected:
+                self._connect(uhp, connection_timeout)
+            _conn = self.connections_dict[uhp]
+            if _conn.is_connected:
+                return _conn
+            else:
+                return False
+
+    def _connect(self, uhp, timeout):
+        # Connection failure raises various exceptions including TimeoutError / AuthenticationException / NoValidConnectionsError
+        # which must be caught/handled in cmd_check()
+        user, host, port = split_user_host_port(uhp)
+        _conn = Connection(host=host, user=user, port=port, connect_timeout=timeout) #self.connect_timeout)
+        _conn.open()
+        _conn.transport.set_keepalive(30)
+        self.connections_dict[uhp] = _conn
+        logging.warning (f"Connection (re)established:  <{uhp}> - {self.connections_dict[uhp]}")
+        return
+
+    def __repr__(self):
+        # Return formatted list of current connections
+        xx = "Current connections:\n"
+        # print (self.connections_dict)
         for key in self.connections_dict:
-            print (f"  <{key}>:  <{self.connections_dict[key]}>")
+            xx += f"  <{key:20}>:  {self.connections_dict[key]}\n"
+        return xx
 
     def closeall(self):
         for key in self.connections_dict:
             if key != 'local':
                 self.connections_dict[key].close()
         self.connections_dict.clear()
-
-# host_connections = connections()
-# print (host_connections)
 
 
 
@@ -158,22 +182,13 @@ class connections:
 #=====================================================================================
 def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=None, expected_text=None, not_text=None):
     """
-    ## cmd_check (cmd, user_host_port, return_type=None, check_line_text=None, expected_text=None, not_text=None) - Runs the cmd and operates on the response based on return_type
+    ## cmd_check (cmd, user_host_port, return_type, cmd_timeout, check_line_text=None, expected_text=None, not_text=None) - Runs the cmd and operates on the response based on return_type
 
-    The `cmd` is executed by a call to subprocess.run().  If `user_host_port` is not `local`, then `cmd` is executed on the
-    remote host via ssh.  If there is no subprocess.run() exception or executed command error then cmd_check checks the run response per the 
-    `return_type` selection.
-
-    If the cmd run is not successful (exception, cmd_timeout, subprocess.run returncode != 0, or failed text match checks)
-    after `nTries` attempts, and the target is a remote host, then a simple ssh access is attempted for `nTries` using 
-    the `SSH_timeout` limit.  The goal is to distinguish between a basic remote access timeout and a real command failure 
-    on the remote host.  RTN_WARNING is returned if the issue is an ssh access problem, else a RTN_FAIL is returned.
-
-    Note that the `cmd` cannot utilize wildcard file expansion for the local host because shell=False on the subprocess call.
-    To implement local wildcard expansion the plugin can pre-expand the list with glob.glob.  Wildcard expansion works
-    as expected for executing commands on remote hosts.  See apt_upgrade_history_plugin.py for an example.
-
-    Note that the `cmd` cannot utilize pipes to string together commands.  cmd_check executes a single monolithic subprocess call.
+    The `cmd` is executed by a call to fabric.local() if `user_host_port` is `local`, or via an ssh connection by
+    fabric.run() if `user_host_port` is a remote host.
+    If there is no exception and the executed `cmd` returns an exit code = 0 then cmd_check checks the
+    run response (stdout) per the `return_type` selection.  Finally, a tuple of `(success_status, subprocess.CompletedProcess structure)`
+    is returned.  
 
     The total execution time of a failing local cmd_check call can be as long as:
 
@@ -183,57 +198,84 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
         nTries*SSH_timeout 
 
-    ### Parameters
-    `cmd`
-    - Command to be passed to subprocess.run() in list form
-    - The `cmd` execution must have a passing (0) exit status else it will be retried and possibly result in a non-RTN_PASS response.
+    ### Args
+    `cmd`  (str or list)
+    - Command to be passed to fabric.run() or fabric.local() in list (eg: ['echo', 'hello']) or str (eg: 'echo hello') form
+    - The `cmd` may use `~` user home expansion and `?` and `*` wildcard expansion.
+    - The `cmd` may also use `|` pipes and `>` redirection
+    - The `cmd` execution must have a passing (0) exit code else it will be retried and result in a 
+      RTN_FAIL `success_status`.  An exception raised by the `cmd` run will also cause retries.
 
-    `user_host_port`
-    - Str for the target machine to execute cmd on.  Port optional (default 22).
-    - `local` indicates run the cmd on the local machine
+    `user_host_port`  (str)
+    - Target machine to execute `cmd` on, eg: 'me@testhost2:2222'.  The port number is optional (default 22).
+    - `local` indicates run `cmd` on the local machine
 
-    `return_type`
-    - "cmdrun" or "check_string"
-    - If "cmdrun" then the `cmd` execution status and subprocess return structure is returned
-    - If "check_string" then the following parameters are used to evaluate the subprocess return structure `stdout` field
+    `cmd_timeout`  (float, value in seconds)
+    - timeout value used when executing `cmd`
+
+    `return_type`  (str - either 'cmdrun' or 'check_string')
+    - If `return_type` = 'cmdrun' then RTN_PASS (`cmd` exit code = 0) or RTN_FAIL (`cmd` exit code > 0) and
+    the `CompletedProcess` structure is returned.
+    - If `return_type` = 'check_string':
+      - If the `cmd` run exit code = 0 then the following args are used to evaluate the `CompletedProcess.stdout` field.
+        `success_status` is set to RTN_PASS or RTN_FAIL per the string checks, and returned with the
+        `CompletedProcess` structure.  String check failures are noted in `CompletedProcess.stderr`.
+      - If the `cmd` run exit code > 0 then RTN_FAIL and the `CompletedProcess` structure is returned.
    
-    `cmd_timeout`
-    - subprocess.run call timeout value in float seconds
-    - This param is set within lanmonitor.py when instantiating each monitored item
-
-    `check_line_text` (default None)
-    - A qualifier for which line of the `cmd` response to look for `expected_text` and/or `not_text`
+    `check_line_text` (str, default None)
+    - A qualifier for which line of `CompletedProcess.stdout` to look for `expected_text` and/or `not_text`
     - If provided, only the first line containing this text is checked.  If not provided then
-    all lines of the `cmd` response are checked.
+    all lines of the `CompletedProcess.stdout` are checked.
 
-    `expected_text` (default None)
-    - Text that must be found
+    `expected_text` (str, default None)
+    - Text that must be found in the `check_line_text` (or all of `CompletedProcess.stdout`)
 
-    `not_text`  (default None)
-    - Text that must NOT be found
+    `not_text`  (str, default None)
+    - Text that must NOT be found in the `check_line_text` (or all of `CompletedProcess.stdout`)
     
     ### cfg dictionary params
-    nTries (default 2)
-    - Total number of times to attempt to execute the `cmd` or ssh access check
+    `nTries` (int, default 2)
+    - Total number of times to attempt to execute the `cmd` if it returns an exit code > 0 or raises an exception
 
-    `RetryInterval` (default 0.5s)
-    - Wait time between subprocess.run `cmd` retries (not used for simple ssh access retries)
+    `RetryInterval` (float, default 0.5s)
+    - Wait time between `cmd` nTries
 
-    `SSH_timeout` (default 1s)
-    - Timeout used for a simple ssh access check 
+    `SSH_timeout` (int, default 1s)
+    - Timeout used for SSH connections to remote hosts.
+    - _The value must be an integer number of seconds. Not a float._
 
     ### Returns
-    - 2-tuple of (success_status, subprocess.CompletedProcess structure)
-    - success_status
-        `return_type` | returned value for success_status
-        -- | --
-        cmdrun | RTN_PASS if the `cmd` executed by the subprocess run has a passing exit status (returncode = 0), else success_status = RTN_FAIL
-        check_string | RTN_PASS if the `cmd` stdout response contains `expected_text` and not `not_text` (response line qualified by `check_line_text`), else success_status = RTN_FAIL
-      - If `user_host_port` is a remote host but a ssh connection was not successful then success_status = RTN_WARNING. 
+    - 2-tuple of `(success_status, subprocess.CompletedProcess())`
+      - `success_status` values:
+        - `RTN_PASS` - the `cmd` run exited with exit code = 0.  If `return_type`='check_string' then checks pass.  Any `cmd` output is in `CompletedProcess.stdout`.
+        - `RTN_FAIL` - the `cmd` run exited with exit code > 0, or an exception was raised, or `return_type`='check_string' checks fail.
+        `CompletedProcess.stderr` contains the failure data.
+        - `RTN_WARNING` - only for execution on a remote host, indicates an SSH connection failure
 
-    - The subprocess.CompletedProcess normally carries the full subprocess.run return structure, including `args`, `returncode`, `stdout`, and `stderr` fields. 
-    If an exception is raised when trying to execute the `cmd` then the subprocess.CompletedProcess `returncode` field is set to
-    RTNCODE_TIMEOUT or RTNCODE_ERROR, and the `stderr` field carries the details.  If used, these codes should be imported from this module.
+      - If `return_type` = 'check_string':  `success_status` = 'RTN_PASS' if the `cmd` stdout response contains `expected_text` and not `not_text` 
+      (response line qualified by `check_line_text`), else `success_status` = 'RTN_FAIL'.
+
+      - The returned `CompletedProcess` structure contains these fields:
+        - `args` - the command string executed
+        - `returncode` - integer command execution status
+            - 0:  `cmd` executed successfully
+            - \>0: `cmd`-specific error exit code
+            - RTNCODE_REMOTE_TIMEOUT (252): Connection timeout to a remote host
+            - RTNCODE_ERROR (253): General exception 
+            - RTNCODE_TIMEOUT (254): Timeout during `cmd` execution 
+        - `stdout` - holds any text from a passing `cmd` execution
+        - `stderr` - holds any info on `cmd` execution errors and exceptions.  '\\n's are replaced with ' '.
+
+    - A ValueError exception is raised if the call to cmd_check has errors, such as invalid `return_type` or `user_host_port`.
+
+    ### Behaviors and rules
+    - If an exception is raised when trying to execute the `cmd` then the `CompletedProcess.returncode` field is set to
+    RTNCODE_TIMEOUT (254), RTNCODE_ERROR (253), or RTNCODE_REMOTE_TIMEOUT (252), and the `CompletedProcess.stderr` field carries the details. 
+    If used, these codes should be imported from this module.
+    - When unable to connect to a known host (DNS resolves) the failure information can vary, perhaps based on the `SSH_timeout` setting, including:
+      - (RTN_WARNING, CompletedProcess(returncode=252, stderr='Host <me@testhostx> connection failed:  TimeoutError: timed out'))
+      - (RTN_WARNING, CompletedProcess(returncode=253, stderr='Host <me@testhostx> connection failed:  timeout: timed out'))
+      - (RTN_WARNING, CompletedProcess(returncode=253, stderr='Host <me@testhostx> connection failed:  NoValidConnectionsError: [Errno None] Unable to connect to port 22 on ...'))
     """
 
     global host_connections
@@ -243,107 +285,106 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         logging.error (f"ERROR:  {_msg}")
         raise ValueError (_msg)
 
-    # if user_host_port != 'local':
-    u_h, host, port = split_user_host_port(user_host_port)
-    # cmd = ['ssh', u_h, '-p' + port, '-T'] + cmd
-    connectionX = host_connections.get(user_host_port)
+    if isinstance(cmd, list):
+        cmd = ' '.join(cmd)
 
-    cmd = ' '.join(cmd)
+    # TODO accept host only and get user & port from config, and auth file pointer
+    
+    if 'host_connections' not in globals():
+        connections_manager()
+
+    try:
+        connection_timeout = timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds
+        host_conn = host_connections.get(user_host_port, connection_timeout=connection_timeout)
+    except TimeoutError as e:       # Connection/SSH timeout
+        error_msg = f"Host <{user_host_port}> connection failed:  {type(e).__name__}: {e}"
+        logging.debug(error_msg)
+        return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_TIMEOUT, stdout='', stderr=error_msg))
+    except Exception as e:
+        error_msg = f"Host <{user_host_port}> connection failed:  {type(e).__name__}: {e}"
+        logging.debug(error_msg)
+        return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
+
+
     error_msg = ''
     ntries = globvars.config.getcfg('nTries', NTRIES)
     for nTry in range (ntries):
         try:
-            logging.debug(f"cmd try {nTry+1} <{cmd}>")
-            # run_try = subprocess.run(cmd, timeout=cmd_timeout, capture_output=True, text=True)
+            logging.debug(f"cmd try {nTry+1} on <{user_host_port}>:  <{cmd}>")
             if user_host_port == 'local':
-                run_try = connectionX.local(cmd, hide=True)     # TODO timeout
+                run_try = host_conn.local(cmd, hide=True, warn=True, timeout=cmd_timeout)
             else:
-                # logging.getLogger("fabric").setLevel(logging.WARNING)
-                # logging.getLogger("invoke").setLevel(logging.WARNING)
-                # logging.getLogger("paramiko").setLevel(logging.WARNING)
-                # set_logging_level(logging.WARNING)
-                run_try = connectionX.run(cmd, hide=True)
-                # restore_logging_level()
-            run_try.returncode = run_try.exited     # Difference between subprocess and fabric 
-            # print (run_try)
+                run_try = host_conn.run(cmd, hide=True, warn=True, timeout=cmd_timeout)
 
+            run_result = subprocess.CompletedProcess(args=cmd, returncode=run_try.exited, stdout=run_try.stdout, stderr=run_try.stderr.replace('\n',' '))
 
-            if run_try.returncode > 0:
-                error_msg = run_try.stderr.replace('\n','')
-                logging.debug(f"cmd try {nTry+1} failed (returncode={run_try.returncode}) <{cmd}>:  {error_msg}")
-            # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")              # Uncomment for debug.  Response can be huge.
-        except subprocess.TimeoutExpired as e:
-            error_msg = e
-            logging.debug(f"cmd try {nTry+1} timeout:  {e}")
-            run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check subprocess.run timeout:  {e}')
+            if run_result.returncode > 0:           # no exception, but non-passing result
+                error_msg = run_result.stderr
+                logging.debug(f"cmd try {nTry+1} failed:  <{error_msg}>")
+            # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")      # Uncomment for debug.  stdout can be huge.
+
+        except CommandTimedOut as e:
+            error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
+            run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=error_msg)
+            logging.debug(f"cmd try {nTry+1} failed (exception):  {error_msg}")
             continue
+
         except Exception as e:
-            error_msg = e
-            logging.debug(f"cmd try {nTry+1} failed (exception) <{cmd}>:  {e}")
-            run_try = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check subprocess.run failed:  {e}')
+            error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
+            run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg)
+            logging.debug(f"cmd try {nTry+1} failed (exception):  {error_msg}")
             continue
 
         if return_type == 'check_string':
+
+            # Isolate text line to check
             if check_line_text is None:
-                text_to_check = run_try.stdout
+                text_to_check = run_result.stdout
             else:
                 text_to_check = ''
-                for line in run_try.stdout.split('\n'):
+                for line in run_result.stdout.split('\n'):
                     if check_line_text in line:
                         text_to_check = line
                         break
-                
-            if expected_text in text_to_check:
-                if not_text is not None:
-                    if not_text not in text_to_check:
-                        return (RTN_PASS, run_try)
-                else:
-                    return (RTN_PASS, run_try)
-            error_msg = "check_string mode mismatch"
+            if text_to_check == '':
+                _msg = "No text_to_check!"
 
-        elif return_type == 'cmdrun':
-            if run_try.returncode == 0:
-                return (RTN_PASS, run_try)
-        
-        else:
-            raise ValueError (f"Invalid return_type <{return_type}> passed to cmd_check")
+            else:
+                # Check for expected text
+                if expected_text is not None:
+                    if expected_text in text_to_check:
+                        if not_text is not None:
+                            # But not not_text
+                            if not_text not in text_to_check:
+                                return (RTN_PASS, run_result)   # check_string expected_text and not_text Pass exit
+                            else:
+                                _msg = f"not_text <{not_text}> found in text_to_check"
+                        return (RTN_PASS, run_result)           # check_string expected_text Pass exit
+                    else:
+                        _msg = f"expected_text <{expected_text}> not found in text_to_check"
+                else:
+                    # Check for not_text without expected_text
+                    if not_text is not None:
+                        if not_text not in text_to_check:
+                            return (RTN_PASS, run_result)       # check_string not_text Pass exit
+                        else:
+                            _msg = f"not_text <{not_text}> found in text_to_check"
+                    else:
+                        raise ValueError("expected_text and non_text can't both be None")
+
+            run_result.returncode = 1
+            run_result.stderr = _msg
+
+        else:   # return_type == 'cmdrun':
+            if run_result.returncode == 0:
+                return (RTN_PASS, run_result)                   # cmdrun Pass exit
 
         if nTry < ntries-1:
             time.sleep (timevalue(globvars.config.getcfg('RetryInterval', RETRY_INTERVAL)).seconds)
 
-    if user_host_port == 'local':
-        return (RTN_FAIL, run_try)
-    
+        # End of ntries loop
 
-    logging.debug(f"cmd failed on remote system with <{error_msg}> - attempting simplessh connection to <{u_h}>")
-    simplessh = ['ssh', u_h, '-p' + port, '-T', 'echo', 'hello']
-
-    error_msg = ''
-    for nTry in range (ntries):
-        try:
-            logging.debug(f"simplessh try {nTry+1} <{simplessh}>")
-            simplessh_try = subprocess.run(simplessh, timeout= timevalue(globvars.config.getcfg('SSH_timeout', SSH_TIMEOUT)).seconds,
-                                           capture_output=True, text=True)
-            # logging.debug(f"cmd_check subprocess.run returned <{simplessh_try}>")     # Uncomment for debug
-            if simplessh_try.returncode == 0:                                           # ssh access works so return original cmd fail info
-                logging.debug(f"simplessh connection passes.  Return original cmd failure record.")
-                return (RTN_FAIL, run_try)
-            if simplessh_try.returncode > 0:
-                error_msg = simplessh_try.stderr.replace('\n','')
-                logging.debug(f"simplessh try {nTry+1} failed (returncode={simplessh_try.returncode}) <{simplessh}>:  {error_msg}")
-        except subprocess.TimeoutExpired as e:
-            error_msg = e
-            logging.debug(f"simplessh try {nTry+1} timeout:  {e}")
-            simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_TIMEOUT, stdout='', stderr=f'cmd_check simplessh timeout:  {e}')
-            continue
-        except Exception as e:
-            error_msg = e
-            logging.debug(f"simplessh try {nTry+1} failed (exception) <{simplessh}>:  {e}")
-            simplessh_try = subprocess.CompletedProcess(args=simplessh, returncode=RTNCODE_ERROR, stdout='', stderr=f'cmd_check simplessh connection failed:  {e}')     # define default fail message
-            continue
-
-    logging.debug(f"simplessh failed with <{error_msg}>")
-    return (RTN_WARNING, simplessh_try)
+    return (RTN_FAIL, run_result)                               # Fail exit after ntries
 
 
 #=====================================================================================

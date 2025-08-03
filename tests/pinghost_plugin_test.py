@@ -12,23 +12,36 @@
 #
 #==========================================================
 
+__version__ =   '3.5'
+
+import argparse
 from cjnfuncs.core import set_toolname, setuplogging, logging
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, connections_manager
 try:
     from pinghost_plugin import monitor
 except:
     from lanmonitor.pinghost_plugin import monitor
+
+parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('-t', '--test', default='0',
+                    help="Test number to run (default 0).  0 runs all tests")
+
+args = parser.parse_args()
+
 
 set_toolname('tool')
 globvars.config = config_item()
 globvars.config.cfg['nTries']           = 1
 globvars.config.cfg['RetryInterval']    = '0s'
 globvars.config.cfg['SSH_timeout']      = '4s'
+# connections()
 
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 logging.getLogger().setLevel(logging.DEBUG)
+
+# --------------------------------------------------------------------
 
 def dotest (tnum, desc, test):
     print(f"\nTest {tnum} - {desc} {'-'*50}")
@@ -38,30 +51,56 @@ def dotest (tnum, desc, test):
     if setup_rslt == RTN_PASS:
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
-dotest (1, "Local to testhost2 by name - OK",
-        {'key':'Host_local_to_testhost2', 'tag':'local_to_testhost2', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhost2   '})
+#===============================================================================================
 
-dotest (2, "Local to testhost2 by IP address - OK",
-        {'key':'Host_local_to_IP', 'tag':'local_to_IP', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'   192.168.15.42'})
+tnum = '1'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Local to testhost2 by name - OK",
+                {'key':'Host_local_to_testhost2', 'tag':'local_to_testhost2', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhost2   '})
 
-dotest (3, "Remote to other host (testhost) - OK",
-        {'key':'Host_testhost2_to_testhost', 'tag':'testhost2_to_testhost', 'host':'testhost2', 'user_host_port':'me@testhost2:22', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'testhost'})
+tnum = '2'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Local to testhost2 by IP address - OK",
+                {'key':'Host_local_to_IP', 'tag':'local_to_IP', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'   192.168.15.42'})
 
-dotest (4, "Local to invalid hostname - setup ERROR",
-        {'key':'Host_local_to_INV', 'tag':'local_to_INV', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'invalid@hostname'})
+tnum = '3'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Remote to other host (testhost) - OK",
+                {'key':'Host_testhost2_to_testhost', 'tag':'testhost2_to_testhost', 'host':'testhost2', 'user_host_port':'me@testhost2:22', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'testhost'})
 
-dotest (5, "Local to unknown host - CRITICAL",
-        {'key':'Host_local_to_Unknown', 'tag':'local_to_Unknown', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'XX.lan'})
+tnum = '4'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Local to invalid hostname - setup ERROR",
+                {'key':'Host_local_to_INV', 'tag':'local_to_INV', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'invalid@hostname'})
 
-dotest (6, "Local to known unavailable host - ERROR",
-        {'key':'Host_local_to_Unavailable', 'tag':'local_to_Unavailable', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
+tnum = '5'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Local to unknown host - CRITICAL",
+                {'key':'Host_local_to_Unknown', 'tag':'local_to_Unknown', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'XX.lan'})
 
-dotest (7, "Remote to known unavailable remote - ERROR",
-        {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
+tnum = '6'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Local to known unavailable host - ERROR",
+                {'key':'Host_local_to_Unavailable', 'tag':'local_to_Unavailable', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
 
-dotest (8, "Attempt to run on unknown remote - WARNING",
-        {'key':'Host_Unknown_remote', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhost'})
+tnum = '7'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Remote to known unavailable remote - ERROR",
+                # {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
+                {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhostX'})
 
-dotest (9, "Attempt to run on known unavailable remote - WARNING",
-        {'key':'Host_Unavailable_remote', 'tag':'Unavailable_to_Known', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhost'})
+tnum = '8'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Attempt to run on unknown remote - WARNING",
+                {'key':'Host_Unknown_remote', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhost'})
+
+tnum = '9'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Attempt to run on known unavailable remote - WARNING",
+                {'key':'Host_Unavailable_remote', 'tag':'Unavailable_to_Known', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhost'})
+
+tnum = '50'
+if args.test == tnum:
+        dotest (tnum, "DEVELOPMENT",
+                {'key':'Host_DEVELOPMENT', 'tag':'DEVELOPMENT', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhost2'})
 

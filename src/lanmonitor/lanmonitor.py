@@ -91,7 +91,7 @@ def main():
     else:
         checked_have_LAN_access = have_LAN_access = True
 
-    lanmonfuncs.connections() # = lanmonfuncs.connections()
+    # lanmonfuncs.connections() # = lanmonfuncs.connections()
 
     for item in globvars.args.Items:                    # Given CLI Items:  [ 'apt', 'host3' ]
         item = item.lower()
@@ -145,7 +145,7 @@ def service():
         if first:
             if globvars.args.service:
                 time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY)).seconds)
-            lanmonfuncs.host_connections = lanmonfuncs.connections()
+            # lanmonfuncs.host_connections = lanmonfuncs.connections()
             reloaded = 1                            # Force calc of key and host padding lengths
 
 
@@ -153,8 +153,9 @@ def service():
             if not first:
                 logging.warning(f"NOTE - The config file has been reloaded")
             
-                lanmonfuncs.host_connections.closeall()
-                lanmonfuncs.host_connections = lanmonfuncs.connections()
+                cleanup()
+                # lanmonfuncs.host_connections.closeall()
+                # lanmonfuncs.host_connections = lanmonfuncs.connections()
             setup_notif_handlers()                  # Refresh the notifications handlers
             inst_dict.clear()                       # Clear out all current instances, forcing re-setup
             set_print_lengths()                     # Set pretty print field widths
@@ -473,7 +474,8 @@ def int_handler(sig, frame):
         globvars.sig_status = True
         return
     else:
-        lanmonfuncs.host_connections.closeall()
+        cleanup()
+        # lanmonfuncs.host_connections.closeall()
         sys.exit(1)
 
 signal.signal(signal.SIGINT,  int_handler)      # Ctrl-C  (2)
