@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.5a2"
+version = "3.5a3"
+    # 3.5a3 - asyncssh integration (removed fabric) - initial version dirty
     # 3.5a2 - lanmonfuncs.cmd_check() revamp & tests - clean
     # 3.5a1 - Fabric/paramiko incorporation - functional
     # 3.4rc1 - Cleanup
@@ -24,7 +25,8 @@ authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
 license = "MIT"
 dependencies = [
     'cjnfuncs >= 3.0',
-    'fabric >= 3.2.2',
+    # 'fabric >= 3.2.2',
+    'asyncssh',
     'importlib-metadata; python_version<"3.8"',
     ]
 classifiers = [                 # https://pypi.org/classifiers/

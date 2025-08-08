@@ -27,10 +27,40 @@ import lanmonitor.lanmonfuncs as lanmonfuncs
 
 set_toolname(TOOLNAME)
 
+
+cfg = """
+nTries =        2
+RetryInterval = 0s
+SSH_timeout =   1.1s
+
+[local]
+hostname =      localhost
+username =      me
+port =          22
+connection_timeout = 4
+#env =           {'LC_123': 'This is a test'}
+
+[testhost]
+hostname =      testhost
+username =      me
+port =          22
+connection_timeout = 4
+
+[testhost2]
+hostname =      testhost2
+username =      me
+port =          22
+connection_timeout = 2
+
+[shop3]
+hostname =      shop3.cjn.lan
+username =      cjn
+# port =          50763
+connection_timeout = 1.5
+"""
+
 globvars.config = config_item()
-globvars.config.cfg['nTries']           = 2
-globvars.config.cfg['RetryInterval']    = '0s'
-globvars.config.cfg['SSH_timeout']      = '2s'
+globvars.config.read_string(cfg)
 
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 set_logging_level(logging.DEBUG)
@@ -56,8 +86,8 @@ def dotest (desc, expect, *args, **kwargs):
         logging.warning (f"\n  RETURNED:   {rslt_code} - {rslt_record}")
         return rslt
     except Exception as e:
-        # logging.exception (f"\n  RAISED:     {type(e).__name__}: {e}")
-        logging.error (f"\n  RAISED:     {type(e).__name__}: {e}")
+        logging.exception (f"\n  RAISED:     {type(e).__name__}: {e}")
+        # logging.error (f"\n  RAISED:     {type(e).__name__}: {e}")
         return e
 
 
@@ -188,130 +218,198 @@ if check_tnum('4e'):
 
 
 # Check for return_type check_string on local.  Static file used to eliminate diffs.
+# cwd is the login user's home directory.  ~/.bash_logout containing <if [ "$SHLVL" = 1 ]; then>
 if check_tnum('5a'):
     dotest ("Global text match check",
-            "RTN_PASS - returncode=0, stdout=dbus status",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            # "RTN_PASS - returncode=0, stdout=dbus status",
+            # cmd= "cat /mnt/share/dev/packages/lanmonitor/tests/funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            expected_text=      'active (running)'
+            # expected_text=      'active (running)'
+            expected_text=      '$SHLVL'
     )
 
 if check_tnum('5b'):
     dotest ("Qualified line text match check",
-            "RTN_PASS - returncode=0, stdout=dbus status",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            expected_text=      'active (running)'
+            check_line_text=    'if [ "$SHLVL"',
+            expected_text=      '= 1'
     )
 
 if check_tnum('5c'):
     dotest ("Qualified line text match check with not_text",
-            "RTN_PASS - returncode=0, stdout=dbus status",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            expected_text=      'active (running)',
-            not_text=           'inactive (dead)'
+            check_line_text=    'if [ "$SHLVL"',
+            expected_text=      '= 1',
+            not_text=           '#'
     )
         
 if check_tnum('5d'):
     dotest ("check_line_text no match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='check_string mode mismatch'",
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'ActiveX:',
-            expected_text=      'active (running)',
-            not_text=           'inactive (dead)'
+            check_line_text=    'if [ "$SHLxVL"',
+            expected_text=      '= 1',
+            not_text=           '#'
     )
         
 if check_tnum('5e'):
     dotest ("expected_text no match",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            expected_text=      'inactive (dead)'
+            check_line_text=    'if [ "$SHLVL"',
+            expected_text=      '= 2'
     )
         
 if check_tnum('5f'):
     dotest ("not_text match",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            not_text=           'active (running)'
+            check_line_text=    'if [ "$SHLVL"',
+            not_text=           'SHLVL'
     )
         
 if check_tnum('5g'):
     dotest ("Neither expected_text nor not_text are given",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
+            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'Active:'
     )
 
 
 # Check for return_type check_string on remote
+# if check_tnum('6a'):
+#     dotest ("Global text match check",
+#             "RTN_PASS - returncode=0, stdout=dbus status",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             expected_text=      'active (running)'
+#     )
+
+# if check_tnum('6b'):
+#     dotest ("Qualified line text match check",
+#             "RTN_PASS - returncode=0, stdout=dbus status",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             check_line_text=    'Active:',
+#             expected_text=      'active (running)'
+#     )
+
+# if check_tnum('6c'):
+#     dotest ("Qualified line text match check with not_text",
+#             "RTN_PASS - returncode=0, stdout=dbus status",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             check_line_text=    'Active:',
+#             expected_text=      'active (running)',
+#             not_text=           'inactive (dead)'
+#     )
+        
+# if check_tnum('6d'):
+#     dotest ("check_line_text no match",
+#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             check_line_text=    'ActiveX:',
+#             expected_text=      'active (running)',
+#             not_text=           'inactive (dead)'
+#     )
+        
+# if check_tnum('6e'):
+#     dotest ("expected_text no match",
+#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             check_line_text=    'Active:',
+#             expected_text=      'inactive (dead)'
+#     )
+        
+# if check_tnum('6f'):
+#     dotest ("not_text match",
+#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             check_line_text=    'Active:',
+#             not_text=           'active (running)'
+#     )
+        
+# if check_tnum('6g'):
+#     dotest ("Neither expected_text nor not_text are given",
+#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+#             return_type=        'check_string',
+#             check_line_text=    'Active:'
+#     )
+
+# Check for return_type check_string on remote
 if check_tnum('6a'):
     dotest ("Global text match check",
-            "RTN_PASS - returncode=0, stdout=dbus status",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
-            expected_text=      'active (running)'
+            expected_text=      '$SHLVL'
     )
 
 if check_tnum('6b'):
     dotest ("Qualified line text match check",
-            "RTN_PASS - returncode=0, stdout=dbus status",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            expected_text=      'active (running)'
+            check_line_text=    'if [ "$SHLVL"',
+            expected_text=      '= 1'
     )
 
 if check_tnum('6c'):
     dotest ("Qualified line text match check with not_text",
-            "RTN_PASS - returncode=0, stdout=dbus status",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            expected_text=      'active (running)',
-            not_text=           'inactive (dead)'
+            check_line_text=    'if [ "$SHLVL"',
+            expected_text=      '= 1',
+            not_text=           '#'
     )
         
 if check_tnum('6d'):
     dotest ("check_line_text no match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='check_string mode mismatch'",
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'ActiveX:',
-            expected_text=      'active (running)',
-            not_text=           'inactive (dead)'
+            check_line_text=    'if [ "$SHLxVL"',
+            expected_text=      '= 1',
+            not_text=           '#'
     )
         
 if check_tnum('6e'):
     dotest ("expected_text no match",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            expected_text=      'inactive (dead)'
+            check_line_text=    'if [ "$SHLVL"',
+            expected_text=      '= 2'
     )
         
 if check_tnum('6f'):
     dotest ("not_text match",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
-            check_line_text=    'Active:',
-            not_text=           'active (running)'
+            check_line_text=    'if [ "$SHLVL"',
+            not_text=           'SHLVL'
     )
         
 if check_tnum('6g'):
     dotest ("Neither expected_text nor not_text are given",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-            cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
+            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'Active:'
     )
@@ -319,21 +417,29 @@ if check_tnum('6g'):
 
 tnum = '50'
 if args.test == tnum:
-    dotest ("Development/testing",
+
+    import time
+    # print (globvars.config.dump())
+    while True:
+        dotest ("Development/testing",
             "",
-            cmd= "cat /mnt/share/dev/packages/lanmonitor/tests/funcs_test_dbus.txt | grep Active: > junk.txt",
+            cmd= "echo Hello!!",
             # user_host_port='local',
-            user_host_port='me@testhost2',
+            user_host_port='testhost',
             cmd_timeout= 1,
             return_type=        'cmdrun')
+        break
+        time.sleep (5)
 
 tnum = '51'
 if args.test == tnum:
+    print (globvars.config.dump())
     dotest ("Development/testing",
             "",
-            cmd= "sleep 2",
+            # cmd= "env | grep LC_",
+            cmd= "echo Hello!",
             # user_host_port='local',
-            user_host_port='local',
+            user_host_port='shop3', #'testhost2',
             cmd_timeout= 0.2,
             return_type=        'cmdrun',
             # check_line_text=    'ActiveX:',
@@ -341,6 +447,6 @@ if args.test == tnum:
             not_text=           'inactive (dead)'
             )
 
+# print (lanmonfuncs.host_connections)
 
-
-lanmonfuncs.host_connections.closeall()
+lanmonfuncs.host_connections.close()
