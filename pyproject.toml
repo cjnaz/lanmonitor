@@ -5,8 +5,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.5a4"
-    # 3.5a4 - asyncssh further integeration & cleanup
+version = "3.5a5"
+    # 3.5a5 - Cleanup, config file params for connect
+    # 3.5a4 - asyncssh further integeration & cleanup.  Split connect from run.
     # 3.5a3 - asyncssh integration (removed fabric) - initial version dirty
     # 3.5a2 - lanmonfuncs.cmd_check() revamp & tests - clean
     # 3.5a1 - Fabric/paramiko incorporation - functional

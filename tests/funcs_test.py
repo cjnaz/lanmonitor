@@ -54,6 +54,15 @@ hostname =      testhost2
 username =      me
 port =          22
 SSH_timeout = 2
+Max_consecutive_timeouts = 1
+
+[testhostx]
+# hostname =      testhost2
+username =      me
+port =          22
+SSH_timeout = 0.5
+nTries_connection = 3
+Time_btw_connection_retries = 0.2
 
 [shop3]
 hostname =      shop3.cjn.lan
@@ -187,9 +196,14 @@ if check_tnum('4a'):
     # RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  NoValidConnectionsError: [Errno None] Unable to connect to port 22 on ...')
     dotest ("echo on known unavailable host",
             "RTN_WARNING - returncode=252, stderr=...TimeoutError",
-            cmd= "echo Hello!", user_host_port='me@testhostx', cmd_timeout= 1,
+            cmd= "echo Hello!", user_host_port='testhostx', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
+    # dotest ("echo on known unavailable host",
+    #         "RTN_WARNING - returncode=252, stderr=...TimeoutError",
+    #         cmd= "echo Hello!", user_host_port='me@testhostx', cmd_timeout= 1,
+    #         return_type='cmdrun')
+    # logging.info (f"\n{lanmonfuncs.host_connections}")
 
 if check_tnum('4b'):
     dotest ("connect to known host with wrong user",
