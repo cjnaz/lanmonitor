@@ -453,7 +453,7 @@ def run_item(item_key):                                                 # Given 
 #=====================================================================================
 
 def cleanup():
-    lanmonfuncs.host_connections.close()
+    lanmonfuncs.host_connections.close('all')
 
 
 #=====================================================================================

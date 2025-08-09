@@ -32,31 +32,34 @@ cfg = """
 nTries =        2
 RetryInterval = 0s
 SSH_timeout =   1.1s
+nTries_connection =         3
+Max_consecutive_fails =     4
+Between_connection_attempts=0.2s
 
 [local]
 hostname =      localhost
 username =      me
 port =          22
-connection_timeout = 4
+SSH_timeout = 4
 #env =           {'LC_123': 'This is a test'}
 
 [testhost]
 hostname =      testhost
 username =      me
 port =          22
-connection_timeout = 4
+SSH_timeout = 4
 
 [testhost2]
 hostname =      testhost2
 username =      me
 port =          22
-connection_timeout = 2
+SSH_timeout = 2
 
 [shop3]
 hostname =      shop3.cjn.lan
 username =      cjn
 # port =          50763
-connection_timeout = 1.5
+SSH_timeout = 1.5
 """
 
 globvars.config = config_item()
@@ -86,8 +89,8 @@ def dotest (desc, expect, *args, **kwargs):
         logging.warning (f"\n  RETURNED:   {rslt_code} - {rslt_record}")
         return rslt
     except Exception as e:
-        logging.exception (f"\n  RAISED:     {type(e).__name__}: {e}")
-        # logging.error (f"\n  RAISED:     {type(e).__name__}: {e}")
+        # logging.exception (f"\n  RAISED:     {type(e).__name__}: {e}")
+        logging.error (f"\n  RAISED:     {type(e).__name__}: {e}")
         return e
 
 
@@ -438,8 +441,8 @@ if args.test == tnum:
             "",
             # cmd= "env | grep LC_",
             cmd= "echo Hello!",
-            # user_host_port='local',
-            user_host_port='shop3', #'testhost2',
+            user_host_port='local',
+            # user_host_port='shop3', #'testhost2',
             cmd_timeout= 0.2,
             return_type=        'cmdrun',
             # check_line_text=    'ActiveX:',
@@ -447,6 +450,6 @@ if args.test == tnum:
             not_text=           'inactive (dead)'
             )
 
-# print (lanmonfuncs.host_connections)
+    print (lanmonfuncs.host_connections)
 
-lanmonfuncs.host_connections.close()
+lanmonfuncs.host_connections.close('all')
