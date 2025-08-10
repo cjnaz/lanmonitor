@@ -31,7 +31,7 @@ import threading
 
 import asyncssh
 
-from cjnfuncs.core import logging, set_logging_level, restore_logging_level
+from cjnfuncs.core import logging, set_logging_level, restore_logging_level, ConfigError
 from cjnfuncs.rwt  import run_with_timeout
 from cjnfuncs.timevalue import timevalue
 import lanmonitor.globvars as globvars
@@ -50,211 +50,18 @@ SSH_TIMEOUT =           '1.0s'      # Default value.  May be set in config with 
 GATEWAY_TIMEOUT =       '1.0s'      # Default value.  May be set in config with Gateway_timeout
 
 CONNECTION_TIMEOUT_DEFAULT = 2.0       # Connection attempt timeout
-COMMAND_TIMEOUT_DEFAULT = 1.0         # Per-command timeout
-NTRIES_CONNECTION_DEFAULT = 2
-TIME_BTW_CONNECTION_RETRIES_DEFAULT = 0.5
-MAX_CONSECUTIVE_TIMEOUTS = 4   # At this count, close/delete the conn
+CONNECTION_NTRIES_DEFAULT = 2
+CONNECTION_RETRY_INTERVAL_DEFAULT = 0.5
+
+# COMMAND_TIMEOUT_DEFAULT = 1.0         # Per-command timeout
+COMMAND_MAX_CONSECUTIVE_TIMEOUTS_DEFAULT = 4   # At this count, close/delete the conn
+COMMAND_NTRIES_DEFAULT = 2
+COMMAND_RETRY_INTERVAL_DEFAULT = 0.5
 
 
 RTNCODE_TIMEOUT =       254
 RTNCODE_ERROR =         253
 RTNCODE_REMOTE_CONNECT_ERROR= 252
-
-
-#=====================================================================================
-#=====================================================================================
-#  s p l i t _ u s e r _ h o s t _ p o r t
-#=====================================================================================
-#=====================================================================================
-USER_HOST_FORMAT = re.compile(r"([\w.-]+)@([\w.-]+)$")
-USER_HOST_PORT_FORMAT = re.compile(r"([\w.-]+)@([\w.-]+):([\d]+)$")
-
-def split_user_host_port(u_h_p):
-    """
-    ## split_user_host_port (u_h_p) - Handle variations in passed-in user_host_port
-    
-    ### Parameter
-    `u_h_p`
-    - Str in the form of - `local`, `user@host`, or `user@host:port`
-    - Port number 22 is default
-    - `local` indicates the current host
-
-    ### Returns
-    - 3-tuple
-      - user@host (without port), or `local`
-      - user or `local` (cast to lower case)
-      - host or `local` (cast to lower case)
-      - port number
-    
-    ### Examples
-    ```
-        "xyz@host15:4455" returns:
-            ("xyz", "host15", "4455")
-        "xyz@host15" returns:
-            ("xyz", "host15", "22")  (the default port is "22" for ssh)
-        "local" returns:
-            ("local", "local", "")
-    ```
-    """
-    # user_host_noport = u_h_p.split(':')[0]
-    # host = u_h_p
-    # port = ''
-    u_h_p = u_h_p.lower().strip()
-    if u_h_p == 'local':
-        return ('local', 'local', '')
-
-    else:
-        if ':' not in u_h_p:
-            u_h_p += ':22'
-    # port = '22'
-    # out = USER_HOST_FORMAT.match(u_h_p)
-    # if out:
-    #     user = out.group(1).lower()
-    #     host = out.group(2).lower()
-    # else:
-        out = USER_HOST_PORT_FORMAT.match(u_h_p)
-        if out:
-            user = out.group(1).lower()
-            host = out.group(2).lower()
-            port = out.group(3)
-        else:
-            _msg = f"Expecting <user@host> or <user@host:port> format, but found <{u_h_p}>."
-            # logging.error(f"ERROR:  {_msg}")
-            raise ValueError (_msg)
-    return (user, host, port)
-
-
-#=====================================================================================
-#=====================================================================================
-#  c l a s s   A s y n c S S H M a n a g e r
-#=====================================================================================
-#=====================================================================================
-
-class AsyncSSHManager:
-    def __init__(self, logging_level=logging.WARNING):
-        self.connections = {}
-        self.loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._start_loop, daemon=True)
-        self._thread.start()
-        asyncssh.set_log_level(logging_level)
-
-
-    def new_connection(self, uhp, connection_timeout, ntries_connection, btw_retries_sec, max_consec_timeouts, password=None):
-        return self.run_coroutine(self._new_connection(uhp, connection_timeout, ntries_connection, btw_retries_sec, max_consec_timeouts, password))
-
-
-    async def _new_connection(self, uhp, connection_timeout, ntries_connection, btw_retries_sec, max_consec_timeouts, password):
-        conn = self.connections.get(uhp)    # TODO Allow call if already exists??  cleanup conn
-
-        if not conn:        #  if connection doesn't exist
-            for _try in range(1, ntries_connection+1):
-                try:
-                    logging.debug (f"Connection attempt {_try} to <{uhp}>")
-                    user, host, port = split_user_host_port(uhp)
-                    ssh_conn = await asyncio.wait_for (asyncssh.connect(host=host, username=user, port=port,
-                                                        password=password), timeout=connection_timeout)
-                    conn = self.connections[uhp] = {'ssh_conn': ssh_conn,
-                                                    'consecutive_command_timeouts': 0,
-                                                    'max_consec_timeouts': max_consec_timeouts}
-                    logging.warning (f"Connection (re)established:  <{uhp}>")
-                    break
-                    
-                except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:
-                    # last_exc = e
-                    logging.debug (f"Connection attempt {_try} to <{uhp}> FAILED:  {type(e).__name__}: {e}")
-                    if _try < ntries_connection:
-                        await asyncio.sleep(btw_retries_sec)
-                        continue
-                    raise ConnectionError(f"Connection to <{uhp}> FAILED after {ntries_connection} attempts: {type(e).__name__}: {e}")
-
-
-    def run_command(self, command, uhp, command_timeout, password=None, env={}):
-        return self.run_coroutine(self._run_command(command, uhp, command_timeout, password, env))
-
-
-    async def _run_command(self, command, uhp, command_timeout, password, env):
-
-        conn = self.connections.get(uhp)
-        if not conn:
-            raise ConnectionError(f"Connection to <{uhp}> unknown")
-
-        ssh_conn = conn['ssh_conn']
-
-        try:
-            result = await asyncio.wait_for(ssh_conn.run(command, env=env), timeout=command_timeout)
-            conn['consecutive_command_fails'] = 0
-            return result
-            
-        # except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:      # TODO trap other exceptions
-        except asyncio.TimeoutError as e:
-            logging.debug (f"Command execution on <{uhp}> EXCEPTION:  {type(e).__name__}: {e}")
-            conn['consecutive_command_timeouts'] += 1
-            if conn['consecutive_command_timeouts'] == conn['max_consec_timeouts']:
-                logging.debug (f"Excessive command timeouts on <{uhp}> - Closing connection")
-                await self._close_connection(ssh_conn)
-                del self.connections[uhp]
-            raise TimeoutError(f"Command execution error on <{uhp}>:  {type(e).__name__}: {e}") # from e
-
-        # Any other exception is passed up
-        # except Exception as e:
-        #     # last_exc = e
-        #     # logging.debug (f"Command execution attempt {_try} to <{uhp}> EXCEPTION:  {type(e).__name__}: {e}")
-        #     logging.debug (f"Command execution on <{uhp}> EXCEPTION:  {type(e).__name__}: {e}")
-        #     raise (f"Command execution error on <{uhp}>:  {type(e).__name__}: {e}") from e
-
-
-    def close (self, uhp='all'):
-        """Close a specific connection or all"""
-        if uhp == 'all':
-            self.run_coroutine(self._close_all())
-            self.connections.clear()
-        else:
-            if conn := self.connections.get(uhp):
-                self.run_coroutine(self._close_connection(conn['ssh_conn']))
-                del self.connections[uhp]
-
-
-    async def _close_connection(self, ssh_conn):
-        if ssh_conn:            # TODO dump if??
-            try:
-                ssh_conn.close()
-                await ssh_conn.wait_closed()    
-            except Exception:
-                pass
-
-
-    async def _close_all(self):
-        for conn in self.connections:
-            await self._close_connection(self.connections[conn]['ssh_conn'])
-
-
-    def is_connected(self, uhp):
-        conn = self.connections.get(uhp)
-        if conn:
-            ssh_conn = conn['ssh_conn']
-            return bool(ssh_conn._transport  and  not ssh_conn._transport._conn_lost)
-        return False
-
-
-    def __repr__(self):
-        # Return formatted list of current connections
-        xx = "Current connections:\n"
-        # print (self.connections_dict)
-        for key in self.connections:
-            xx += f"  <{key}>\n"
-        return xx
-
-
-    def _start_loop(self):
-        asyncio.set_event_loop(self.loop)
-        self.loop.run_forever()
-
-
-    def run_coroutine(self, coro):
-        return asyncio.run_coroutine_threadsafe(coro, self.loop).result()
-
-
-host_connections = AsyncSSHManager() #logging.DEBUG)
 
 
 #=====================================================================================
@@ -369,60 +176,86 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     if isinstance(cmd, list):
         cmd = ' '.join(cmd)
 
-    connection_timeout_default = timevalue(globvars.config.getcfg('SSH_timeout', CONNECTION_TIMEOUT_DEFAULT)).seconds  # As specified in top-level config - legacy
+    # connection_timeout = timevalue(globvars.config.getcfg('Connection_timeout', CONNECTION_TIMEOUT_DEFAULT)).seconds  # As specified in top-level config - legacy
+    # command_ntries = globvars.config.getcfg('nTries', NTRIES)   # legacy
+
     
     # Construct the uhp             # TODO move connection var assignments into only new connection flow
     if '@' in user_host_port  or  ';' in '@' in user_host_port:
         user, host, port = split_user_host_port(user_host_port)
-        connection_timeout = connection_timeout_default
-        ntries_connection = NTRIES_CONNECTION_DEFAULT
-        time_btw_connection_retries = TIME_BTW_CONNECTION_RETRIES_DEFAULT
-        max_consecutive_timeouts = MAX_CONSECUTIVE_TIMEOUTS
+        connection_timeout = CONNECTION_TIMEOUT_DEFAULT
+        connection_nTries = CONNECTION_NTRIES_DEFAULT
+        connection_retry_interval = CONNECTION_RETRY_INTERVAL_DEFAULT
+
+        command_ntries = COMMAND_NTRIES_DEFAULT
+        command_retry_interval = COMMAND_RETRY_INTERVAL_DEFAULT
+        command_max_consecutive_timeouts = COMMAND_MAX_CONSECUTIVE_TIMEOUTS_DEFAULT
         env = {}
     else:   # Hostname only provided.  Get params from config, with these fallbacks
+        if user_host_port not in globvars.config.sections():
+            raise ConfigError (f"Host section <{user_host_port}> not in config.")
         host_section = user_host_port
-        host =                  globvars.config.getcfg('hostname', host_section,    section=host_section)
+        host =                  globvars.config.getcfg('hostname',                  section=host_section)
         user =                  globvars.config.getcfg('username',                  section=host_section)
         port =                  str(globvars.config.getcfg('port', '22',            section=host_section))
-        connection_timeout =    timevalue(globvars.config.getcfg('SSH_timeout', connection_timeout_default, section=host_section)).seconds
-        ntries_connection =     globvars.config.getcfg('nTries_connection', NTRIES_CONNECTION_DEFAULT,   section=host_section)
-        time_btw_connection_retries =     globvars.config.getcfg('Time_btw_connection_retries', TIME_BTW_CONNECTION_RETRIES_DEFAULT,   section=host_section)
-        max_consecutive_timeouts =     globvars.config.getcfg('Max_consecutive_timeouts', MAX_CONSECUTIVE_TIMEOUTS,   section=host_section)
+        connection_timeout =    timevalue(globvars.config.getcfg('Connection_timeout', CONNECTION_TIMEOUT_DEFAULT, section=host_section)).seconds
+        connection_nTries =     globvars.config.getcfg('Connection_nTries', CONNECTION_NTRIES_DEFAULT,   section=host_section)
+        connection_retry_interval =     timevalue(globvars.config.getcfg('Connection_retry_interval', CONNECTION_RETRY_INTERVAL_DEFAULT,   section=host_section)).seconds
+
+        command_ntries =        globvars.config.getcfg('Command_nTries', COMMAND_NTRIES_DEFAULT,   section=host_section)
+        command_retry_interval= timevalue(globvars.config.getcfg('Command_retry_interval', COMMAND_RETRY_INTERVAL_DEFAULT,   section=host_section)).seconds
+        command_max_consecutive_timeouts =     globvars.config.getcfg('Command_max_consecutive_timeouts', COMMAND_MAX_CONSECUTIVE_TIMEOUTS_DEFAULT,   section=host_section)
         env  =                  globvars.config.getcfg('env',      {},              section=host_section)
 
     uhp = f"{user}@{host}:{port}"
 
     error_msg = ''
-    ntries = globvars.config.getcfg('nTries', NTRIES)
 
     # Get host SSH connection
     if uhp not in host_connections.connections:
         try:
             host_connections.new_connection(uhp,
                     connection_timeout= connection_timeout,
-                    ntries_connection=  ntries_connection,
-                    btw_retries_sec=    time_btw_connection_retries,
-                    max_consec_timeouts=max_consecutive_timeouts
-                    )
+                    connection_nTries=  connection_nTries,
+                    connection_retry_interval=    connection_retry_interval) #  TODO password
+                    # command_ntries =    command_ntries,
+                    # max_consec_timeouts=max_consecutive_timeouts)
+            
+            host_connections.connections[uhp]['command_ntries'] = command_ntries
+            host_connections.connections[uhp]['command_retry_interval'] = command_retry_interval
+            host_connections.connections[uhp]['command_max_consecutive_timeouts'] = command_max_consecutive_timeouts
+            host_connections.connections[uhp]['env'] = env
+            host_connections.connections[uhp]['consecutive_command_timeouts'] = 0
+                    # conn = self.connections[uhp] = {'ssh_conn': ssh_conn,
+                    #                                 'consecutive_command_timeouts': 0,
+                    #                                 'max_consec_timeouts': max_consec_timeouts}
 
         except Exception as e:
             error_msg = f"Exception while connecting to {uhp}: {type(e).__name__} - "  + str(e).replace('\n',' ')
             logging.debug(error_msg)
+            # logging.exception(error_msg)
             return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECT_ERROR, stdout='', stderr=error_msg))
 
     # Run the command, with retries
-    for nTry in range (ntries):
+    for nTry in range (host_connections.connections[uhp]['command_ntries']):
+
+        if nTry > 0: #host_connections.connections[uhp]['command_ntries']-1:
+            time.sleep (host_connections.connections[uhp]['command_retry_interval'])
+
         try:
             logging.debug(f"cmd try {nTry+1} on <{uhp}>:  <{cmd}>")
 
             run_try = host_connections.run_command(
                 command =       cmd,
                 uhp =           uhp,
-                command_timeout=cmd_timeout,
-                env =           env
-            )
+                command_timeout=cmd_timeout) #,
+                # env =           env)
 
-            run_result = subprocess.CompletedProcess(args=cmd, returncode=run_try.exit_status, stdout=run_try.stdout.strip(), stderr=run_try.stderr.strip().replace('\n',' '))
+            run_result = subprocess.CompletedProcess(
+                args=           cmd,
+                returncode=     run_try.exit_status,
+                stdout=         run_try.stdout.strip(),
+                stderr=         run_try.stderr.strip().replace('\n',' '))
 
             if run_result.returncode > 0:           # no exception, but non-passing result
                 error_msg = run_result.stderr
@@ -434,6 +267,13 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=error_msg)
             logging.debug(f"cmd try {nTry+1} failed (exception):  {error_msg}")
             continue
+
+        except ConnectionError as e:
+            # Raised in run_command() on excessive command timeouts or connection not defined (should not happen)
+            error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
+            run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECT_ERROR, stdout='', stderr=error_msg)
+            logging.debug(f"cmd try {nTry+1} failed (exception):  {error_msg}")
+            return (RTN_WARNING, run_result)
 
         except Exception as e:
             error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
@@ -488,12 +328,225 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                 return (RTN_PASS, run_result)                   # cmdrun Pass exit
 
 
-        if nTry < ntries-1:
-            time.sleep (timevalue(globvars.config.getcfg('RetryInterval', RETRY_INTERVAL)).seconds)
+        # if nTry < host_connections.connections[uhp]['command_ntries']-1:
+        #     time.sleep (host_connections.connections[uhp]['command_retry_interval'])
 
         # End of ntries loop
 
     return (RTN_FAIL, run_result)                               # Fail exit after ntries
+
+
+
+#=====================================================================================
+#=====================================================================================
+#  s p l i t _ u s e r _ h o s t _ p o r t
+#=====================================================================================
+#=====================================================================================
+USER_HOST_FORMAT = re.compile(r"([\w.-]+)@([\w.-]+)$")
+USER_HOST_PORT_FORMAT = re.compile(r"([\w.-]+)@([\w.-]+):([\d]+)$")
+
+def split_user_host_port(u_h_p):
+    """
+    ## split_user_host_port (u_h_p) - Handle variations in passed-in user_host_port
+    
+    ### Parameter
+    `u_h_p`
+    - Str in the form of - `local`, `user@host`, or `user@host:port`
+    - Port number 22 is default
+    - `local` indicates the current host
+
+    ### Returns
+    - 3-tuple
+      - user@host (without port), or `local`
+      - user or `local` (cast to lower case)
+      - host or `local` (cast to lower case)
+      - port number
+    
+    ### Examples
+    ```
+        "xyz@host15:4455" returns:
+            ("xyz", "host15", "4455")
+        "xyz@host15" returns:
+            ("xyz", "host15", "22")  (the default port is "22" for ssh)
+        "local" returns:
+            ("local", "local", "")
+    ```
+    """
+    # user_host_noport = u_h_p.split(':')[0]
+    # host = u_h_p
+    # port = ''
+    u_h_p = u_h_p.lower().strip()
+    if u_h_p == 'local':
+        return ('local', 'local', '')
+
+    else:
+        if ':' not in u_h_p:
+            u_h_p += ':22'
+    # port = '22'
+    # out = USER_HOST_FORMAT.match(u_h_p)
+    # if out:
+    #     user = out.group(1).lower()
+    #     host = out.group(2).lower()
+    # else:
+        out = USER_HOST_PORT_FORMAT.match(u_h_p)
+        if out:
+            user = out.group(1).lower()
+            host = out.group(2).lower()
+            port = out.group(3)
+        else:
+            _msg = f"Expecting <user@host> or <user@host:port> format, but found <{u_h_p}>."
+            # logging.error(f"ERROR:  {_msg}")
+            raise ValueError (_msg)
+    return (user, host, port)
+
+
+#=====================================================================================
+#=====================================================================================
+#  c l a s s   A s y n c S S H M a n a g e r
+#=====================================================================================
+#=====================================================================================
+
+class AsyncSSHManager:
+    def __init__(self, logging_level=logging.WARNING):
+        self.connections = {}
+        self.loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._start_loop, daemon=True)
+        self._thread.start()
+        asyncssh.set_log_level(logging_level)
+
+
+    # def new_connection(self, uhp, connection_timeout, ntries_connection, btw_retries_sec, max_consec_timeouts, password=None):
+    #     return self.run_coroutine(self._new_connection(uhp, connection_timeout, ntries_connection, btw_retries_sec, max_consec_timeouts, password))
+
+
+    # async def _new_connection(self, uhp, connection_timeout, ntries_connection, btw_retries_sec, max_consec_timeouts, password):
+    def new_connection(self, uhp, connection_timeout, connection_nTries, connection_retry_interval, password=None):
+        return self.run_coroutine(self._new_connection(uhp, connection_timeout, connection_nTries, connection_retry_interval, password))
+
+
+    async def _new_connection(self, uhp, connection_timeout, connection_nTries, connection_retry_interval, password):
+        conn = self.connections.get(uhp)    # TODO Allow call if already exists??  cleanup conn
+
+        if not conn:        #  if connection doesn't exist
+            for _try in range(1, connection_nTries+1):
+                try:
+                    logging.debug (f"Connection attempt {_try} to <{uhp}>")
+                    user, host, port = split_user_host_port(uhp)
+                    ssh_conn = await asyncio.wait_for (asyncssh.connect(host=host,
+                                                                        username=user,
+                                                                        port=port,
+                                                                        password=password,
+                                                                        connect_timeout=connection_timeout,
+                                                                        keepalive_interval=5,
+                                                                        keepalive_count_max=3)
+                                                        , timeout=connection_timeout+1)
+                    # self.connections[uhp]['ssh_conn'] = ssh_conn
+                    self.connections[uhp] = {'ssh_conn': ssh_conn}
+                    # conn = self.connections[uhp] = {'ssh_conn': ssh_conn,
+                    #                                 'consecutive_command_timeouts': 0,
+                    #                                 'max_consec_timeouts': max_consec_timeouts}
+                    logging.warning (f"Connection (re)established:  <{uhp}>")
+                    break
+                    
+                except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:
+                    # last_exc = e
+                    logging.debug (f"Connection attempt {_try} to <{uhp}> FAILED:  {type(e).__name__}: {e}")
+                    if _try < connection_nTries:
+                        await asyncio.sleep(connection_retry_interval)
+                        continue
+                    raise ConnectionError(f"Connection to <{uhp}> FAILED after {connection_nTries} attempts: {type(e).__name__}: {e}")
+
+
+    def run_command(self, command, uhp, command_timeout): #, password=None): #, env={}):
+        return self.run_coroutine(self._run_command(command, uhp, command_timeout)) #, password) #, env))
+
+
+    async def _run_command(self, command, uhp, command_timeout): #, password) #, env):
+
+        conn = self.connections.get(uhp)
+        if not conn:
+            raise ConnectionError(f"Connection to <{uhp}> unknown")
+            # TODO re-get connection?
+
+        ssh_conn = conn['ssh_conn']
+
+        try:
+            # result = await asyncio.wait_for(ssh_conn.run(command, env=env), timeout=command_timeout)
+            result = await asyncio.wait_for(ssh_conn.run(command), timeout=command_timeout)
+            conn['consecutive_command_timeouts'] = 0
+            return result
+            
+        # except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:      # TODO trap other exceptions
+        except asyncio.TimeoutError as e:
+            logging.debug (f"Command execution on <{uhp}> EXCEPTION:  {type(e).__name__}: {e}")
+            conn['consecutive_command_timeouts'] += 1
+            if conn['consecutive_command_timeouts'] == conn['command_max_consecutive_timeouts']:
+                logging.debug (f"Excessive command timeouts on <{uhp}> - Closing connection")
+                await self._close_connection(ssh_conn)
+                del self.connections[uhp]
+                raise ConnectionError(f"Command execution error on <{uhp}>:  {type(e).__name__}: {e}") # from e
+            raise TimeoutError(f"Command execution error on <{uhp}>:  {type(e).__name__}: {e}") # from e
+
+        # Any other exception is passed up
+        # except Exception as e:
+        #     # last_exc = e
+        #     # logging.debug (f"Command execution attempt {_try} to <{uhp}> EXCEPTION:  {type(e).__name__}: {e}")
+        #     logging.debug (f"Command execution on <{uhp}> EXCEPTION:  {type(e).__name__}: {e}")
+        #     raise (f"Command execution error on <{uhp}>:  {type(e).__name__}: {e}") from e
+
+
+    def close (self, uhp='all'):
+        """Close a specific connection or all"""
+        if uhp == 'all':
+            self.run_coroutine(self._close_all())
+            self.connections.clear()
+        else:
+            if conn := self.connections.get(uhp):
+                self.run_coroutine(self._close_connection(conn['ssh_conn']))
+                del self.connections[uhp]
+
+
+    async def _close_connection(self, ssh_conn):
+        if ssh_conn:            # TODO dump if??
+            try:
+                ssh_conn.close()
+                await ssh_conn.wait_closed()    
+            except Exception:
+                pass
+
+
+    async def _close_all(self):
+        for conn in self.connections:
+            await self._close_connection(self.connections[conn]['ssh_conn'])
+
+
+    def is_connected(self, uhp):
+        conn = self.connections.get(uhp)
+        if conn:
+            ssh_conn = conn['ssh_conn']
+            return bool(ssh_conn._transport  and  not ssh_conn._transport._conn_lost)
+        return False
+
+
+    def __repr__(self):
+        # Return formatted list of current connections
+        xx = "Current connections:\n"
+        # print (self.connections_dict)
+        for key in self.connections:
+            xx += f"  <{key}>\n"
+        return xx
+
+
+    def _start_loop(self):
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+
+    def run_coroutine(self, coro):
+        return asyncio.run_coroutine_threadsafe(coro, self.loop).result()
+
+
+host_connections = AsyncSSHManager() #logging.DEBUG)
 
 
 #=====================================================================================

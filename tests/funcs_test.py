@@ -3,7 +3,10 @@
 
 Produce / compare to golden results:
     ./funcs_test.py | diff funcs_test-golden.txt -
-        Differences will be ping values, and test 4a will vary btw returncode 252 and 253
+        Differences:
+            ping values will vary
+            test 4a will vary btw returncode 252 and 253
+            test 7e/7f object addresses will vary
 """
 
 #==========================================================
@@ -17,7 +20,7 @@ TOOLNAME =      'demo_funcs'
 
 import argparse
 import re
-from pathlib import Path
+import time
 
 from cjnfuncs.core              import set_toolname, setuplogging, logging, set_logging_level #, restore_logging_level
 from cjnfuncs.configman         import config_item
@@ -29,46 +32,79 @@ set_toolname(TOOLNAME)
 
 
 cfg = """
-nTries =        2
-RetryInterval = 0s
-SSH_timeout =   1.1s
-nTries_connection =         3
-Max_consecutive_fails =     4
-Between_connection_attempts=0.2s
+[DEFAULT]
+Connection_timeout =            1.5s
+Connection_nTries =             2
+Connection_retry_interval =     0.4s
+
+Command_timeout =               1.0s
+Command_nTries =                2
+Command_retry_interval =        0.2s
+Command_max_consecutive_timeouts =  4
 
 [local]
-hostname =      localhost
-username =      me
-port =          22
-SSH_timeout = 4
-#env =           {'LC_123': 'This is a test'}
+hostname =                      localhost
+username =                      me
+port =                          22
+#env =                          {'LC_123': 'This is a test'}
 
 [testhost]
-hostname =      testhost
-username =      me
-port =          22
-SSH_timeout = 4
+hostname =                      testhost
+username =                      me
+port =                          22
 
 [testhost2]
-hostname =      testhost2
-username =      me
-port =          22
-SSH_timeout = 2
-Max_consecutive_timeouts = 1
+hostname =                      testhost2
+username =                      me
+port =                          22
+Command_max_consecutive_timeouts = 1
 
 [testhostx]
-# hostname =      testhost2
-username =      me
-port =          22
-SSH_timeout = 0.5
-nTries_connection = 3
-Time_btw_connection_retries = 0.2
+hostname =                      testhostx
+username =                      me
+port =                          22
+Connection_timeout =            0.5
+Connection_nTries =             3
+Connection_retry_interval =     0.2
 
-[shop3]
-hostname =      shop3.cjn.lan
-username =      cjn
-# port =          50763
-SSH_timeout = 1.5
+[bad host def]
+
+[testhost2 with defaults]
+hostname =                      testhost2
+username =                      me
+
+[testhost2 define all]
+hostname =                      testhost2
+username =                      me
+port =                          22
+Connection_timeout =            10s
+Connection_nTries =             11
+Connection_retry_interval =     12s
+Command_nTries =                13
+Command_retry_interval          14.2s
+Command_max_consecutive_timeouts 15
+env = {'xyz': 'wyz'}
+
+[Test 8]
+hostname =                      testhost2
+username =                      me
+Command_nTries =                3
+Command_retry_interval          0s
+Command_max_consecutive_timeouts 2
+
+[Test 20]
+hostname =                      testhost
+username =                      me
+
+Connection_timeout =            1.5s
+Connection_nTries =             2
+Connection_retry_interval =     0.4s
+
+Command_timeout =               1.0s
+Command_nTries =                2
+Command_retry_interval =        0.2s
+Command_max_consecutive_timeouts =  4
+
 """
 
 globvars.config = config_item()
@@ -304,70 +340,6 @@ if check_tnum('5g'):
 
 
 # Check for return_type check_string on remote
-# if check_tnum('6a'):
-#     dotest ("Global text match check",
-#             "RTN_PASS - returncode=0, stdout=dbus status",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             expected_text=      'active (running)'
-#     )
-
-# if check_tnum('6b'):
-#     dotest ("Qualified line text match check",
-#             "RTN_PASS - returncode=0, stdout=dbus status",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             check_line_text=    'Active:',
-#             expected_text=      'active (running)'
-#     )
-
-# if check_tnum('6c'):
-#     dotest ("Qualified line text match check with not_text",
-#             "RTN_PASS - returncode=0, stdout=dbus status",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             check_line_text=    'Active:',
-#             expected_text=      'active (running)',
-#             not_text=           'inactive (dead)'
-#     )
-        
-# if check_tnum('6d'):
-#     dotest ("check_line_text no match",
-#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             check_line_text=    'ActiveX:',
-#             expected_text=      'active (running)',
-#             not_text=           'inactive (dead)'
-#     )
-        
-# if check_tnum('6e'):
-#     dotest ("expected_text no match",
-#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             check_line_text=    'Active:',
-#             expected_text=      'inactive (dead)'
-#     )
-        
-# if check_tnum('6f'):
-#     dotest ("not_text match",
-#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             check_line_text=    'Active:',
-#             not_text=           'active (running)'
-#     )
-        
-# if check_tnum('6g'):
-#     dotest ("Neither expected_text nor not_text are given",
-#             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
-#             cmd= "cat funcs_test_dbus.txt", user_host_port='me@testhost2', cmd_timeout= 1,
-#             return_type=        'check_string',
-#             check_line_text=    'Active:'
-#     )
-
-# Check for return_type check_string on remote
 if check_tnum('6a'):
     dotest ("Global text match check",
             "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
@@ -432,6 +404,134 @@ if check_tnum('6g'):
     )
 
 
+# Checks for connection defined by host section in config
+if check_tnum('7a'):
+    dotest ("No host section in config",
+            "RAISED - cjnfuncs.core.ConfigError: Host section <bad host def X> not in config.",
+            cmd= "echo Hello", user_host_port='bad host def X', cmd_timeout= 1,
+            return_type='cmdrun')
+
+if check_tnum('7b'):
+    dotest ("No hostname definition in config host section",
+            "RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.",
+            cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
+            return_type='cmdrun')
+
+if check_tnum('7c'):
+    globvars.config.cfg['bad host def']['hostname'] = 'xyz'
+    dotest ("No username definition in config host section",
+            "RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.",
+            cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
+            return_type='cmdrun')
+
+if check_tnum('7d'):
+    globvars.config.cfg['bad host def']['hostname'] = 'xyz'
+    globvars.config.cfg['bad host def']['username'] = 'xyz'
+    dotest ("hostname and username defined in config host section",
+            "RTN_WARNING - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname",
+            cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
+            return_type='cmdrun')
+
+if check_tnum('7e'):
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    dotest ("host section with minimal defs and defaults",
+            "RTN_PASS - returncode=0, stdout=Hello!",
+            cmd= "echo Hello", user_host_port='testhost2 with defaults', cmd_timeout= 1,
+            return_type='cmdrun')
+    logging.info (f"\n{lanmonfuncs.host_connections.connections['me@testhost2:22']}")
+
+if check_tnum('7f'):
+    dotest ("host section with everything defined",
+            "RTN_PASS - returncode=0, stdout=Hello!",
+            cmd= "echo Hello", user_host_port='testhost2 define all', cmd_timeout= 1,
+            return_type='cmdrun')
+    logging.info (f"\n{lanmonfuncs.host_connections.connections['me@testhost2:22']}")
+
+
+# Check consecutive command timeouts logic
+# These tests are effective when run in the full test 8 sequence.
+if check_tnum('8a'):
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    dotest ("Check command timeout logic",
+            "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
+            cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+
+if check_tnum('8b'):
+    globvars.config.cfg['Test 8']['Command_nTries'] = 1
+    globvars.config.cfg['Test 8']['Command_max_consecutive_timeouts'] = 2
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    dotest ("Cause 1st of 2 timeouts",
+            "RTN_FAIL - returncode=254, ... TimeoutError:",
+            cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+    logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
+
+if check_tnum('8c'):
+    dotest ("Cause 2nd of 2 timeouts",
+            "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
+            cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+
+if check_tnum('8d'):
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    globvars.config.cfg['Test 8']['Command_nTries'] = 1
+    globvars.config.cfg['Test 8']['Command_max_consecutive_timeouts'] = 2
+    dotest ("Cause 1st timeout",
+            "RTN_FAIL - returncode=254, ... TimeoutError:",
+            cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+    logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
+
+if check_tnum('8e'):
+    dotest ("Reset of consecutive_command_timeouts",
+            "RTN_PASS - returncode=0, stdout='Hello!'",
+            cmd= "echo Hello!", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+    logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
+
+if check_tnum('8f'):
+    dotest ("Cause 1st of 2 timeouts",
+            "RTN_FAIL - returncode=254, ... TimeoutError:",
+            cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+    logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
+
+if check_tnum('8g'):
+    dotest ("Cause 2nd of 2 timeouts",
+            "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
+            cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+
+if check_tnum('8h'):
+    dotest ("Create new connection",
+            "RTN_PASS - returncode=0, stdout='Hello!'",
+            cmd= "echo Hello!", user_host_port='Test 8', cmd_timeout= 0.5,
+            return_type='cmdrun')
+    logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
+
+
+
+# Run from testhost2.  Loops test on testhost.  Cycle testhost network donw and up.
+tnum = '20'
+if args.test == tnum:
+    setuplogging (ConsoleLogFormat = '{asctime} {module:>15}.{funcName:20} {levelname:>8}:  {message}')
+    loop_count = 0
+    while True:
+        loop_count += 1
+        dotest ("Checks connection up/down logic",
+            "Conseuctive command timeouts trigger closed connection.  Recover when network comes back up.",
+            cmd= "echo Hello!!",
+            user_host_port='Test 20',
+            # user_host_port='testhost',
+            cmd_timeout= 1,
+            return_type=        'cmdrun')
+        # break
+        logging.info (f"Loop {loop_count}")
+        time.sleep (3)
+
+
+
 tnum = '50'
 if args.test == tnum:
 
@@ -450,13 +550,14 @@ if args.test == tnum:
 
 tnum = '51'
 if args.test == tnum:
-    print (globvars.config.dump())
-    dotest ("Development/testing",
+    # print (globvars.config.dump())
+    globvars.config.cfg['local']['Max_consecutive_timeouts'] = 3
+    globvars.config.cfg['local']['Command_retry_interval'] = 3
+    dotest ("Development/testing - Max consec timeouts",
             "",
             # cmd= "env | grep LC_",
             cmd= "echo Hello!",
             user_host_port='local',
-            # user_host_port='shop3', #'testhost2',
             cmd_timeout= 0.2,
             return_type=        'cmdrun',
             # check_line_text=    'ActiveX:',
