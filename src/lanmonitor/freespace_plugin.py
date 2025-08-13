@@ -23,16 +23,17 @@ intermittently missing paths.
 - Directory path on the specified `u@h:p` host
 """
 
-__version__ = '3.3'
+__version__ = "3.5"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
-#   
+#
 #==========================================================
 
 import datetime
@@ -63,7 +64,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -90,7 +91,7 @@ class monitor:
         if percent_form:
             self.minfree   = int(percent_form.group(1))
             self.free_type = 'percent'
-            self.path = percent_form.group(2).strip()
+            self.path = '"' + percent_form.group(2).strip() + '"'
             return RTN_PASS
 
         else:
@@ -98,7 +99,7 @@ class monitor:
             if absolute_form:
                 self.minfree   = int(absolute_form.group(1))
                 self.free_type = 'absolute'
-                self.path = absolute_form.group(2).strip()
+                self.path = '"' + absolute_form.group(2).strip() +'"'
                 return RTN_PASS
 
         logging.error (f"  ERROR:  <{self.key}> COULD NOT PARSE SETTINGS <{item['rest_of_line']}>")
@@ -115,7 +116,7 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ['df', self.path]
+        cmd = 'df ' + self.path
         df_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {df_rslt}")
 

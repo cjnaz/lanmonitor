@@ -2,32 +2,38 @@
 """
 ### fsactivity_plugin
 
-The age of files in a directory is checked for at least one file being more recent than `age` ago.
-Note that sub-directories are not recursed - only the specified top-level directory is checked for the newest file.
-Alternately, the age of a specific individual file may be checked.
+The age of files in a directory is checked for the newest file being more recent than `age` ago.
+Sub-directories may be optionally recursed, but not in conjunction with specific files (or with wildcards).
+Alternately, the age of a specific file (or with wildcards) in the specified directory may be checked.
 
 **Typical string and dictionary-style config file lines:**
 
     MonType_Activity	       =  fsactivity_plugin
-    # Activity_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <age>  <path>
-    Activity_RAMDRIVE          =  local                    1h   15m  /mnt/RAMDRIVE/
-    Activity_testhost2_log.csv =  {'u@h:p':'me@testhost2', 'critical':True, 'recheck':'30m', 'rol':'5m  /mnt/RAMDRIVE/log.csv'}
+    # Activity_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <age> [Recursive] <path>
+    Activity_RAMDRIVE          =  local                    1h   15m recursive /mnt/RAMDRIVE/
+    Activity_testhost2_*.csv   =  {'u@h:p':'me@testhost2', 'critical':True, 'recheck':'30m', 'rol':'5m  /mnt/RAMDRIVE/*.csv'}
 
 **Plugin-specific _rest-of-line_ params:**
 
 `age` (timevalue, or int/float seconds)
 - Max age of the path (newest file in the path directory or specific file)
 
+`recursive` (str, case insensitive, optional)
+- May only be applied if the `path` is to a directory.  Ignored if `path` is to a file or with wildcards.
+- If included, all directories beneath `path` are searched for the newest file
+
 `path` (str)
-- A path to a directory is specified by ending the path with a `/`, else the path is taken as an individual file.
+- If to a directory then the `recursive` param may also be specified
+- If to a file(s) then wildcards ('*' and '?') are supported
 """
 
-__version__ = '3.3'
+__version__ = "3.5"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.  Rewrote check logic using find
 # 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.2 230602 - Changed individual file method so as to detect file missing
 # 3.1 230320 - Warning for ssh fail to remote
@@ -36,7 +42,6 @@ __version__ = '3.3'
 #==========================================================
 
 import datetime
-import re
 import lanmonitor.globvars as globvars
 import pathlib
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
@@ -45,10 +50,6 @@ from cjnfuncs.timevalue import timevalue, retime
 
 
 # Configs / Constants
-LSMATCH = re.compile(r'[ldrwx\-.]+\s+[\d*]\s+[\w\d]+\s+[\w\d]+\s+[\d]+\s+([\d\-]+)+\s([\d:.]+)\s([\d\-]+)')
-    # Given -rwxrw-r--. 1 cjn users     976269 2021-03-11 00:30:44.049364380 -0700 filexyz.txt
-    # group(1) == 2021-03-11, group(2) == 21:24:27.269508428, group(3) == -0700
-
 
 class monitor:
 
@@ -64,7 +65,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -94,15 +95,12 @@ class monitor:
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
 
-            self.path = xx[1].strip()
-            if self.path.endswith('/'):     # Dir case path ends with '/'
-                self.path_to_dir = True
-                self.dir = self.path
-                self.filename = ''
-            else:
-                self.path_to_dir = False    # File case path ends without '/'
-                self.dir = str(pathlib.PurePath(self.path).parent)
-                self.filename = pathlib.PurePath(self.path).name
+            self.path = xx[1].strip().replace(' ', '\\ ').replace("'", "\\'")
+            self.depth = ' -maxdepth 1 '
+            _rol = self.path.lower()
+            if _rol.startswith('recursive'):
+                self.depth = ' '
+                self.path = self.path.split(maxsplit=1)[1].replace(' ', '\\ ').replace("'", "\\'")
 
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -121,45 +119,26 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        # cmd = ['ls', '-ltA', '--full-time', self.dir]
-        cmd = ['ls', '-ltA', '--full-time', '"'+self.dir+'"']
-        ls_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        # logging.debug (f"cmd_check response:  {ls_rslt}")
+        cmd = 'find ' + self.path + self.depth + "-type f -printf '%T@ %p\\n' | sort -nr | head -n 1"
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
+        logging.debug (f"cmd_check response:  {rslt}")
 
-        if ls_rslt[0] == RTN_WARNING:           # ssh: Could not resolve hostname xxx: Name or service not known
-            error_msg = ls_rslt[1].stderr.replace('\n','')
+        if rslt[0] == RTN_WARNING:           # ssh: Could not resolve hostname xxx: Name or service not known
+            error_msg = rslt[1].stderr.replace('\n','')
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
-        if ls_rslt[0] != RTN_PASS:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET ls OF PATH <{self.dir}>"}
+        if rslt[0] != RTN_PASS:
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT ACCESS PATH <{self.path}>"}
 
-        ls_list = ls_rslt[1].stdout.split('\n')
+        cmd_response = rslt[1].stdout
 
-        newest_file = ''
-        if self.path_to_dir:                    # When path is to a dir, 'total x' will be the first line.  Newest file will be on second line.
-            newest_file = ls_list[1]            # If dir is empty then newest_file will be ''
-        else:
-            for line in ls_list:                # When path is to a file, search the ls listing for the matching filename with preceding ' '.
-                if line.endswith(' ' + self.filename):
-                    newest_file = line
-                    break
+        if cmd_response == '':
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - FILE(S) NOT FOUND AT <{self.path}>"}
 
-        # logging.debug (f"newest_file: <{newest_file}>")
-        if newest_file == '':
-            if self.path_to_dir:
-                return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {self.path} no files found"}
-            else:
-                return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {self.path} file not found"}
-
-        out = LSMATCH.match(newest_file)
-        if out:
-            xx = f"{out.group(1)} {out.group(2)[0:8]} {out.group(3)}"   # 2021-03-11 00:30:44 -0700
-            newest_timestamp = (datetime.datetime.strptime(xx, '%Y-%m-%d %H:%M:%S %z')).timestamp()
-            newest_age = datetime.datetime.now().timestamp() - newest_timestamp
-        else:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET TIMESTAMP OF NEWEST FILE <{self.path}>"}
+        newest_timestamp, newest_file = cmd_response.split(maxsplit=1)
+        newest_age = datetime.datetime.now().timestamp() - float(newest_timestamp)
 
         if newest_age < self.maxage_sec:
-            return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
+            return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {newest_file}"}
         else:
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {self.path}"}
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {newest_file}"}

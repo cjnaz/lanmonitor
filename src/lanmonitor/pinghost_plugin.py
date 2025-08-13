@@ -17,15 +17,16 @@ Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or 
 
 **Plugin-specific fail response:**
 
-- If the ping of the `IPaddress_or_hostname` times out (subprocess.run() timeout) then 'Cannot contact target host' is the fail message.
+- If the ping of the `IPaddress_or_hostname` times out then 'Cannot contact target host' is the fail message.
 """
 
-__version__ = "3.3"
+__version__ = "3.5"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3 240805 - Updated to lanmonitor V3.3.  Removed pinghost_plugin_timeout.
 # 3.1 230320 - Added config param pinghost_plugin_timeout, Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -60,7 +61,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -101,8 +102,6 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        # cmd = ['ping', '-c', '1', self.ip_or_hostname]
-        # cmd = 'sleep 4'
         cmd = 'ping -c 1 ' + self.ip_or_hostname
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
@@ -119,8 +118,7 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
 
         else: # RTN_FAIL
-            # if rslt[1].stderr == ""  or  "cmd_check subprocess.run timeout" in rslt[1].stderr:
-            if rslt[1].stderr == ""  or  "cmd_check command run timeout" in rslt[1].stderr:
+            if rslt[1].stderr == ""  or  "TimeoutError" in rslt[1].stderr:
                 error_msg = "Cannot contact target host"
             else:
                 error_msg = rslt[1].stderr.replace('\n','')

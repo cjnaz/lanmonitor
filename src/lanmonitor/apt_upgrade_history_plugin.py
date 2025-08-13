@@ -23,12 +23,13 @@ the most recent occurrence of this text, then compared to the `age` limit.  May 
 Note: The apt history file formatting may be locale specific.  This plugin is currently hardcoded to US locale.
 """
 
-__version__ = '3.3'
+__version__ = '3.5'
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3 240805 - Updated to lanmonitor V3.3.  Bug fix enable age check on local machine.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -37,7 +38,6 @@ __version__ = '3.3'
 
 import datetime
 import re
-import glob                                                                                                                                 
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.core import logging
@@ -66,7 +66,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -114,15 +114,7 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        if self.host == 'local':
-            # When run locally, the wildcard list of log files must be expanded since cmd_check does not use shell=True on the subprocess call
-            history = glob.glob(HISTORY_FILES)
-            if len(history) == 0:
-                return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - CANNOT READ <{HISTORY_FILES}> APT COMMAND HISTORY FILES"}
-            cmd = ['zcat', '-qf'] + history
-        else:
-            # For a remote, the wildcard is expanded on the remote.
-            cmd = ['zcat', '-qf', HISTORY_FILES]
+        cmd = 'zcat -qf ' + HISTORY_FILES
 
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")        # Uncomment for debug.  May be very verbose.

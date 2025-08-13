@@ -1,82 +1,358 @@
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 1 - Local activity pass - OK --------------------------------------------------
+==============================================================================================
+Test 1a - Local dir activity pass
+  GIVEN:      {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity   '}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
                   fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '8d /etc/   '}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_pass - setup() returned:  0
+  {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity   '}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', '/etc/']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 days  (   8 days  max)  /etc/'}
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@localhost:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@localhost:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755041816.0314079720 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 2 - Local activity fail - CRITICAL --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_fail - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_local_dir_fail', 'tag': 'local_dir_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /etc/'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_fail - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_fail - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', '/etc/']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_local_dir_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_local_dir_fail', 'message': '  CRITICAL: Activity_local_dir_fail  STALE FILES - local - 1129.4 secs  (   1 secs  max)  /etc/'}
+==============================================================================================
+Test 1b - Local specific file activity pass
+  GIVEN:      {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a1file'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.9874982000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 3 - Remote directory activity pass - OK --------------------------------------------------
+==============================================================================================
+Test 1c - Local wildcard file activity pass
+  GIVEN:      {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a*file'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_dir_pass', 'tag': 'local_dir_pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a*file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.4995401000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2a - Local empty dir activity FAIL
+  GIVEN:      {'key': 'Activity_local_empty_dir_fail', 'tag': 'local_empty_dir_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/empty_dir'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Activity_local_empty_dir_fail', 'message': '  WARNING: Activity_local_empty_dir_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_empty_dir_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_empty_dir_fail', 'tag': 'local_empty_dir_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/empty_dir'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_empty_dir_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/empty_dir -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/empty_dir -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Activity_local_empty_dir_fail', 'message': '  WARNING: Activity_local_empty_dir_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2b - Local specific file or dir not found FAIL
+  GIVEN:      {'key': 'Activity_local_specific_filedir_not_found_fail', 'tag': 'local_specific_filedir_not_found_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuchfileordir'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Activity_local_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_local_specific_filedir_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfileordir>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_specific_filedir_not_found_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_specific_filedir_not_found_fail', 'tag': 'local_specific_filedir_not_found_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuchfileordir'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_specific_filedir_not_found_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/nosuchfileordir -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/nosuchfileordir -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr='find: ‘/mnt/RAMDRIVE/fsactivity/nosuchfileordir’: No such file or directory'))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Activity_local_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_local_specific_filedir_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfileordir>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2c - Local wildcard file not found FAIL
+  GIVEN:      {'key': 'Activity_local_wildcard_file_not_found_fail', 'tag': 'local_wildcard_file_not_found_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuch*'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_local_wildcard_file_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_wildcard_file_not_found_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_wildcard_file_not_found_fail', 'tag': 'local_wildcard_file_not_found_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuch*'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_wildcard_file_not_found_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/nosuch* -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/nosuch* -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr='find: ‘/mnt/RAMDRIVE/fsactivity/nosuch*’: No such file or directory'))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_local_wildcard_file_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2d - Local dir too old FAIL
+  GIVEN:      {'key': 'Activity_local_dir_too_old_fail', 'tag': 'local_dir_too_old_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_local_dir_too_old_fail', 'message': '  FAIL: Activity_local_dir_too_old_fail  STALE FILES - local -    2.9 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_dir_too_old_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_dir_too_old_fail', 'tag': 'local_dir_too_old_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755041816.0314079720 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_dir_too_old_fail', 'message': '  FAIL: Activity_local_dir_too_old_fail  STALE FILES - local -    3.0 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2e - Local specific file too old FAIL
+  GIVEN:      {'key': 'Activity_local_specific_file_too_old_fail', 'tag': 'local_specific_file_too_old_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a1file'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_local_specific_file_too_old_fail', 'message': '  FAIL: Activity_local_specific_file_too_old_fail  STALE FILES - local - 18101.7 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_specific_file_too_old_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_specific_file_too_old_fail', 'tag': 'local_specific_file_too_old_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_specific_file_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.9874982000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_specific_file_too_old_fail', 'message': '  FAIL: Activity_local_specific_file_too_old_fail  STALE FILES - local - 28649.1 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2f - Local wildcard file too old FAIL
+  GIVEN:      {'key': 'Activity_local_wildcard_file_too_old_fail', 'tag': 'local_wildcard_file_too_old_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_local_wildcard_file_too_old_fail  STALE FILES - local - 18093.2 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_local_wildcard_file_too_old_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_local_wildcard_file_too_old_fail', 'tag': 'local_wildcard_file_too_old_fail', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_wildcard_file_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.4995401000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_local_wildcard_file_too_old_fail  STALE FILES - local - 28640.6 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3a - Remote dir activity pass
+  GIVEN:      {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity   '}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
                   fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '5m /mnt/RAMDRIVE/   '}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_pass - setup() returned:  0
+  {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity   '}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE/']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 mins  (   5 mins  max)  /mnt/RAMDRIVE/'}
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755041823.3345700850 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 4 - Remote file activity pass - OK --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_file_pass - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_remote_file_pass', 'tag': 'remote_file_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '5m /mnt/RAMDRIVE/touchfile'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_file_pass - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_file_pass - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_file_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Activity_remote_file_pass', 'message': 'Activity_remote_file_pass  OK - testhost2 -    0.0 mins  (   5 mins  max)  /mnt/RAMDRIVE/touchfile'}
+==============================================================================================
+Test 3b - Remote specific file activity pass
+  GIVEN:      {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a1file'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.0000000000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 5 - Remote activity fail - CRITICAL --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_fail - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_remote_dir_fail', 'tag': 'remote_dir_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_fail - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_fail - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhost2', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE/']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_remote_dir_fail - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_remote_dir_fail', 'message': '  CRITICAL: Activity_remote_dir_fail  STALE FILES - testhost2 -    5.1 secs  (   1 secs  max)  /mnt/RAMDRIVE/'}
+==============================================================================================
+Test 3c - Remote wildcard file activity pass
+  GIVEN:      {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a*file'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_dir_pass', 'tag': 'remote_dir_pass', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1000w /mnt/RAMDRIVE/fsactivity/a*file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.0000000000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 6 - Local empty dir - CRITICAL --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_empty_dir - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_empty_dir', 'tag': 'empty_dir', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1h junkdir/'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_empty_dir - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_empty_dir - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', 'junkdir/']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_empty_dir - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_empty_dir', 'message': '  CRITICAL: Activity_empty_dir  STALE FILES - local - junkdir/ no files found'}
+==============================================================================================
+Test 4a - Remote empty dir activity FAIL
+  GIVEN:      {'key': 'Activity_remote_empty_dir_fail', 'tag': 'remote_empty_dir_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/empty_dir'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Activity_remote_empty_dir_fail', 'message': '  WARNING: Activity_remote_empty_dir_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_empty_dir_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_empty_dir_fail', 'tag': 'remote_empty_dir_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/empty_dir'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_empty_dir_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/empty_dir -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/empty_dir -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Activity_remote_empty_dir_fail', 'message': '  WARNING: Activity_remote_empty_dir_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 7 - Local no such file - CRITICAL --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_no_such_file - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_no_such_file', 'tag': 'no_such_file', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1h junkdir/xxx'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_no_such_file - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_no_such_file - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ls', '-ltA', '--full-time', 'junkdir']>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_no_such_file - eval_status() returned:  {'rslt': 3, 'notif_key': 'Activity_no_such_file', 'message': '  CRITICAL: Activity_no_such_file  STALE FILES - local - junkdir/xxx file not found'}
+==============================================================================================
+Test 4b - Remote specific file or dir not found FAIL
+  GIVEN:      {'key': 'Activity_remote_specific_filedir_not_found_fail', 'tag': 'remote_specific_filedir_not_found_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuchfileordir'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Activity_remote_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_remote_specific_filedir_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfileordir>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_specific_filedir_not_found_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_specific_filedir_not_found_fail', 'tag': 'remote_specific_filedir_not_found_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuchfileordir'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_specific_filedir_not_found_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/nosuchfileordir -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/nosuchfileordir -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr='find: ‘/mnt/RAMDRIVE/fsactivity/nosuchfileordir’: No such file or directory'))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Activity_remote_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_remote_specific_filedir_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfileordir>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 8 - No such host - WARNING --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_Unknown_host - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_Unknown_host', 'tag': 'Unknown_host', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1h /mnt/RAMDRIVE/xxx'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unknown_host - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_Unknown_host - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: Could not resolve hostname nosuchhost: Name or service not known> - attempting simplessh connection to <me@nosuchhost>
-                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>
-                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@nosuchhost', '-p22', '-T', 'echo', 'hello']>:  ssh: Could not resolve hostname nosuchhost: Name or service not known
-                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: Could not resolve hostname nosuchhost: Name or service not known>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unknown_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Activity_Unknown_host', 'message': '  WARNING: Activity_Unknown_host - nosuchhost - ssh: Could not resolve hostname nosuchhost: Name or service not known'}
+==============================================================================================
+Test 4c - Remote wildcard file not found FAIL
+  GIVEN:      {'key': 'Activity_remote_wildcard_file_not_found_fail', 'tag': 'remote_wildcard_file_not_found_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuch*'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_remote_wildcard_file_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_wildcard_file_not_found_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_wildcard_file_not_found_fail', 'tag': 'remote_wildcard_file_not_found_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m /mnt/RAMDRIVE/fsactivity/nosuch*'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_wildcard_file_not_found_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/nosuch* -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/nosuch* -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr='find: ‘/mnt/RAMDRIVE/fsactivity/nosuch*’: No such file or directory'))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_remote_wildcard_file_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
 
-Test 9 - Known host, unavailable - WARNING --------------------------------------------------
-                  fsactivity_plugin.setup                -    DEBUG:  Activity_Unavailable_host - lanmonitor.fsactivity_plugin.setup() called:
-  {'key': 'Activity_Unavailable_host', 'tag': 'Unavailable_host', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '1h /mnt/RAMDRIVE/xxx'}
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unavailable_host - setup() returned:  0
-                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_Unavailable_host - lanmonitor.fsactivity_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'ls', '-ltA', '--full-time', '/mnt/RAMDRIVE']>:  ssh: connect to host testhostx port 22: No route to host
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd failed on remote system with <ssh: connect to host testhostx port 22: No route to host> - attempting simplessh connection to <me@testhostX>
-                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>
-                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh try 1 failed (returncode=255) <['ssh', 'me@testhostX', '-p22', '-T', 'echo', 'hello']>:  ssh: connect to host testhostx port 22: No route to host
-                        lanmonfuncs.cmd_check            -    DEBUG:  simplessh failed with <ssh: connect to host testhostx port 22: No route to host>
-             fsactivity_plugin_test.dotest               -    DEBUG:  Activity_Unavailable_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Activity_Unavailable_host', 'message': '  WARNING: Activity_Unavailable_host - testhostX - ssh: connect to host testhostx port 22: No route to host'}
+==============================================================================================
+Test 4d - Remote dir too old FAIL
+  GIVEN:      {'key': 'Activity_remote_dir_too_old_fail', 'tag': 'remote_dir_too_old_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_remote_dir_too_old_fail', 'message': '  FAIL: Activity_remote_dir_too_old_fail  STALE FILES - testhost2 -    2.5 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_dir_too_old_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_dir_too_old_fail', 'tag': 'remote_dir_too_old_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755041823.3345700850 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_dir_too_old_fail', 'message': '  FAIL: Activity_remote_dir_too_old_fail  STALE FILES - testhost2 -    2.4 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4e - Remote specific file too old FAIL
+  GIVEN:      {'key': 'Activity_remote_specific_file_too_old_fail', 'tag': 'remote_specific_file_too_old_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a1file'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_remote_specific_file_too_old_fail', 'message': '  FAIL: Activity_remote_specific_file_too_old_fail  STALE FILES - testhost2 - 18706.4 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_specific_file_too_old_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_specific_file_too_old_fail', 'tag': 'remote_specific_file_too_old_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_specific_file_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a1file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.0000000000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_specific_file_too_old_fail', 'message': '  FAIL: Activity_remote_specific_file_too_old_fail  STALE FILES - testhost2 - 28656.8 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4f - Remote wildcard file too old FAIL
+  GIVEN:      {'key': 'Activity_remote_wildcard_file_too_old_fail', 'tag': 'remote_wildcard_file_too_old_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_remote_wildcard_file_too_old_fail  STALE FILES - testhost2 - 18697.5 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_wildcard_file_too_old_fail - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_wildcard_file_too_old_fail', 'tag': 'remote_wildcard_file_too_old_fail', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_wildcard_file_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.0000000000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_remote_wildcard_file_too_old_fail  STALE FILES - testhost2 - 28647.9 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5a - No such host
+  GIVEN:      {'key': 'Activity_no_such_host', 'tag': 'no_such_host', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+  EXPECT:     {'rslt': 1, 'notif_key': 'Activity_no_such_host', 'message': '  WARNING: Activity_no_such_host - nosuchhost - Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_no_such_host - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_no_such_host', 'tag': 'no_such_host', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_no_such_host - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (1, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=252, stdout='', stderr='Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known'))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 1, 'notif_key': 'Activity_no_such_host', 'message': '  WARNING: Activity_no_such_host - nosuchhost - Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5b - Known host, unavailable
+  GIVEN:      {'key': 'Activity_known_unavailable', 'tag': 'known_unavailable', 'host': 'testhostx', 'user_host_port': 'me@testhostx', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+  EXPECT:     {'rslt': 1, 'notif_key': 'Activity_known_unavailable', 'message': "  WARNING: Activity_known_unavailable - testhostx - Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts: OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_known_unavailable - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_known_unavailable', 'tag': 'known_unavailable', 'host': 'testhostx', 'user_host_port': 'me@testhostx', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1s /mnt/RAMDRIVE/fsactivity/a*file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_known_unavailable - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts: OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (1, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a*file -maxdepth 1 -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=252, stdout='', stderr="Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts: OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 1, 'notif_key': 'Activity_known_unavailable', 'message': "  WARNING: Activity_known_unavailable - testhostx - Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts: OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6a - Recursive find
+  GIVEN:      {'key': 'Activity_recursive', 'tag': 'recursive', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_recursive', 'message': 'Activity_recursive  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/george'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_recursive - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_recursive', 'tag': 'recursive', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_recursive - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755041831.4516025560 /mnt/RAMDRIVE/fsactivity/recursive_tests/george', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_recursive', 'message': 'Activity_recursive  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/george'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6b - No Recursion if file specified
+  GIVEN:      {'key': 'Activity_no_recursive_with_file', 'tag': 'no_recursive_with_file', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity/a3file'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_no_recursive_with_file', 'message': '  WARNING: Activity_no_recursive_with_file - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/a3file>'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_no_recursive_with_file - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_no_recursive_with_file', 'tag': 'no_recursive_with_file', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity/a3file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_no_recursive_with_file - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/a3file -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a3file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='', stderr='find: ‘/mnt/RAMDRIVE/fsactivity/a3file’: No such file or directory'))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_no_recursive_with_file', 'message': '  WARNING: Activity_no_recursive_with_file - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/a3file>'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6b2 - Recursion ignored if file specified
+  GIVEN:      {'key': 'Activity_recursive_ignored_with_file', 'tag': 'recursive_ignored_with_file', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity/a2file'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_recursive_ignored_with_file', 'message': '  FAIL: Activity_recursive_ignored_with_file  STALE FILES - local -  474.1 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_recursive_ignored_with_file - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_recursive_ignored_with_file', 'tag': 'recursive_ignored_with_file', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity/a2file'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_recursive_ignored_with_file - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <find /mnt/RAMDRIVE/fsactivity/a2file -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/a2file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.4995401000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_recursive_ignored_with_file', 'message': '  FAIL: Activity_recursive_ignored_with_file  STALE FILES - local -  477.5 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6c - Remote recursive find
+  GIVEN:      {'key': 'Activity_remote_recursive', 'tag': 'remote_recursive', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity'}
+  EXPECT:     {'rslt': 2, 'notif_key': 'Activity_remote_recursive', 'message': '  FAIL: Activity_remote_recursive  STALE FILES - testhost2 -   42.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/a4file'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_recursive - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_recursive', 'tag': 'remote_recursive', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_recursive - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755038141.0000000000 /mnt/RAMDRIVE/fsactivity/recursive_tests/a4file', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_recursive', 'message': '  FAIL: Activity_remote_recursive  STALE FILES - testhost2 -   61.5 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/a4file'}
+             fsactivity_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6d - Remote recursive find
+  GIVEN:      {'key': 'Activity_remote_recursive', 'tag': 'remote_recursive', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Activity_remote_recursive', 'message': 'Activity_remote_recursive  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/mahesh'}
+                  fsactivity_plugin.setup                -    DEBUG:  Activity_remote_recursive - lanmonitor.fsactivity_plugin.setup() called:
+  {'key': 'Activity_remote_recursive', 'tag': 'remote_recursive', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '1m recursive /mnt/RAMDRIVE/fsactivity'}
+             fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                  fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_recursive - lanmonitor.fsactivity_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check response:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755041834.8845503330 /mnt/RAMDRIVE/fsactivity/recursive_tests/mahesh', stderr=''))
+             fsactivity_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_recursive', 'message': 'Activity_remote_recursive  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/mahesh'}

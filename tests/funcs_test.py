@@ -4,8 +4,8 @@
 Produce / compare to golden results:
     ./funcs_test.py | diff funcs_test-golden.txt -
         Differences:
-            ping values will vary
-            test 4a will vary btw returncode 252 and 253
+            test 1b/3b ping values will vary
+            test 4a will vary btw returncode 252 and 253 ???
             test 7e/7f object addresses will vary
 """
 
@@ -37,7 +37,7 @@ Connection_timeout =            1.5s
 Connection_nTries =             2
 Connection_retry_interval =     0.4s
 
-Command_timeout =               1.0s
+# Command_timeout =               1.0s
 Command_nTries =                2
 Command_retry_interval =        0.2s
 Command_max_consecutive_timeouts =  4
@@ -46,7 +46,7 @@ Command_max_consecutive_timeouts =  4
 hostname =                      localhost
 username =                      me
 port =                          22
-#env =                          {'LC_123': 'This is a test'}
+#env =                          {'LC_123': 'This is a test'}    # TODO add env test
 
 [testhost]
 hostname =                      testhost
@@ -174,7 +174,7 @@ if check_tnum('2a'):
 
 if check_tnum('2b'):
     dotest ("Cmd times out",
-            "RTN_FAIL - timeout, returncode=254, stderr=CommandTimedOut",
+            "RTN_FAIL - timeout, returncode=254, stderr=TimeoutError",
             cmd= "sleep 2", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -198,7 +198,7 @@ if check_tnum('2e'):
 
 if check_tnum('2f'):
     dotest ("ping known unavailable host, short timeout",
-            "RTN_FAIL - returncode=254, stderr=CommandTimedOut",
+            "RTN_FAIL - returncode=254, stderr=TimeoutError",
             cmd= "ping testhostx", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -226,38 +226,35 @@ if check_tnum('3b'):
 
 # Basic Fail checks run remotely
 if check_tnum('4a'):
-    # Varies between 252 and 253, including:
-    # RETURNED:   RTN_WARNING - CompletedProcess(... returncode=252, ... stderr='Host <me@testhostx> connection failed:  TimeoutError: timed out')
-    # RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  timeout: timed out')
-    # RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  NoValidConnectionsError: [Errno None] Unable to connect to port 22 on ...')
+    # Varies between 252 and 253 ???, including:
+    # RETURNED:   RTN_WARNING, returncode=252, stderr='Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts: TimeoutError: '
+
+    # ??? RETURNED:   RTN_WARNING - CompletedProcess(... returncode=252, ... stderr='Host <me@testhostx> connection failed:  TimeoutError: timed out')
+    # ??? RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  timeout: timed out')
+    # ??? RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  NoValidConnectionsError: [Errno None] Unable to connect to port 22 on ...')
     dotest ("echo on known unavailable host",
-            "RTN_WARNING - returncode=252, stderr=...TimeoutError",
+            "RTN_WARNING - returncode=252, stderr=...ConnectionError / TimeoutError",
             cmd= "echo Hello!", user_host_port='testhostx', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
-    # dotest ("echo on known unavailable host",
-    #         "RTN_WARNING - returncode=252, stderr=...TimeoutError",
-    #         cmd= "echo Hello!", user_host_port='me@testhostx', cmd_timeout= 1,
-    #         return_type='cmdrun')
-    # logging.info (f"\n{lanmonfuncs.host_connections}")
 
 if check_tnum('4b'):
     dotest ("connect to known host with wrong user",
-            "RTN_FAIL - returncode=253, stderr=...AuthenticationException",
+            "RTN_FAIL - returncode=252, stderr=...ConnectionError ... PermissionDenied",
             cmd= "echo Hello!", user_host_port='you@testhost2', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
 
 if check_tnum('4c'):
     dotest ("connect to known host with wrong port",
-            "RTN_FAIL - returncode=253, stderr=...NoValidConnectionsError",
+            "RTN_FAIL - returncode=252, stderr=...ConnectionError ... ConnectionRefusedError",
             cmd= "echo Hello!", user_host_port='me@testhost2:2222', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
 
 if check_tnum('4d'):
     dotest ("Run remote with timeout",
-            "RTN_FAIL - returncode=254, stderr=...CommandTimedOut",
+            "RTN_FAIL - returncode=254, stderr=...TimeoutError",
             cmd= "sleep 2", user_host_port='me@testhost2:22', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
@@ -274,12 +271,9 @@ if check_tnum('4e'):
 # cwd is the login user's home directory.  ~/.bash_logout containing <if [ "$SHLVL" = 1 ]; then>
 if check_tnum('5a'):
     dotest ("Global text match check",
-            # "RTN_PASS - returncode=0, stdout=dbus status",
-            # cmd= "cat /mnt/share/dev/packages/lanmonitor/tests/funcs_test_dbus.txt", user_host_port='local', cmd_timeout= 1,
             "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
             cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
-            # expected_text=      'active (running)'
             expected_text=      '$SHLVL'
     )
 
@@ -304,7 +298,7 @@ if check_tnum('5c'):
         
 if check_tnum('5d'):
     dotest ("check_line_text no match",
-            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='No text_to_check!'",
             cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLxVL"',
@@ -314,7 +308,7 @@ if check_tnum('5d'):
         
 if check_tnum('5e'):
     dotest ("expected_text no match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='expected_text <= 2> not found in text_to_check'",
             cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
@@ -323,7 +317,7 @@ if check_tnum('5e'):
         
 if check_tnum('5f'):
     dotest ("not_text match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='not_text <SHLVL> found in text_to_check'",
             cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
@@ -332,7 +326,7 @@ if check_tnum('5f'):
         
 if check_tnum('5g'):
     dotest ("Neither expected_text nor not_text are given",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='No text_to_check!'",
             cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'Active:'
@@ -369,7 +363,7 @@ if check_tnum('6c'):
         
 if check_tnum('6d'):
     dotest ("check_line_text no match",
-            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='No text_to_check!'",
             cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLxVL"',
@@ -379,7 +373,7 @@ if check_tnum('6d'):
         
 if check_tnum('6e'):
     dotest ("expected_text no match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='expected_text <= 2> not found in text_to_check'",
             cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
@@ -388,7 +382,7 @@ if check_tnum('6e'):
         
 if check_tnum('6f'):
     dotest ("not_text match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='not_text <SHLVL> found in text_to_check'",
             cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
@@ -397,7 +391,7 @@ if check_tnum('6f'):
         
 if check_tnum('6g'):
     dotest ("Neither expected_text nor not_text are given",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='check_string mode mismatch'",
+            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='No text_to_check!'",
             cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'Active:'
@@ -512,7 +506,7 @@ if check_tnum('8h'):
 
 
 
-# Run from testhost2.  Loops test on testhost.  Cycle testhost network donw and up.
+# Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.
 tnum = '20'
 if args.test == tnum:
     setuplogging (ConsoleLogFormat = '{asctime} {module:>15}.{funcName:20} {levelname:>8}:  {message}')
@@ -523,7 +517,6 @@ if args.test == tnum:
             "Conseuctive command timeouts trigger closed connection.  Recover when network comes back up.",
             cmd= "echo Hello!!",
             user_host_port='Test 20',
-            # user_host_port='testhost',
             cmd_timeout= 1,
             return_type=        'cmdrun')
         # break

@@ -29,12 +29,13 @@ One may be an absolute limit while the other is a percentage limit, eg `5Gi 20%`
 - No whitespace between value and suffix
 """
 
-__version__ = '3.3'
+__version__ = "3.5"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3 240805 - New
 #   
 #==========================================================
@@ -63,7 +64,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -147,7 +148,7 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ['free', self.free_switch]
+        cmd = 'free ' + self.free_switch
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
         # $ free -m
@@ -192,5 +193,5 @@ class monitor:
 
 
         except Exception as e:
-            logging.exception (f"Could not parse {cmd} response - returned\n  {rslt[1].stdout}\n  {e}")
+            logging.warning (f"Could not parse {cmd} response - returned\n  {rslt[1].stdout}\n  {e}")
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: Could not parse {cmd} response - returned\n  {rslt[1].stdout}"}

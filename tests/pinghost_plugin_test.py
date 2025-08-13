@@ -4,8 +4,9 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
@@ -15,31 +16,44 @@
 __version__ =   '3.5'
 
 import argparse
-from cjnfuncs.core import set_toolname, setuplogging, logging
+from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, connections_manager
+from lanmonitor.lanmonfuncs import RTN_PASS
 try:
-    from pinghost_plugin import monitor
+    from pinghost_plugin import monitor                 # Use version in cwd
 except:
-    from lanmonitor.pinghost_plugin import monitor
+    from lanmonitor.pinghost_plugin import monitor      # Use version in the package
 
 parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-t', '--test', default='0',
                     help="Test number to run (default 0).  0 runs all tests")
-
 args = parser.parse_args()
 
-
 set_toolname('tool')
+
+cfg = """
+[DEFAULT]
+Connection_timeout =            4s
+Connection_nTries =             1
+Connection_retry_interval =     0s
+
+Command_nTries =                1
+Command_retry_interval =        0s
+Command_max_consecutive_timeouts =  2
+
+[local]
+hostname =                      localhost
+username =                      me
+port =                          22
+
+"""
+
 globvars.config = config_item()
-globvars.config.cfg['nTries']           = 1
-globvars.config.cfg['RetryInterval']    = '0s'
-globvars.config.cfg['SSH_timeout']      = '4s'
-# connections()
+globvars.config.read_string(cfg)
 
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
-logging.getLogger().setLevel(logging.DEBUG)
+set_logging_level(logging.DEBUG)
 
 # --------------------------------------------------------------------
 
@@ -78,15 +92,24 @@ if args.test == '0'  or  args.test == tnum:
         dotest (tnum, "Local to unknown host - CRITICAL",
                 {'key':'Host_local_to_Unknown', 'tag':'local_to_Unknown', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'XX.lan'})
 
-tnum = '6'
+tnum = '6a'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Local to known unavailable host - ERROR",
+        dotest (tnum, "Local to known unavailable host with long cmd_timeout - ERROR",
                 {'key':'Host_local_to_Unavailable', 'tag':'local_to_Unavailable', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
 
-tnum = '7'
+tnum = '6b'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Remote to known unavailable remote - ERROR",
-                # {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
+        dotest (tnum, "Local to known unavailable host with short cmd_timeout - ERROR",
+                {'key':'Host_local_to_Unavailable', 'tag':'local_to_Unavailable', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhostX'})
+
+tnum = '7a'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Remote to known unavailable remote with long cmd_timeout - ERROR",
+                {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
+
+tnum = '7b'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Remote to known unavailable remote with short cmd_timeout - ERROR",
                 {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhostX'})
 
 tnum = '8'

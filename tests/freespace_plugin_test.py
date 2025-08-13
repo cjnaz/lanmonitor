@@ -4,30 +4,48 @@
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5
 # 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
 
-from cjnfuncs.core import set_toolname, setuplogging, logging
+from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS
 try:
-    from freespace_plugin import monitor
+    from freespace_plugin import monitor                # Use version in cwd
 except:
-    from lanmonitor.freespace_plugin import monitor
+    from lanmonitor.freespace_plugin import monitor     # Use version in the package
 
 set_toolname('tool')
+
+cfg = """
+[DEFAULT]
+Connection_timeout =            4s
+Connection_nTries =             1
+Connection_retry_interval =     0s
+
+Command_nTries =                1
+Command_retry_interval =        0s
+Command_max_consecutive_timeouts =  2
+
+[local]
+hostname =                      localhost
+username =                      me
+port =                          22
+
+"""
+
 globvars.config = config_item()
-globvars.config.cfg['nTries']           = 1
-globvars.config.cfg['RetryInterval']    = '0s'
-globvars.config.cfg['SSH_timeout']      = '2s'
+globvars.config.read_string(cfg)
+
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
-logging.getLogger().setLevel(logging.DEBUG)
+set_logging_level(logging.DEBUG)
 
 def dotest (tnum, desc, test):
     print(f"\nTest {tnum} - {desc} {'-'*50}")

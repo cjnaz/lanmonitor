@@ -23,12 +23,13 @@ The dd-wrt router is checked for the age of the currently installed dd-wrt versi
 Note:  I no longer have a dd-wrt router for testing this plugin.
 """
 
-__version__ = '3.3'
+__version__ = '3.5'
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -62,7 +63,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -109,8 +110,7 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        # cmd = ['curl', self.url, '--connect-timeout', '10', '--max-time', '10']  # lanmonitor V3.3 enforces timeout/max-time
-        cmd = ['curl', self.url]
+        cmd = 'curl ' + self.url
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         # logging.debug (f"cmd_check response:  {rslt}")
 
