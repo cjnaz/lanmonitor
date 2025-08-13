@@ -43,7 +43,8 @@ __version__ = "3.5"
 
 import datetime
 import lanmonitor.globvars as globvars
-import pathlib
+import shlex
+
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
 from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue, retime
@@ -95,12 +96,12 @@ class monitor:
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
 
-            self.path = xx[1].strip().replace(' ', '\\ ').replace("'", "\\'")
+            self.path = shlex.quote(xx[1])
             self.depth = ' -maxdepth 1 '
-            _rol = self.path.lower()
-            if _rol.startswith('recursive'):
+            _rol = xx[1]
+            if _rol.lower().startswith('recursive'):
                 self.depth = ' '
-                self.path = self.path.split(maxsplit=1)[1].replace(' ', '\\ ').replace("'", "\\'")
+                self.path = shlex.quote(_rol.split(maxsplit=1)[1])
 
         except Exception as e:
             logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
@@ -119,7 +120,8 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = 'find ' + self.path + self.depth + "-type f -printf '%T@ %p\\n' | sort -nr | head -n 1"
+        # cmd = 'find ' + self.path + self.depth + "-type f -printf '%T@ %p\\n' | sort -nr | head -n 1"
+        cmd = 'find ' + self.path + self.depth + "-printf '%T@ %p\\n' | sort -nr | head -n 1"
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         logging.debug (f"cmd_check response:  {rslt}")
 

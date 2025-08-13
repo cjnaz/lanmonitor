@@ -1,0 +1,520 @@
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1a - A basic function test
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout='Hello!'
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@localhost:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@localhost:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <echo Hello!>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1b - ping known from local
+  GIVEN:      (), {'cmd': 'ping -c 1 testhost', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=PING results
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping -c 1 testhost>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='ping -c 1 testhost', returncode=0, stdout='PING testhost.cjn.lan (192.168.15.40) 56(84) bytes of data.\n64 bytes from testhost.cjn.lan (192.168.15.40): icmp_seq=1 ttl=64 time=0.064 ms\n\n--- testhost.cjn.lan ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms\nrtt min/avg/max/mdev = 0.064/0.064/0.064/0.000 ms', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2a - Invalid command switch
+  GIVEN:      (), {'cmd': 'ls -laxyz', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=2, stderr=...invalid option
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ls -laxyz>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 2):  <ls: invalid option -- 'y' Try 'ls --help' for more information.>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <ls -laxyz>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (returncode 2):  <ls: invalid option -- 'y' Try 'ls --help' for more information.>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='ls -laxyz', returncode=2, stdout='', stderr="ls: invalid option -- 'y' Try 'ls --help' for more information.")
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2b - Cmd times out
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - timeout, returncode=254, stderr=TimeoutError
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@localhost:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: >
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@localhost:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (exception):  <TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='sleep 2', returncode=254, stdout='', stderr='TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: ')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2c - Unknown command
+  GIVEN:      (), {'cmd': 'nosuchcmd 5', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=127, stderr=...command not found
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <nosuchcmd 5>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 127):  <bash: line 1: nosuchcmd: command not found>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <nosuchcmd 5>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (returncode 127):  <bash: line 1: nosuchcmd: command not found>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='nosuchcmd 5', returncode=127, stdout='', stderr='bash: line 1: nosuchcmd: command not found')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2d - Invalid return_type
+  GIVEN:      (), {'cmd': 'nosuchcmd 5', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrunX'}
+  EXPECT:     RAISED - ValueError: Invalid return_type <cmdrunX> passed to cmd_check
+                        lanmonfuncs.cmd_check            -    ERROR:  ERROR:  Invalid return_type <cmdrunX> passed to cmd_check
+                         funcs_test.dotest               -    ERROR:  
+  RAISED:     ValueError: Invalid return_type <cmdrunX> passed to cmd_check
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2e - ping unknown host
+  GIVEN:      (), {'cmd': 'ping nosuchhost.me', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=2, stderr=ping: nosuchhost.me: Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping nosuchhost.me>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 2):  <ping: nosuchhost.me: Name or service not known>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <ping nosuchhost.me>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (returncode 2):  <ping: nosuchhost.me: Name or service not known>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='ping nosuchhost.me', returncode=2, stdout='', stderr='ping: nosuchhost.me: Name or service not known')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2f - ping known unavailable host, short timeout
+  GIVEN:      (), {'cmd': 'ping testhostx', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=254, stderr=TimeoutError
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping testhostx>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@localhost:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: >
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <ping testhostx>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@localhost:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (exception):  <TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='ping testhostx', returncode=254, stdout='', stderr='TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: ')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2g - No permission
+  GIVEN:      (), {'cmd': 'touch /junk', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=1, stderr=...Permission denied
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <touch /junk>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 1):  <touch: cannot touch '/junk': Permission denied>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <touch /junk>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (returncode 1):  <touch: cannot touch '/junk': Permission denied>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='touch /junk', returncode=1, stdout='', stderr="touch: cannot touch '/junk': Permission denied")
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3a - echo on known available host
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=Hello!
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello!>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')
+                         funcs_test.<module>             -     INFO:  
+Current connections:
+  <me@localhost:22>
+  <me@testhost2:22>
+
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3b - ping known from known remote
+  GIVEN:      (), {'cmd': 'ping -c 1 testhost', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=PING results
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ping -c 1 testhost>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='ping -c 1 testhost', returncode=0, stdout='PING testhost.cjn.lan (192.168.15.40) 56(84) bytes of data.\n64 bytes from testhost.cjn.lan (192.168.15.40): icmp_seq=1 ttl=64 time=2.30 ms\n\n--- testhost.cjn.lan ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms\nrtt min/avg/max/mdev = 2.301/2.301/2.301/0.000 ms', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4a - echo on known unavailable host
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'testhostx', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_WARNING - returncode=252, stderr=...ConnectionError / TimeoutError
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  TimeoutError: 
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <me@testhostx:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <me@testhostx:22> FAILED:  TimeoutError: 
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 3 to <me@testhostx:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 3 to <me@testhostx:22> FAILED:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts: TimeoutError: 
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='echo Hello!', returncode=252, stdout='', stderr='Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts: TimeoutError: ')
+                         funcs_test.<module>             -     INFO:  
+Current connections:
+  <me@localhost:22>
+  <me@testhost2:22>
+
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4b - connect to known host with wrong user
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'you@testhost2', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=252, stderr=...ConnectionError ... PermissionDenied
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <you@testhost2:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <you@testhost2:22> FAILED:  PermissionDenied: Permission denied for user you on host testhost2
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <you@testhost2:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <you@testhost2:22> FAILED:  PermissionDenied: Permission denied for user you on host testhost2
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to you@testhost2:22: ConnectionError - Connection to <you@testhost2:22> FAILED after 2 attempts: PermissionDenied: Permission denied for user you on host testhost2
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='echo Hello!', returncode=252, stdout='', stderr='Exception while connecting to you@testhost2:22: ConnectionError - Connection to <you@testhost2:22> FAILED after 2 attempts: PermissionDenied: Permission denied for user you on host testhost2')
+                         funcs_test.<module>             -     INFO:  
+Current connections:
+  <me@localhost:22>
+  <me@testhost2:22>
+
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4c - connect to known host with wrong port
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'me@testhost2:2222', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=252, stderr=...ConnectionError ... ConnectionRefusedError
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:2222>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:2222> FAILED:  ConnectionRefusedError: [Errno 111] Connect call failed ('192.168.15.42', 2222)
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <me@testhost2:2222>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <me@testhost2:2222> FAILED:  ConnectionRefusedError: [Errno 111] Connect call failed ('192.168.15.42', 2222)
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhost2:2222: ConnectionError - Connection to <me@testhost2:2222> FAILED after 2 attempts: ConnectionRefusedError: [Errno 111] Connect call failed ('192.168.15.42', 2222)
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='echo Hello!', returncode=252, stdout='', stderr="Exception while connecting to me@testhost2:2222: ConnectionError - Connection to <me@testhost2:2222> FAILED after 2 attempts: ConnectionRefusedError: [Errno 111] Connect call failed ('192.168.15.42', 2222)")
+                         funcs_test.<module>             -     INFO:  
+Current connections:
+  <me@localhost:22>
+  <me@testhost2:22>
+
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4d - Run remote with timeout
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'me@testhost2:22', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=254, stderr=...TimeoutError
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='sleep 2', returncode=254, stdout='', stderr='TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.<module>             -     INFO:  
+Current connections:
+  <me@localhost:22>
+  <me@testhost2:22>
+
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4e - No permission error on remote
+  GIVEN:      (), {'cmd': 'touch /junk', 'user_host_port': 'me@testhost2:22', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=1, stderr=...Permission denied
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <touch /junk>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 1):  <touch: cannot touch '/junk': Permission denied>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <touch /junk>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (returncode 1):  <touch: cannot touch '/junk': Permission denied>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='touch /junk', returncode=1, stdout='', stderr="touch: cannot touch '/junk': Permission denied")
+                         funcs_test.<module>             -     INFO:  
+Current connections:
+  <me@localhost:22>
+  <me@testhost2:22>
+
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5a - Global text match check
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'expected_text': '$SHLVL'}
+  EXPECT:     RTN_PASS - returncode=0, stdout= .bashrc_logout file
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='cat .bash_logout', returncode=0, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5b - Qualified line text match check
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'expected_text': '= 1'}
+  EXPECT:     RTN_PASS - returncode=0, stdout= .bashrc_logout file
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='cat .bash_logout', returncode=0, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5c - Qualified line text match check with not_text
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'expected_text': '= 1', 'not_text': '#'}
+  EXPECT:     RTN_PASS - returncode=0, stdout= .bashrc_logout file
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='cat .bash_logout', returncode=0, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5d - check_line_text no match
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLxVL"', 'expected_text': '= 1', 'not_text': '#'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='No text_to_check!'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='No text_to_check!')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5e - expected_text no match
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'expected_text': '= 2'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout=dbus status, stderr='expected_text <= 2> not found in text_to_check'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='expected_text <= 2> not found in text_to_check')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5f - not_text match
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'not_text': 'SHLVL'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout=dbus status, stderr='not_text <SHLVL> found in text_to_check'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='not_text <SHLVL> found in text_to_check')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 5g - Neither expected_text nor not_text are given
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'Active:'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout=dbus status, stderr='No text_to_check!'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@localhost:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='No text_to_check!')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6a - Global text match check
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'expected_text': '$SHLVL'}
+  EXPECT:     RTN_PASS - returncode=0, stdout= .bashrc_logout file
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='cat .bash_logout', returncode=0, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6b - Qualified line text match check
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'expected_text': '= 1'}
+  EXPECT:     RTN_PASS - returncode=0, stdout= .bashrc_logout file
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='cat .bash_logout', returncode=0, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6c - Qualified line text match check with not_text
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'expected_text': '= 1', 'not_text': '#'}
+  EXPECT:     RTN_PASS - returncode=0, stdout= .bashrc_logout file
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='cat .bash_logout', returncode=0, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6d - check_line_text no match
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLxVL"', 'expected_text': '= 1', 'not_text': '#'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='No text_to_check!'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='No text_to_check!')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6e - expected_text no match
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'expected_text': '= 2'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout=dbus status, stderr='expected_text <= 2> not found in text_to_check'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='expected_text <= 2> not found in text_to_check')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6f - not_text match
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'if [ "$SHLVL"', 'not_text': 'SHLVL'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout=dbus status, stderr='not_text <SHLVL> found in text_to_check'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='not_text <SHLVL> found in text_to_check')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 6g - Neither expected_text nor not_text are given
+  GIVEN:      (), {'cmd': 'cat .bash_logout', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'check_string', 'check_line_text': 'Active:'}
+  EXPECT:     RTN_FAIL - returncode=1, stdout=dbus status, stderr='No text_to_check!'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <cat .bash_logout>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <cat .bash_logout>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='cat .bash_logout', returncode=1, stdout='# ~/.bash_logout: executed by bash(1) when login shell exits.\n\n# when leaving the console clear the screen to increase privacy\n\nif [ "$SHLVL" = 1 ]; then\n    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q\nfi', stderr='No text_to_check!')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 7a - No host section in config
+  GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def X', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RAISED - cjnfuncs.core.ConfigError: Host section <bad host def X> not in config.
+                         funcs_test.dotest               -    ERROR:  
+  RAISED:     ConfigError: Host section <bad host def X> not in config.
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 7b - No hostname definition in config host section
+  GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.
+                         funcs_test.dotest               -    ERROR:  
+  RAISED:     ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 7c - No username definition in config host section
+  GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.
+                         funcs_test.dotest               -    ERROR:  
+  RAISED:     ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 7d - hostname and username defined in config host section
+  GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_WARNING - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <xyz@xyz:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <xyz@xyz:22> FAILED:  gaierror: [Errno -5] No address associated with hostname
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <xyz@xyz:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <xyz@xyz:22> FAILED:  gaierror: [Errno -5] No address associated with hostname
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to xyz@xyz:22: ConnectionError - Connection to <xyz@xyz:22> FAILED after 2 attempts: gaierror: [Errno -5] No address associated with hostname
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='echo Hello', returncode=252, stdout='', stderr='Exception while connecting to xyz@xyz:22: ConnectionError - Connection to <xyz@xyz:22> FAILED after 2 attempts: gaierror: [Errno -5] No address associated with hostname')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 7e - host section with minimal defs and defaults
+  GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'testhost2 with defaults', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=Hello!
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr='')
+                         funcs_test.<module>             -     INFO:  
+{'ssh_conn': <asyncssh.connection.SSHClientConnection object at 0x740a5280>, 'command_ntries': 2, 'command_retry_interval': 0.2, 'command_max_consecutive_timeouts': 4, 'env': {}, 'consecutive_command_timeouts': 0}
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 7f - host section with everything defined
+  GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'testhost2 define all', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=Hello!
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr='')
+                         funcs_test.<module>             -     INFO:  
+{'ssh_conn': <asyncssh.connection.SSHClientConnection object at 0x740a5280>, 'command_ntries': 2, 'command_retry_interval': 0.2, 'command_max_consecutive_timeouts': 4, 'env': {}, 'consecutive_command_timeouts': 0}
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8a - Check command timeout logic
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs._run_command         -    DEBUG:  Excessive command timeouts on <me@testhost2:22> - Closing connection
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 failed (exception):  <ConnectionError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='sleep 2', returncode=252, stdout='', stderr='ConnectionError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8b - Cause 1st of 2 timeouts
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=254, ... TimeoutError:
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='sleep 2', returncode=254, stdout='', stderr='TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.<module>             -     INFO:  Consecutive timeouts count: 1
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8c - Cause 2nd of 2 timeouts
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs._run_command         -    DEBUG:  Excessive command timeouts on <me@testhost2:22> - Closing connection
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <ConnectionError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='sleep 2', returncode=252, stdout='', stderr='ConnectionError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8d - Cause 1st timeout
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=254, ... TimeoutError:
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='sleep 2', returncode=254, stdout='', stderr='TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.<module>             -     INFO:  Consecutive timeouts count: 1
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8e - Reset of consecutive_command_timeouts
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout='Hello!'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello!>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')
+                         funcs_test.<module>             -     INFO:  Consecutive timeouts count: 0
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8f - Cause 1st of 2 timeouts
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_FAIL - returncode=254, ... TimeoutError:
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='sleep 2', returncode=254, stdout='', stderr='TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.<module>             -     INFO:  Consecutive timeouts count: 1
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8g - Cause 2nd of 2 timeouts
+  GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
+                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
+                        lanmonfuncs._run_command         -    DEBUG:  Excessive command timeouts on <me@testhost2:22> - Closing connection
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <ConnectionError: Command execution error on <me@testhost2:22>:  TimeoutError: >
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_WARNING - CompletedProcess(args='sleep 2', returncode=252, stdout='', stderr='ConnectionError: Command execution error on <me@testhost2:22>:  TimeoutError: ')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 8h - Create new connection
+  GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout='Hello!'
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello!>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')
+                         funcs_test.<module>             -     INFO:  Consecutive timeouts count: 0
