@@ -5,7 +5,7 @@ Produce / compare to golden results:
     ./funcs_test.py | diff funcs_test-golden.txt -
         Differences:
             test 1b/3b ping values will vary
-            test 4a will vary btw returncode 252 and 253 ???
+            test 7d varies between 'gaierror: [Errno -2] Name or service not known' and 'gaierror: [Errno -5] No address associated with hostname'
             test 7e/7f object addresses will vary
 """
 
@@ -21,6 +21,7 @@ TOOLNAME =      'demo_funcs'
 import argparse
 import re
 import time
+import subprocess
 
 from cjnfuncs.core              import set_toolname, setuplogging, logging, set_logging_level #, restore_logging_level
 from cjnfuncs.configman         import config_item
@@ -211,11 +212,13 @@ if check_tnum('2g'):
 
 # Basic Pass checks run remotely
 if check_tnum('3a'):
+    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
     dotest ("echo on known available host",
             "RTN_PASS - returncode=0, stdout=Hello!",
             cmd= "echo Hello!", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
+    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
 
 if check_tnum('3b'):
     dotest ("ping known from known remote",
@@ -268,19 +271,21 @@ if check_tnum('4e'):
 
 
 # Check for return_type check_string on local.  Static file used to eliminate diffs.
-# cwd is the login user's home directory.  ~/.bash_logout containing <if [ "$SHLVL" = 1 ]; then>
+# cwd is the login user's home directory.  plugin_test_trees/funcs_test/test5file containing <if [ "$SHLVL" = 1 ]; then>
+
 if check_tnum('5a'):
     dotest ("Global text match check",
-            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout=test5file content",
+            # cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             expected_text=      '$SHLVL'
     )
 
 if check_tnum('5b'):
     dotest ("Qualified line text match check",
-            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout=test5file content",
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             expected_text=      '= 1'
@@ -288,8 +293,8 @@ if check_tnum('5b'):
 
 if check_tnum('5c'):
     dotest ("Qualified line text match check with not_text",
-            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout=test5file content",
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             expected_text=      '= 1',
@@ -298,8 +303,8 @@ if check_tnum('5c'):
         
 if check_tnum('5d'):
     dotest ("check_line_text no match",
-            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='No text_to_check!'",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout=test5file content, stderr='No text_to_check!'",
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLxVL"',
             expected_text=      '= 1',
@@ -308,8 +313,8 @@ if check_tnum('5d'):
         
 if check_tnum('5e'):
     dotest ("expected_text no match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='expected_text <= 2> not found in text_to_check'",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout=test5file content, stderr='expected_text <= 2> not found in text_to_check'",
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             expected_text=      '= 2'
@@ -317,8 +322,8 @@ if check_tnum('5e'):
         
 if check_tnum('5f'):
     dotest ("not_text match",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='not_text <SHLVL> found in text_to_check'",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout=test5file content, stderr='not_text <SHLVL> found in text_to_check'",
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             not_text=           'SHLVL'
@@ -326,8 +331,8 @@ if check_tnum('5f'):
         
 if check_tnum('5g'):
     dotest ("Neither expected_text nor not_text are given",
-            "RTN_FAIL - returncode=1, stdout=dbus status, stderr='No text_to_check!'",
-            cmd= "cat .bash_logout", user_host_port='local', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout=test5file content, stderr='No text_to_check!'",
+            cmd= "cat plugin_test_trees/funcs_test/test5file", user_host_port='local', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'Active:'
     )
@@ -335,17 +340,20 @@ if check_tnum('5g'):
 
 # Check for return_type check_string on remote
 if check_tnum('6a'):
+    subprocess.run(['scp', '-rp', './plugin_test_trees/funcs_test/test5file', 'me@testhost2:/tmp'],
+                    capture_output=True, text=True)
+
     dotest ("Global text match check",
-            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= test5file content",
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             expected_text=      '$SHLVL'
     )
 
 if check_tnum('6b'):
     dotest ("Qualified line text match check",
-            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= test5file content",
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             expected_text=      '= 1'
@@ -353,8 +361,8 @@ if check_tnum('6b'):
 
 if check_tnum('6c'):
     dotest ("Qualified line text match check with not_text",
-            "RTN_PASS - returncode=0, stdout= .bashrc_logout file",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_PASS - returncode=0, stdout= test5file content",
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             expected_text=      '= 1',
@@ -363,8 +371,8 @@ if check_tnum('6c'):
         
 if check_tnum('6d'):
     dotest ("check_line_text no match",
-            "RTN_FAIL - returncode=1, stdout= .bashrc_logout file, stderr='No text_to_check!'",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            "RTN_FAIL - returncode=1, stdout= test5file content, stderr='No text_to_check!'",
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLxVL"',
             expected_text=      '= 1',
@@ -374,7 +382,7 @@ if check_tnum('6d'):
 if check_tnum('6e'):
     dotest ("expected_text no match",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='expected_text <= 2> not found in text_to_check'",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             expected_text=      '= 2'
@@ -383,7 +391,7 @@ if check_tnum('6e'):
 if check_tnum('6f'):
     dotest ("not_text match",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='not_text <SHLVL> found in text_to_check'",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'if [ "$SHLVL"',
             not_text=           'SHLVL'
@@ -392,7 +400,7 @@ if check_tnum('6f'):
 if check_tnum('6g'):
     dotest ("Neither expected_text nor not_text are given",
             "RTN_FAIL - returncode=1, stdout=dbus status, stderr='No text_to_check!'",
-            cmd= "cat .bash_logout", user_host_port='me@testhost2', cmd_timeout= 1,
+            cmd= "cat /tmp/test5file", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type=        'check_string',
             check_line_text=    'Active:'
     )
@@ -422,7 +430,7 @@ if check_tnum('7d'):
     globvars.config.cfg['bad host def']['hostname'] = 'xyz'
     globvars.config.cfg['bad host def']['username'] = 'xyz'
     dotest ("hostname and username defined in config host section",
-            "RTN_WARNING - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname",
+            "RTN_FAIL - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname",
             cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -445,7 +453,7 @@ if check_tnum('7f'):
 # Check consecutive command timeouts logic
 # These tests are effective when run in the full test 8 sequence.
 if check_tnum('8a'):
-    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:220
     dotest ("Check command timeout logic",
             "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
@@ -462,10 +470,12 @@ if check_tnum('8b'):
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
 
 if check_tnum('8c'):
+    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
     dotest ("Cause 2nd of 2 timeouts",
             "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
+    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
 
 if check_tnum('8d'):
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
@@ -528,18 +538,28 @@ if args.test == tnum:
 tnum = '50'
 if args.test == tnum:
 
-    import time
-    # print (globvars.config.dump())
-    while True:
-        dotest ("Development/testing",
-            "",
-            cmd= "echo Hello!!",
-            # user_host_port='local',
-            user_host_port='testhost',
-            cmd_timeout= 1,
-            return_type=        'cmdrun')
-        break
-        time.sleep (5)
+    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
+
+    dotest ("echo on known available host",
+            "RTN_PASS - returncode=0, stdout=Hello!",
+            cmd= "echo Hello!", user_host_port='me@testhost2', cmd_timeout= 1,
+            return_type='cmdrun')
+    logging.info (f"\n{lanmonfuncs.host_connections}")
+    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
+
+
+    # import time
+    # # print (globvars.config.dump())
+    # while True:
+    #     dotest ("Development/testing",
+    #         "",
+    #         cmd= "echo Hello!!",
+    #         # user_host_port='local',
+    #         user_host_port='testhost',
+    #         cmd_timeout= 1,
+    #         return_type=        'cmdrun')
+    #     break
+    #     time.sleep (5)
 
 tnum = '51'
 if args.test == tnum:

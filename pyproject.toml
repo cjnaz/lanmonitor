@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.5a9"
+version = "3.5a10"
+    # 3.5a10 - lanmonfuncs, funcs_test.py cleanup
     # 3.5a9 - invoke for local.  fsactivity updated, tests passing.
     # 3.5a8 - cleanup touches, shlex in fsactivity and debug of backup folder protection
     # 3.5a7 - Update plugin tests part 1, rewrote fsactivity_plugin
