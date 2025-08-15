@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.5a8"
+version = "3.5a9"
+    # 3.5a9 - invoke for local.  fsactivity updated, tests passing.
     # 3.5a8 - cleanup touches, shlex in fsactivity and debug of backup folder protection
     # 3.5a7 - Update plugin tests part 1, rewrote fsactivity_plugin
     # 3.5a6 - More cleanup.  Tests refreshed/passing
@@ -31,7 +32,8 @@ license = "MIT"
 dependencies = [
     'cjnfuncs >= 3.0',
     # 'fabric >= 3.2.2',
-    'asyncssh',
+    'asyncssh >= 2.21.0',
+    'invoke >= 2.2.0',
     'importlib-metadata; python_version<"3.8"',
     ]
 classifiers = [                 # https://pypi.org/classifiers/

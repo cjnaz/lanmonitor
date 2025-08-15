@@ -3,8 +3,7 @@
 ### fsactivity_plugin
 
 The age of files in a directory is checked for the newest file being more recent than `age` ago.
-Sub-directories may be optionally recursed, but not in conjunction with specific files (or with wildcards).
-Alternately, the age of a specific file (or with wildcards) in the specified directory may be checked.
+Sub-directories may be optionally recursed.
 
 **Typical string and dictionary-style config file lines:**
 
@@ -16,15 +15,17 @@ Alternately, the age of a specific file (or with wildcards) in the specified dir
 **Plugin-specific _rest-of-line_ params:**
 
 `age` (timevalue, or int/float seconds)
-- Max age of the path (newest file in the path directory or specific file)
+- Max age of the path (compare newest file in the directory path)
 
 `recursive` (str, case insensitive, optional)
-- May only be applied if the `path` is to a directory.  Ignored if `path` is to a file or with wildcards.
 - If included, all directories beneath `path` are searched for the newest file
 
 `path` (str)
-- If to a directory then the `recursive` param may also be specified
-- If to a file(s) then wildcards ('*' and '?') are supported
+- End `path` with '/' to specify that the `path` points to a directory. The newest fail in that directory will be age tested.
+- If `path` does not end with '/' then the leaf node of the `path` is taken as a file to be searched for and age tested. 
+- Wildcards ('*' and '?') may be used in the file portion.
+- If the leaf node is a file and `recursive` is also specified then the file portion will be searched for in the
+specified parent folder _and all subdirectories_.
 """
 
 __version__ = "3.5"
@@ -43,6 +44,7 @@ __version__ = "3.5"
 
 import datetime
 import lanmonitor.globvars as globvars
+from pathlib import Path
 import shlex
 
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
@@ -96,15 +98,24 @@ class monitor:
             self.units = maxagevar.unit_str
             self.unitsC = maxagevar.unit_char
 
-            self.path = shlex.quote(xx[1])
-            self.depth = ' -maxdepth 1 '
-            _rol = xx[1]
+            _rol = xx[1].strip()
+
             if _rol.lower().startswith('recursive'):
-                self.depth = ' '
-                self.path = shlex.quote(_rol.split(maxsplit=1)[1])
+                _rol = _rol.split(maxsplit=1)[1]
+                self.depth = ''
+            else:
+                self.depth = '-maxdepth 1'
+
+            self.path_for_logging = _rol
+            if _rol.endswith('/'):
+                self.path = shlex.quote(_rol)
+                self.namepart = ''
+            else:
+                self.path = shlex.quote(str(Path(_rol).parent))
+                self.namepart = f'-name {shlex.quote(str(Path(_rol).name))}'
 
         except Exception as e:
-            logging.error (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
+            logging.exception (f"  ERROR:  <{self.key}> INVALID LINE SYNTAX <{item['rest_of_line']}>\n  {e}")
             return RTN_FAIL
 
         return RTN_PASS
@@ -120,8 +131,7 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        # cmd = 'find ' + self.path + self.depth + "-type f -printf '%T@ %p\\n' | sort -nr | head -n 1"
-        cmd = 'find ' + self.path + self.depth + "-printf '%T@ %p\\n' | sort -nr | head -n 1"
+        cmd = f"find {self.path} {self.depth} {self.namepart} -type f -printf '%T@ %p\\n' | sort -nr | head -n 1"
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         logging.debug (f"cmd_check response:  {rslt}")
 
@@ -130,15 +140,19 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         if rslt[0] != RTN_PASS:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT ACCESS PATH <{self.path}>"}
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT ACCESS PATH <{self.path}/>"}
 
         cmd_response = rslt[1].stdout
 
         if cmd_response == '':
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - FILE(S) NOT FOUND AT <{self.path}>"}
+            _path = self.path + (''  if self.path.endswith('/')  else '/')
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - FILE(S) NOT FOUND AT <{self.path_for_logging}> ({rslt[1].stderr})"}
 
         newest_timestamp, newest_file = cmd_response.split(maxsplit=1)
-        newest_age = datetime.datetime.now().timestamp() - float(newest_timestamp)
+        _newest_timestamp = float(newest_timestamp)
+        newest_age = datetime.datetime.now().timestamp() - _newest_timestamp
+
+        logging.debug (f"Newest file: <{newest_file}>, datetime <{datetime.datetime.fromtimestamp(_newest_timestamp)}>")
 
         if newest_age < self.maxage_sec:
             return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {newest_file}"}

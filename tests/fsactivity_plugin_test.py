@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Demo/test for lanmonfuncs
+"""Demo/test for fsactivity_plugin
 
 Produce / compare to golden results:
-    ./funcs_test.py | diff funcs_test-golden.txt -
+    ./fsactivity_plugin_test.py | diff fsactivity_plugin_test.golden -
         Differences:
-            ping values will vary
-            test 4a will vary btw returncode 252 and 253
-            test 7e/7f object addresses will vary
+            File timestamps and ages for newfile, george, mahesh
+            Ages for too old tests 2e, 2f, 4e, 4f, 6b1, 6b2, 6c
 """
 
 #==========================================================
@@ -49,12 +48,6 @@ Connection_retry_interval =     0s
 Command_nTries =                1
 Command_retry_interval =        0s
 Command_max_consecutive_timeouts =  2
-
-[local]
-hostname =                      localhost
-username =                      me
-port =                          22
-
 """
 
 globvars.config = config_item()
@@ -99,12 +92,14 @@ def check_tnum(tnum_in, include0='0'):
 #===============================================================================================
 
 # Basic Pass checks run locally
-shutil.copytree('./plugin_test_trees/fsactivity', '/mnt/RAMDRIVE/fsactivity', dirs_exist_ok=True)
+shutil.rmtree ('/mnt/RAMDRIVE/fsactivity', ignore_errors=True)
+shutil.copytree ('./plugin_test_trees/fsactivity', '/mnt/RAMDRIVE/fsactivity', dirs_exist_ok=True)
 Path('/mnt/RAMDRIVE/fsactivity/newfile').touch()
+
 if check_tnum('1a'):
     dotest ("Local dir activity pass",
             "{'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}",
-            {'key':'Activity_local_dir_pass', 'tag':'local_dir_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity   '})
+            {'key':'Activity_local_dir_pass', 'tag':'local_dir_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m  /mnt/RAMDRIVE/fsactivity/   '})
 
 if check_tnum('1b'):
     dotest ("Local specific file activity pass",
@@ -119,23 +114,28 @@ if check_tnum('1c'):
 if check_tnum('1d'):
     dotest ("Local space in filename pass",
             "{'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/space in name'}",
-            {'key':'Activity_local_dir_pass', 'tag':'local_dir_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000w /mnt/RAMDRIVE/fsactivity/spa*'})
+            {'key':'Activity_local_dir_pass', 'tag':'local_dir_pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000w /mnt/RAMDRIVE/fsactivity/* name'})
 
 
 # Basic Fail cases run locally
 if check_tnum('2a'):
     dotest ("Local empty dir activity FAIL",
-            "{'rslt': 3, 'notif_key': 'Activity_local_empty_dir_fail', 'message': '  WARNING: Activity_local_empty_dir_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>'}",
-            {'key':'Activity_local_empty_dir_fail', 'tag':'local_empty_dir_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/empty_dir'})
+            "{'rslt': 3, 'notif_key': 'Activity_local_empty_dir_fail', 'message': '  WARNING: Activity_local_empty_dir_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>/ ()'}",
+            {'key':'Activity_local_empty_dir_fail', 'tag':'local_empty_dir_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/empty_dir/'})
 
-if check_tnum('2b'):
-    dotest ("Local specific file or dir not found FAIL",
-            "{'rslt': 3, 'notif_key': 'Activity_local_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_local_specific_filedir_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfileordir>'}",
-            {'key':'Activity_local_specific_filedir_not_found_fail', 'tag':'local_specific_filedir_not_found_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuchfileordir'})
+if check_tnum('2b1'):
+    dotest ("Local specific dir not found FAIL",
+            "{'rslt': 3, 'notif_key': 'Activity_local_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_local_specific_filedir_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchdir/> (find: ‘/mnt/RAMDRIVE/fsactivity/nosuchdir/’: No such file or directory)'}",
+            {'key':'Activity_local_specific_filedir_not_found_fail', 'tag':'local_specific_filedir_not_found_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuchdir/'})
+
+if check_tnum('2b2'):
+    dotest ("Local specific file not found FAIL",
+            "{'rslt': 3, 'notif_key': 'Activity_local_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_local_specific_filedir_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfile> ()'}",
+            {'key':'Activity_local_specific_filedir_not_found_fail', 'tag':'local_specific_filedir_not_found_fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuchfile'})
 
 if check_tnum('2c'):
     dotest ("Local wildcard file not found FAIL",
-            "{'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_local_wildcard_file_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*>'}",
+            "{'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_local_wildcard_file_not_found_fail - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*> ()'}",
             {'key':'Activity_local_wildcard_file_not_found_fail', 'tag':'local_wildcard_file_not_found_fail', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuch*'})
 
 if check_tnum('2d'):
@@ -161,14 +161,15 @@ if check_tnum('2f'):
 
 # Basic Pass checks run remotely
 if check_tnum('3a'):
-    # cmd = scp -r /mnt/share/dev/packages/lanmonitor/tests/plugin_test_trees/fsactivity me@testhost2:/mnt/RAMDRIVE/
-    subprocess.run(['scp', '-rp', '/mnt/share/dev/packages/lanmonitor/tests/plugin_test_trees/fsactivity', 'me@testhost2:/mnt/RAMDRIVE/'],
+    subprocess.run(['ssh', 'me@testhost2', 'rm', '-rf', '/mnt/RAMDRIVE/fsactivity'],
+                    capture_output=True, text=True)
+    subprocess.run(['scp', '-rp', './plugin_test_trees/fsactivity', 'me@testhost2:/mnt/RAMDRIVE/'],
                     capture_output=True, text=True)
     subprocess.run(['ssh', 'me@testhost2', 'touch', '/mnt/RAMDRIVE/fsactivity/newfile'],
                     capture_output=True, text=True)
     dotest ("Remote dir activity pass",
             "{'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}",
-            {'key':'Activity_remote_dir_pass', 'tag':'remote_dir_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity   '})
+            {'key':'Activity_remote_dir_pass', 'tag':'remote_dir_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/   '})
 
 if check_tnum('3b'):
     dotest ("Remote specific file activity pass",
@@ -183,23 +184,29 @@ if check_tnum('3c'):
 if check_tnum('3d'):
     dotest ("Remote space in filename pass",
             "{'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/space in name'}",
-            {'key':'Activity_remote_dir_pass', 'tag':'remote_dir_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000w /mnt/RAMDRIVE/fsactivity/spa*'})
+            {'key':'Activity_remote_dir_pass', 'tag':'remote_dir_pass', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000w /mnt/RAMDRIVE/fsactivity/* name'})
 
 
 # Basic Fail cases run remotely
 if check_tnum('4a'):
     dotest ("Remote empty dir activity FAIL",
-            "{'rslt': 3, 'notif_key': 'Activity_remote_empty_dir_fail', 'message': '  WARNING: Activity_remote_empty_dir_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir>'}",
-            {'key':'Activity_remote_empty_dir_fail', 'tag':'remote_empty_dir_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/empty_dir'})
+            "{'rslt': 3, 'notif_key': 'Activity_remote_empty_dir_fail', 'message': '  WARNING: Activity_remote_empty_dir_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/empty_dir> ()'}",
+            {'key':'Activity_remote_empty_dir_fail', 'tag':'remote_empty_dir_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/empty_dir/'})
 
-if check_tnum('4b'):
-    dotest ("Remote specific file or dir not found FAIL",
-            "{'rslt': 3, 'notif_key': 'Activity_remote_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_remote_specific_filedir_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfileordir>'}",
-            {'key':'Activity_remote_specific_filedir_not_found_fail', 'tag':'remote_specific_filedir_not_found_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuchfileordir'})
+if check_tnum('4b1'):
+    dotest ("Remote specific dir not found FAIL",
+            "{'rslt': 3, 'notif_key': 'Activity_remote_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_remote_specific_filedir_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchdir/> (find: ‘/mnt/RAMDRIVE/fsactivity/nosuchdir/’: No such file or directory)'}",
+            {'key':'Activity_remote_specific_filedir_not_found_fail', 'tag':'remote_specific_filedir_not_found_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuchdir/'})
+
+if check_tnum('4b2'):
+    dotest ("Remote specific file not found FAIL",
+            "{'rslt': 3, 'notif_key': 'Activity_remote_specific_filedir_not_found_fail', 'message': '  WARNING: Activity_remote_specific_filedir_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuchfile> ()'}",
+            {'key':'Activity_remote_specific_filedir_not_found_fail', 'tag':'remote_specific_filedir_not_found_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuchfile'})
+
 
 if check_tnum('4c'):
     dotest ("Remote wildcard file not found FAIL",
-            "{'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_remote_wildcard_file_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*>'}",
+            "{'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_not_found_fail', 'message': '  WARNING: Activity_remote_wildcard_file_not_found_fail - testhost2 - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/nosuch*> ()'}",
             {'key':'Activity_remote_wildcard_file_not_found_fail', 'tag':'remote_wildcard_file_not_found_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m /mnt/RAMDRIVE/fsactivity/nosuch*'})
 
 if check_tnum('4d'):
@@ -235,37 +242,37 @@ if check_tnum('5b'):
 
 # Recursive checks
 if check_tnum('6a'):
-    Path('/mnt/RAMDRIVE/fsactivity/recursive_tests/george').touch()
+    Path('/mnt/RAMDRIVE/fsactivity/recursive tests/george').touch()
     dotest ("Recursive find",
-            "{'rslt': 0, 'notif_key': 'Activity_recursive', 'message': 'Activity_recursive  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/george'}",
-            {'key':'Activity_recursive', 'tag':'recursive', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity'})
+            "{'rslt': 0, 'notif_key': 'Activity_recursive', 'message': 'Activity_recursive  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/george'}",
+            {'key':'Activity_recursive', 'tag':'recursive', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/'})
 
-if check_tnum('6b'):
-    dotest ("No Recursion if file specified",
-            "{'rslt': 2, 'notif_key': 'Activity_no_recursive_with_file', 'message': '  WARNING: Activity_no_recursive_with_file - local - FILE(S) NOT FOUND AT </mnt/RAMDRIVE/fsactivity/a3file>'}",
-            {'key':'Activity_no_recursive_with_file', 'tag':'no_recursive_with_file', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/a3file'})
+if check_tnum('6b1'):
+    dotest ("Recursion with specific file specified",
+            "{'rslt': 2, 'notif_key': 'Activity_recursive_with_specific_file', 'message': '  FAIL: Activity_recursive_with_specific_file  STALE FILES - local - 3233.4 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/a3file'}",
+            {'key':'Activity_recursive_with_specific_file', 'tag':'recursive_with_specific_file', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/a3file'})
 
 if check_tnum('6b2'):
-    dotest ("Recursion ignored if file specified",
-            "{'rslt': 2, 'notif_key': 'Activity_recursive_ignored_with_file', 'message': '  FAIL: Activity_recursive_ignored_with_file  STALE FILES - local -  474.1 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/a2file'}",
-            {'key':'Activity_recursive_ignored_with_file', 'tag':'recursive_ignored_with_file', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/a2file'})
+    dotest ("Recursion with specific file specified",
+            "{'rslt': 2, 'notif_key': 'Activity_recursive_with_specific_file', 'message': '  FAIL: Activity_recursive_with_specific_file  STALE FILES - local - 3649.3 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/a2file'}",
+            {'key':'Activity_recursive_with_specific_file', 'tag':'recursive_with_specific_file', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/a2file'})
 
 
 if check_tnum('6c'):
     subprocess.run(['ssh', 'me@testhost2', 'rm', '-rf', '/mnt/RAMDRIVE/fsactivity'],
                     capture_output=True, text=True)
-    subprocess.run(['scp', '-rp', '/mnt/share/dev/packages/lanmonitor/tests/plugin_test_trees/fsactivity', 'me@testhost2:/mnt/RAMDRIVE/'],
+    subprocess.run(['scp', '-rp', './plugin_test_trees/fsactivity', 'me@testhost2:/mnt/RAMDRIVE/'],
                     capture_output=True, text=True)
     dotest ("Remote recursive find",
-            "{'rslt': 2, 'notif_key': 'Activity_remote_recursive', 'message': '  FAIL: Activity_remote_recursive  STALE FILES - testhost2 -   42.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/a4file'}",
-            {'key':'Activity_remote_recursive', 'tag':'remote_recursive', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity'})
+            "{'rslt': 2, 'notif_key': 'Activity_remote_recursive', 'message': '  FAIL: Activity_remote_recursive  STALE FILES - testhost2 -   42.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/a4file'}",
+            {'key':'Activity_remote_recursive', 'tag':'remote_recursive', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/'})
 
 if check_tnum('6d'):
-    subprocess.run(['ssh', 'me@testhost2', 'touch', '/mnt/RAMDRIVE/fsactivity/recursive_tests/mahesh'],
+    subprocess.run(['ssh', 'me@testhost2', 'touch', '/mnt/RAMDRIVE/fsactivity/recursive\ tests/mahesh'],
                     capture_output=True, text=True)
     dotest ("Remote recursive find",
-            "{'rslt': 0, 'notif_key': 'Activity_remote_recursive', 'message': 'Activity_remote_recursive  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive_tests/mahesh'}",
-            {'key':'Activity_remote_recursive', 'tag':'remote_recursive', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity'})
+            "{'rslt': 0, 'notif_key': 'Activity_remote_recursive', 'message': 'Activity_remote_recursive  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/mahesh'}",
+            {'key':'Activity_remote_recursive', 'tag':'remote_recursive', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/'})
 
 
 
@@ -290,11 +297,10 @@ if args.test == tnum:
 
     import time
     # print (globvars.config.dump())
-    Path('/mnt/RAMDRIVE/fsactivity/recursive_tests/george').touch()
+    Path('/mnt/RAMDRIVE/fsactivity/recursive tests/george').touch()
     while True:
         dotest ("No such host",
             "",
-            # {'key':'Activity_development', 'tag':'development', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1s reCurSive /mnt/RAMDRIVE/fsactivity/'})
             {'key':'Activity_development', 'tag':'development', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1s reCurSive /mnt/RAMDRIVE/fsactivity/a*'})
 
         break
