@@ -19,19 +19,20 @@ systems save the history in the yum database, and `dnf history` and `yum history
 **Plugin-specific _rest-of-line_ params:**
 
 `age` (timevalue, or int/float seconds)
-- Max time allowed since last execution of the apt_command
+- Max time allowed since last execution of the yum_command
 
 `yum_command` (str)
 - The yum history is scanned for this specific string
 - Internal whitespace must match exactly.  Leading and trailing whitespace is trimmed off.
 """
 
-__version__ = '3.3'
+__version__ = "3.5"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3.1 240823 - Added '--cacheonly' to yum history command to avoid temporary database updates
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.2.1 240116 - Bug fix yum command match .strip()
@@ -44,7 +45,7 @@ __version__ = '3.3'
 import datetime
 import re
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
 from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue, retime
 
@@ -69,7 +70,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -116,18 +117,30 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ['yum', 'history', '--cacheonly']
+        cmd = 'yum history --cacheonly'
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        # logging.debug (f"cmd_check response:  {rslt}")
+        # logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")
+        logging.debug (f"cmd_check returned:  ({rslt[0]}, (args: '{rslt[1].args}', returncode: {rslt[1].returncode}, stdout: '{rslt[1].stdout[0:50]}...', stderr: '{rslt[1].stderr}')")
 
-        if "You don't have access to the history DB." in rslt[1].stderr:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - NO ACCESS TO THE YUM HISTORY DB"}
+
         if rslt[0] == RTN_WARNING:
-            error_msg = rslt[1].stderr.replace('\n','')
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
-        if rslt[0] != RTN_PASS:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET YUM HISTORY"}
 
+        elif rslt[0] == RTN_FAIL:
+            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+                error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            elif "You don't have access to the history DB." in rslt[1].stderr:
+                error_msg = 'NO ACCESS TO THE YUM HISTORY DB'
+            else:
+                error_msg = 'COULD NOT GET YUM HISTORY'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
+
+        # cmd_check RTN_PASS case
         for line in rslt[1].stdout.split('\n'):
             out = YUMLINEFORMAT.match(line)
             if out:
@@ -140,6 +153,6 @@ class monitor:
                         else:
                             return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - YUM UPDATE TOO LONG AGO - {retime(last_update_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)"}
                     except Exception as e:
-                        return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - FAILED WHILE READING THE YUM RESPONSE\n  {e}"}
+                        return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - FAILED WHILE READING THE YUM RESPONSE\n  {e}"}
 
-        return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - NO <{self.yum_command}> UPDATES IN THE YUM HISTORY DB"}
+        return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - NO <{self.yum_command}> UPDATES IN THE YUM HISTORY DB"}

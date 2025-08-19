@@ -44,16 +44,17 @@ RTN_WARNING =                       1
 RTN_FAIL =                          2
 RTN_CRITICAL =                      3
 
-RTNCODE_REMOTE_CONNECT_ERROR=       252
-RTNCODE_ERROR =                     253
-RTNCODE_TIMEOUT =                   254
+RTNCODE_REMOTE_CONNECTION_DOWN =    250
+RTNCODE_COMMAND_TIMEOUT =           251
+RTNCODE_ERROR =                     252
+RTNCODE_REMOTE_CONNECTION_ERROR =   253
 
 GATEWAY_TIMEOUT =                   '1.0s'    # Default value.  May be set in config with Gateway_timeout
 
 CONNECTION_TIMEOUT_DEFAULT =        2.0
 CONNECTION_NTRIES_DEFAULT =         2
 CONNECTION_RETRY_INTERVAL_DEFAULT = 0.5
-CONNECTION_KEEPALIVE_INTERVAL =     5
+CONNECTION_KEEPALIVE_INTERVAL =     60
 CONNECTION_KEEPALIVE_COUNT_MAX =    3
 
 COMMAND_MAX_CONSECUTIVE_TIMEOUTS_DEFAULT = 4   # At this count, close/delete the conn
@@ -80,14 +81,14 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
         Command_nTries*cmd_timeout + (Command_nTries-1)*Command_retry_interval
 
-    For cmd_check calls on remote systems add the connection time the maximum total execution time:
+    For cmd_check calls on remote systems add the connection time for the maximum total execution time:
 
         Connection_nTries*Connection_timeout + (Connection_nTries-1)*Connection_retry_interval
 
     ### Args
     `cmd`  (str or list)
     - Command to be passed to invoke.run or asyncssh.run in list (eg: ['echo', 'hello']) or str (eg: 'echo hello') form
-    - The `cmd` may use `~` user home expansion and `?` and `*` wildcard expansion.
+    - The `cmd` may use `~` user home expansion and `?` and `*` wildcard expansion for paths
     - The `cmd` may also use `|` pipes and `>` redirection
     - The `cmd` execution must have a passing (0) exit code or it will be retried and result in a 
       RTN_FAIL `success_status`.  An exception raised by the `cmd` run will also cause retries.
@@ -100,7 +101,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - timeout value used when executing `cmd`
 
     `return_type`  (str - either 'cmdrun' or 'check_string')
-    - If `return_type` = 'cmdrun' then RTN_PASS (`cmd` exit code = 0) or RTN_FAIL (`cmd` exit code > 0) and
+    - If `return_type` = 'cmdrun' then RTN_PASS (`cmd` exit code = 0) or RTN_FAIL (`cmd` exit code != 0) and
     the `CompletedProcess` structure is returned.
     - If `return_type` = 'check_string':
       - If the `cmd` run exit code = 0 then the following args are used to evaluate the `CompletedProcess.stdout` field.
@@ -126,7 +127,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - Timeout used for asyncssh connections to remote hosts
 
     `Connection_nTries` (int)
-    - Maximum number of attempts to connect to `user_host_port`
+    - Maximum number of attempts to open an asyncssh connection to `user_host_port`
 
     `Connection_retry_interval` (int, float, or timevalue, default 0.5s)
     - Wait time between remote host `Connection_nTries`
@@ -136,34 +137,37 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - The `cmd_timeout` is passed in on each call to cmd_check
 
     `Command_retry_interval` (int, float, or timevalue, default 0.5s)
-    - Wait time between remote host `Connection_nTries`
+    - Wait time between `Command_nTries`
 
     `Command_max_consecutive_timeouts` (int, default 4)
-    - Once reaching this limit on a remote connection, possibly over consecutive calls to cmd_check, the 
-    connection is closed and will attempt to be reconnected on the next call.
+    - Once reaching this number of consecutive timeouts on a remote connection, possibly
+    over consecutive calls to cmd_check, the remote connection is closed, thus forcing
+    an attempted reconnect on the next call.
+    - Not used for local connections
 
 
     ### Returns
     - 2-tuple of `(success_status, subprocess.CompletedProcess())`
       - `success_status` values:
-        - `RTN_PASS` ** (0) - the `cmd` run exited with exit code = 0.  If `return_type`='check_string' then checks pass.  Any `cmd` output 
-        is in `CompletedProcess.stdout`.
-        - `RTN_WARNING` (1) - only for execution on a remote host, indicates a asyncssh connection failure or excessive command timeouts 
-        (potentially a connection problem).  `CompletedProcess.stderr` contains the failure data.
-        - `RTN_FAIL` (2) - the `cmd` run exited with exit code > 0, or an exception was raised, or `return_type`='check_string' checks fail.
-        `CompletedProcess.stderr` contains the failure data.
+        - `RTN_PASS` ** (0) - the `cmd` run exited with its exit code = 0.  If `return_type`='check_string' then the checks also pass.  
+        Any `cmd` output is in `stdout`.
+        - `RTN_WARNING` (1) - only for execution on a remote host, indicates an initial asyncssh connection failure or exceeding
+        `Command_max_consecutive_timeouts` (potentially a connection problem) and thus triggering the connection to be closed.
+        `stderr` contains the failure data.
+        - `RTN_FAIL` (2) - the `cmd` run exited with exit code > 0, or an exception was raised, or `return_type`='check_string' and checks fail.
+        `stderr` contains the failure data.  Command execution timeouts result as RTN_FAIL.
 
-      - If `return_type` = 'check_string':  `success_status` = 'RTN_PASS' if the `cmd` stdout response contains `expected_text` and not `not_text` 
-      (response line qualified by `check_line_text`), else `success_status` = 'RTN_FAIL'.
+      - If `return_type` = 'check_string':  `success_status` = 'RTN_PASS' if the `cmd` stdout response contains the `expected_text` and
+      not the `not_text` (response line qualified by `check_line_text`), else `success_status` = 'RTN_FAIL'.
 
       - The returned `CompletedProcess` structure contains these fields:
         - `args` - the command string executed
         - `returncode` - integer command execution status
             - 0:  `cmd` executed successfully
             - \>0: `cmd`-specific error exit code
-            - `RTNCODE_REMOTE_CONNECT_ERROR` ** (252): Connection timeout to a remote host
-            - `RTNCODE_ERROR` (253): General exception 
-            - `RTNCODE_TIMEOUT` (254): Timeout during `cmd` execution 
+            - `RTNCODE_REMOTE_CONNECTION_DOWN` ** (250): Connection failure to a remote host
+            - `RTNCODE_COMMAND_TIMEOUT` (251): Timeout during `cmd` execution 
+            - `RTNCODE_ERROR` (252): General exception 
         - `stdout` - holds any text returned from a passing `cmd` execution
         - `stderr` - holds any info on `cmd` execution errors and exceptions.  '\\n's are replaced with ' '.
       - ** Import these constant names from lanmonfuncs
@@ -171,11 +175,14 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - A ValueError exception is raised if the call to cmd_check has errors, such as invalid `return_type` or `user_host_port`.
 
     ### Behaviors and rules
-    - If an exception is raised when trying to execute the `cmd` then the `returncode` field is set to
-    RTNCODE_TIMEOUT, RTNCODE_ERROR, or RTNCODE_REMOTE_CONNECT_ERROR, and the `stderr` field carries the details. 
-    - Remote host connection errors result in `success_status` RTN_WARNING (for TimeoutErrors) or RTN_FAIL (all other errors). 
-    The `returncode` = RTNCODE_REMOTE_CONNECT_ERROR, and the `stderr` contains ConnectionError and a secondary error description, such as
-    TimeoutError, PermissionDenied, ConnectionRefusedError and gaierror.
+    - A typical `cmd` execution timeout exception results in success_status `RTN_FAIL` with `returncode`=`RTNCODE_COMMAND_TIMEOUT`
+    and further details in `stderr`.
+    - If `cmd` is executed on a remote system and the number of consecutive `cmd` execution timeouts reaches the 
+    `Command_max_consecutive_timeouts` limit then the remote connection is closed, the success_status is `RTN_WARNING`, and 
+    `returncode`=`RTNCODE_REMOTE_CONNECTION_DOWN`, with further details in `stderr`.
+    - Any other exception result in `success_status`=`RTN_FAIL`, `returncode`=`RTNCODE_ERROR`, with further details in `stderr`.
+    - If there are no timeout or other exceptions then `returncode` is the value returned from the `cmd` execution, with results 
+    in `stdout` or `stderr`.
     """
 
     global host_connections
@@ -243,18 +250,20 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             error_msg = f"Exception while connecting to {uhp}: {type(e).__name__} - "  + str(e).replace('\n',' ')
             logging.debug(error_msg)
             # logging.exception(error_msg)
-            if 'TimeoutError' in error_msg:
-                return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECT_ERROR, stdout='', stderr=error_msg))
+            if 'TimeoutError' in error_msg  or  'OSError' in error_msg:
+                return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_DOWN, stdout='', stderr=error_msg))
+            elif 'gaierror' in error_msg:
+            # else:
+                # return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
+                return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_ERROR, stdout='', stderr=error_msg))
             else:
-                return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECT_ERROR, stdout='', stderr=error_msg))
-        
+                return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
 
     # Run the command, with retries
     for nTry in range (host_connections.connections[uhp]['command_ntries']):
 
         if nTry > 0:
             time.sleep (host_connections.connections[uhp]['command_retry_interval'])
-
         logging.debug(f"cmd try {nTry+1} on <{uhp}>:  <{cmd}>")
 
         if uhp == 'local':
@@ -268,13 +277,13 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                     stderr=         run_try.stderr.strip().replace('\n',' '))
 
             except invoke.exceptions.CommandTimedOut as e:
-                error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
-                run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=error_msg)
+                error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
+                run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_COMMAND_TIMEOUT, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 continue
 
             except Exception as e:
-                error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
+                error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
@@ -296,26 +305,29 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
             except TimeoutError as e:
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
-                run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_TIMEOUT, stdout='', stderr=error_msg)
+                # error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
+                run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_COMMAND_TIMEOUT, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 continue
 
             except ConnectionError as e:
                 # Raised in run_command() on excessive command timeouts, or connection not defined (should not happen)
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
-                run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECT_ERROR, stdout='', stderr=error_msg)
+                # error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
+                run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_DOWN, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 return (RTN_WARNING, run_result)
 
             except Exception as e:
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
+                # error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 continue
 
-        if run_result.returncode > 0:           # no exception, but non-passing result
-            error_msg = run_result.stderr
+        if run_result.returncode != 0:           # no exception, but non-passing result
+            run_result.stderr = error_msg = '__*****__' + run_result.stderr
             logging.debug(f"cmd try {nTry+1} failed (returncode {run_result.returncode}):  <{error_msg}>")
         # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")      # Uncomment for debug.  stdout can be huge.
 
@@ -357,7 +369,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                     else:
                         raise ValueError("expected_text and non_text can't both be None")
 
-            run_result.returncode = 1
+            run_result.returncode = 1                           # check_string fail returncode
             run_result.stderr = _msg
 
         else:   # return_type == 'cmdrun':
@@ -474,7 +486,7 @@ class AsyncSSHManager:
                     if _try < connection_nTries:
                         await asyncio.sleep(connection_retry_interval)
                         continue
-                    raise ConnectionError(f"Connection to <{uhp}> FAILED after {connection_nTries} attempts: {type(e).__name__}: {e}")
+                    raise ConnectionError(f"Connection to <{uhp}> FAILED after {connection_nTries} attempts __*****__{type(e).__name__}: {e}")
 
 
     def run_command(self, command, uhp, command_timeout): #, password=None): #, env={}):
@@ -485,7 +497,7 @@ class AsyncSSHManager:
 
         conn = self.connections.get(uhp)
         if not conn:
-            raise ConnectionError(f"Connection to <{uhp}> unknown")
+            raise ConnectionError(f"__*****__Connection to <{uhp}> unknown")
 
         ssh_conn = conn['ssh_conn']
 
@@ -495,8 +507,9 @@ class AsyncSSHManager:
             return result
 
         except asyncio.TimeoutError as e:
-            error_msg = f"Command execution error on <{uhp}>:  {type(e).__name__}: {e}"
+            error_msg = f"Command execution error on <{uhp}>:  __*****__{type(e).__name__}: {e}"
             conn['consecutive_command_timeouts'] += 1
+            logging.debug (f"consecutive_command_timeouts <{uhp}>: {conn['consecutive_command_timeouts']}")  # TODO debug
             if conn['consecutive_command_timeouts'] == conn['command_max_consecutive_timeouts']:
                 await self._close_connection(ssh_conn)
                 del self.connections[uhp]
@@ -506,7 +519,7 @@ class AsyncSSHManager:
         
         except asyncssh.ConnectionLost as e:
             del self.connections[uhp]
-            raise ConnectionError(f"Command execution error on <{uhp}> - ConnectionLost:  {type(e).__name__}: {e}")
+            raise ConnectionError(f"Command execution error on <{uhp}> - ConnectionLost:   __*****__{type(e).__name__}: {e}")
 
         # Any other exceptions are passed up
         # except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:      # TODO only seeing asyncio.TimeoutError

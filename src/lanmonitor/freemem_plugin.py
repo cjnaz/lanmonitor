@@ -43,11 +43,10 @@ __version__ = "3.5"
 import datetime
 import re
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
 from cjnfuncs.core import logging
 
 # Configs / Constants
-# SPACE_RE = re.compile(r"\d+ +\d+ +(\d+ +) +(\d+)%")
 FREE_MAP = {'ki':'--kibi', 'mi':'--mebi', 'gi':'--gibi', 'ti':'--tebi'}
 
 class monitor:
@@ -64,7 +63,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -150,19 +149,30 @@ class monitor:
 
         cmd = 'free ' + self.free_switch
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        # logging.debug (f"cmd_check response:  {rslt}")
         # $ free -m
         #                total        used        free      shared  buff/cache   available
         # Mem:           47787       21865        2054        3384       27829       25922
         # Swap:           7995        5475        2520
+        # logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")
+        logging.debug (f"cmd_check returned ({rslt[0]}, (args: '{rslt[1].args}', returncode: '{rslt[1].returncode}', stdout: '{rslt[1].stdout[0:30]}...,' stderr: '{rslt[1].stderr}')")
+
 
         if rslt[0] == RTN_WARNING:
-            error_msg = rslt[1].stderr.replace('\n','')
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
-        if rslt[0] != RTN_PASS:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET FREE MEMORY READING"}
+        elif rslt[0] == RTN_FAIL:
+            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+                error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            else:
+                error_msg = 'free COMMAND ERROR'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
 
+        # cmd_check RTN_PASS case
         try:
             lines = rslt[1].stdout.split('\n')
             memline = lines[1].split()
@@ -194,4 +204,4 @@ class monitor:
 
         except Exception as e:
             logging.warning (f"Could not parse {cmd} response - returned\n  {rslt[1].stdout}\n  {e}")
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: Could not parse {cmd} response - returned\n  {rslt[1].stdout}"}
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: COULD NOT PARSE <{cmd}> RESPONSE - returned\n  {rslt[1].stdout}"}

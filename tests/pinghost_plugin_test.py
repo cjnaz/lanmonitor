@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - pinghost_plugin_test
+"""Demo/test for pinghost_plugin_test
+
+Produce / compare to golden results:
+    ./pinghost_plugin_test.py | diff pinghost_plugin_test.golden -
+        Expected differences:
+            test 1/2/3 ping values will vary
 """
 
 #==========================================================
@@ -19,7 +24,7 @@ import argparse
 from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 try:
     from pinghost_plugin import monitor                 # Use version in cwd
 except:
@@ -94,27 +99,27 @@ if args.test == '0'  or  args.test == tnum:
 
 tnum = '6a'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Local to known unavailable host with long cmd_timeout - ERROR",
+        dotest (tnum, "Local to known unavailable host with long cmd_timeout - FAIL",
                 {'key':'Host_local_to_Unavailable', 'tag':'local_to_Unavailable', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
 
 tnum = '6b'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Local to known unavailable host with short cmd_timeout - ERROR",
+        dotest (tnum, "Local to known unavailable host with short cmd_timeout - FAIL",
                 {'key':'Host_local_to_Unavailable', 'tag':'local_to_Unavailable', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhostX'})
 
 tnum = '7a'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Remote to known unavailable remote with long cmd_timeout - ERROR",
+        dotest (tnum, "Remote to known unavailable remote with long cmd_timeout - FAIL",
                 {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhostX'})
 
 tnum = '7b'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Remote to known unavailable remote with short cmd_timeout - ERROR",
+        dotest (tnum, "Remote to known unavailable remote with short cmd_timeout - FAIL",
                 {'key':'Host_testhost2_to_Unavailable', 'tag':'testhost2_to_Unavailable', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhostX'})
 
 tnum = '8'
 if args.test == '0'  or  args.test == tnum:
-        dotest (tnum, "Attempt to run on unknown remote - WARNING",
+        dotest (tnum, "Attempt to run on unknown remote - CRITICAL",
                 {'key':'Host_Unknown_remote', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhost'})
 
 tnum = '9'
@@ -127,3 +132,5 @@ if args.test == tnum:
         dotest (tnum, "DEVELOPMENT",
                 {'key':'Host_DEVELOPMENT', 'tag':'DEVELOPMENT', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'testhost2'})
 
+
+host_connections.close('all')

@@ -1,33 +1,55 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - service_plugin_test
+"""Demo/test for service_plugin_test
+
+Produce / compare to golden results:
+    ./service_plugin_test.py | diff service_plugin_test.golden -
+        Expected differences:
+            None
 """
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #
 #==========================================================
 
-from cjnfuncs.core import set_toolname, setuplogging, logging
+from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 try:
-    from service_plugin import monitor
+    from service_plugin import monitor                  # Use version in cwd
 except:
-    from lanmonitor.service_plugin import monitor
+    from lanmonitor.service_plugin import monitor       # Use version in the package
 
 set_toolname('tool')
+
+cfg = """
+[DEFAULT]
+Connection_timeout =            4s
+Connection_nTries =             1
+Connection_retry_interval =     0s
+
+Command_nTries =                1
+Command_retry_interval =        0s
+Command_max_consecutive_timeouts =  2
+
+[local]
+hostname =                      localhost
+username =                      me
+port =                          22
+"""
 globvars.config = config_item()
-globvars.config.cfg['nTries']           = 1
-globvars.config.cfg['RetryInterval']    = '0s'
-globvars.config.cfg['SSH_timeout']      = '4s'
+globvars.config.read_string(cfg)
+
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
-logging.getLogger().setLevel(logging.DEBUG)
+set_logging_level(logging.DEBUG)
+
 
 def dotest (tnum, desc, test):
     print(f"\nTest {tnum} - {desc} {'-'*50}")
@@ -46,8 +68,11 @@ dotest (2, "Service remote - OK",
 dotest (3, "Service local fail - CRITICAL",
         {'key':'Service_fail', 'tag':'fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'xx'})
 
-dotest (4, "No such host - setup WARNING",
+dotest (4, "No such host - setup FAIL",
         {'key':'Service_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'xx'})
 
 dotest (5, "Known host, unavailable - setup WARNING",
         {'key':'Service_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'xx'})
+
+
+host_connections.close('all')

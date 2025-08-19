@@ -3,14 +3,16 @@
 
 Produce / compare to golden results:
     ./fsactivity_plugin_test.py | diff fsactivity_plugin_test.golden -
-        Differences:
+        Expected differences:
             File timestamps and ages for newfile, george, mahesh
             Ages for too old tests 2e, 2f, 4e, 4f, 6b1, 6b2, 6c
 """
 
 #==========================================================
 #
-#  Chris Nelson, 2025-2025
+#  Chris Nelson, Copyright 2021-2025
+#
+# 3.5 250811 - Updated to lanmonitor V3.5
 #
 #==========================================================
 
@@ -24,13 +26,11 @@ import subprocess
 from pathlib import Path
 import shutil
 
-from cjnfuncs.core              import set_toolname, setuplogging, logging, set_logging_level #, restore_logging_level
+from cjnfuncs.core              import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman         import config_item
-from cjnfuncs.mungePath         import mungePath
 
 import lanmonitor.globvars as globvars
-import lanmonitor.lanmonfuncs as lanmonfuncs
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 
 try:
     from fsactivity_plugin import monitor               # Use version in cwd
@@ -49,7 +49,6 @@ Command_nTries =                1
 Command_retry_interval =        0s
 Command_max_consecutive_timeouts =  2
 """
-
 globvars.config = config_item()
 globvars.config.read_string(cfg)
 
@@ -231,7 +230,7 @@ if check_tnum('4f'):
 # Other cases
 if check_tnum('5a'):
     dotest ("No such host",
-            "{'rslt': 1, 'notif_key': 'Activity_no_such_host', 'message': '  WARNING: Activity_no_such_host - nosuchhost - Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known'}",
+            "{'rslt': 2, 'notif_key': 'Activity_no_such_host', 'message': '  WARNING: Activity_no_such_host - nosuchhost - Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known'}",
             {'key':'Activity_no_such_host', 'tag':'no_such_host', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1s /mnt/RAMDRIVE/fsactivity/a*file'})
 
 if check_tnum('5b'):
@@ -305,7 +304,7 @@ if args.test == tnum:
 
         break
         time.sleep (5)
-    print (lanmonfuncs.host_connections)
+    print (host_connections)
 
 
-lanmonfuncs.host_connections.close('all')
+host_connections.close('all')

@@ -19,12 +19,13 @@ Checks that the `sestatus` _Current mode:_ value matches the `expected_mode`.
 Note: If selinux is not installed on the target host, then this plugin reports "NOT IN EXPECTED STATE...".
 """
 
-__version__ = '3.3'
+__version__ = "3.5"
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2024
+#  Chris Nelson, Copyright 2021-2025
 #
+# 3.5 250811 - Updated to lanmonitor V3.5.
 # 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -33,7 +34,7 @@ __version__ = '3.3'
 
 import datetime
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
 from cjnfuncs.core import logging
 
 
@@ -55,7 +56,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -96,18 +97,31 @@ class monitor:
 
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
-        cmd = ['sestatus']
+        cmd = 'sestatus'
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='check_string', check_line_text='Current mode:', expected_text=self.expected_mode, cmd_timeout=self.cmd_timeout)
-        # logging.debug (f"cmd_check response:  {rslt}")
+        # logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")
+        logging.debug (f"cmd_check returned:  ({rslt[0]}, (args: '{rslt[1].args}', returncode: {rslt[1].returncode}, stdout: '{rslt[1].stdout[0:39]}...', stderr: '{rslt[1].stderr}')")
+
+
 
         if rslt[0] == RTN_PASS:
             return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.expected_mode}"}
+
         elif rslt[0] == RTN_WARNING:
-            error_msg = rslt[1].stderr.replace('\n','')
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
+
+        # cmd_check RTN_FAIL case
+        if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
         else:
             current_mode = ''
             for line in rslt[1].stdout.split('\n'):
                 if 'Current mode:' in line:
                     current_mode = line.split(maxsplit=2)[2]
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - NOT IN EXPECTED STATE - expecting <{self.expected_mode}>, found <{current_mode}>"}
+            error_msg = f"NOT IN EXPECTED STATE - expecting <{self.expected_mode}>, found <{current_mode}>"
+        if '__*****__' in rslt[1].stderr:
+            error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+        return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}

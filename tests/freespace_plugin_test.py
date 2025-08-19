@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - freespace_plugin_test
+"""Demo/test for freespace_plugin_test
+
+Produce / compare to golden results:
+    ./freespace_plugin_test.py | diff freespace_plugin_test.golden -
+        Expected differences:
+            Passing tests free space values will vary
 """
 
 #==========================================================
@@ -16,7 +21,7 @@
 from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 try:
     from freespace_plugin import monitor                # Use version in cwd
 except:
@@ -38,14 +43,13 @@ Command_max_consecutive_timeouts =  2
 hostname =                      localhost
 username =                      me
 port =                          22
-
 """
-
 globvars.config = config_item()
 globvars.config.read_string(cfg)
 
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 set_logging_level(logging.DEBUG)
+
 
 def dotest (tnum, desc, test):
     print(f"\nTest {tnum} - {desc} {'-'*50}")
@@ -67,7 +71,7 @@ dotest (3, "Freespace as a absolute min remote - OK",
 dotest (4, "Freespace as a absolute min remote - CRITICAL",
         {'key':'Free_Abs_fail', 'tag':'Abs_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'300000 /mnt/RAMDRIVE'})
 
-dotest (5, "Known host, No such path - WARNING",
+dotest (5, "Known host, No such path - CRITICAL",
         {'key':'Free_nosuchpath', 'tag':'nosuchpath', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10% /mnt/nosuchpath'})
 
 dotest (6, "Space in path - OK",
@@ -76,8 +80,11 @@ dotest (6, "Space in path - OK",
 dotest (7, "Bad limit value - setup ERROR",
         {'key':'Free_badlimit', 'tag':'badlimit', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10x% /home'})
 
-dotest (8, "No such host - WARNING",
+dotest (8, "No such host - CRITICAL",
         {'key':'Free_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home'})
 
 dotest (9, "Known host, unavailable - WARNING",
         {'key':'Free_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'30% /home'})
+
+
+host_connections.close('all')

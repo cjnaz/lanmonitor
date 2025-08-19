@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - apt_upgrade_history_plugin_test
+"""Demo/test for apt_upgrade_history_plugin_test
+
+Run on a system that uses apt
+
+Produce / compare to golden results:
+    ./apt_upgrade_history_plugin_test.py | diff apt_upgrade_history_plugin_test.golden -
+        Expected differences:
+            Ages in test 1/2/4/5 vary
 """
 
 #==========================================================
@@ -16,7 +23,7 @@
 from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 try:
     from apt_upgrade_history_plugin import monitor              # Use version in cwd
 except:
@@ -62,7 +69,7 @@ dotest (1, "Local pass - OK",
 dotest (2, "Local too old - CRITICAL",
         {'key':'AptUpgrade_TooOld', 'tag':'TooOld', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m apt full-upgrade'})
 
-dotest (3, "Local no Upgrades in history - WARNING",
+dotest (3, "Local no Upgrades in history - CRITICAL",
         {'key':'AptUpgrade_NoUpgrades', 'tag':'NoUpgrades', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10h apt full-upgradeS'})
 
 dotest (4, "Remote pass - OK",
@@ -71,10 +78,10 @@ dotest (4, "Remote pass - OK",
 dotest (5, "Remote too old - CRITICAL",
         {'key':'AptUpgrade_RemoteTooOld', 'tag':'RemoteTooOld', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m apt full-upgrade'})
 
-dotest (6, "Remote no Upgrades in history - WARNING",
+dotest (6, "Remote no Upgrades in history - CRITICAL",
         {'key':'AptUpgrade_RemoteNoUpgrades', 'tag':'RemoteNoUpgrades', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10h apt full-upgradeS'})
 
-dotest (7, "No such host - WARNING",
+dotest (7, "No such host - CRITICAL",
         {'key':'AptUpgrade_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10h apt full-upgrade'})
 
 dotest (8, "Known host, unavailable - WARNING",
@@ -85,3 +92,5 @@ dotest (9, "Bad (no) check command - setup ERROR",
 
 dotest (10, "Bad time limit - setup ERROR",
         {'key':'AptUpgrade_badtime', 'tag':'badtime', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10y apt full-upgrade'})
+
+host_connections.close('all')

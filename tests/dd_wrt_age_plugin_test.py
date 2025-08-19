@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - dd-wrt_age_plugin_test
+"""Demo/test for dd-wrt_age_plugin_test
+
+Note:  I no longer have a dd-wrt router for testing this plugin.
 """
 
 #==========================================================
@@ -15,7 +17,7 @@
 from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 try:
     from dd_wrt_age_plugin import monitor               # Use version in cwd
 except:
@@ -73,3 +75,5 @@ dotest (5, "No such host - WARNING",
 dotest (6, "Known host, unavailable - WARNING",
         {"key":"DD-wrt_age_Unavailable", "tag":"Unavailable", "host":"testhostX", "user_host_port":"me@testhostX", "critical":True, 'cmd_timeout':1, "check_interval":1, "rest_of_line":"90d 192.168.1.1"})
 
+
+host_connections.close('all')

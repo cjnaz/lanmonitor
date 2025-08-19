@@ -4,18 +4,18 @@ Test 1 - Local to testhost2 by name - OK ---------------------------------------
   {'key': 'Host_local_to_testhost2', 'tag': 'local_to_testhost2', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'testhost2   '}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_testhost2 - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_testhost2 - lanmonitor.pinghost_plugin.eval_status() called
-                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@localhost:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@localhost:22>
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping -c 1 testhost2>
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_testhost2 - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_local_to_testhost2', 'message': 'Host_local_to_testhost2  OK - local - testhost2 (192.168.15.42 / 67.6 ms)'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping -c 1 testhost2>
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ping -c 1 testhost2', returncode: 0, stdout: 'PING testhost2.cjn.lan (192.168.15.42) 56(84) byte...', stderr: '')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_testhost2 - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_local_to_testhost2', 'message': 'Host_local_to_testhost2  OK - local - <testhost2> (192.168.15.42 / 16.9 ms)'}
 
 Test 2 - Local to testhost2 by IP address - OK --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_local_to_IP - lanmonitor.pinghost_plugin.setup() called:
   {'key': 'Host_local_to_IP', 'tag': 'local_to_IP', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': '   192.168.15.42'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_IP - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_IP - lanmonitor.pinghost_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping -c 1 192.168.15.42>
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_IP - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_local_to_IP', 'message': 'Host_local_to_IP  OK - local - 192.168.15.42 (192.168.15.42 / 2.05 ms)'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping -c 1 192.168.15.42>
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ping -c 1 192.168.15.42', returncode: 0, stdout: 'PING 192.168.15.42 (192.168.15.42) 56(84) bytes of...', stderr: '')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_IP - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_local_to_IP', 'message': 'Host_local_to_IP  OK - local - <192.168.15.42> (192.168.15.42 / 3.44 ms)'}
 
 Test 3 - Remote to other host (testhost) - OK --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_testhost2_to_testhost - lanmonitor.pinghost_plugin.setup() called:
@@ -25,7 +25,8 @@ Test 3 - Remote to other host (testhost) - OK ----------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ping -c 1 testhost>
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_testhost - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_testhost2_to_testhost', 'message': 'Host_testhost2_to_testhost  OK - testhost2 - testhost (192.168.15.40 / 2.25 ms)'}
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ping -c 1 testhost', returncode: 0, stdout: 'PING testhost.cjn.lan (192.168.15.40) 56(84) bytes...', stderr: '')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_testhost - eval_status() returned:  {'rslt': 0, 'notif_key': 'Host_testhost2_to_testhost', 'message': 'Host_testhost2_to_testhost  OK - testhost2 - <testhost> (192.168.15.40 / 2.11 ms)'}
 
 Test 4 - Local to invalid hostname - setup ERROR --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_local_to_INV - lanmonitor.pinghost_plugin.setup() called:
@@ -38,57 +39,62 @@ Test 5 - Local to unknown host - CRITICAL --------------------------------------
   {'key': 'Host_local_to_Unknown', 'tag': 'local_to_Unknown', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'XX.lan'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unknown - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_Unknown - lanmonitor.pinghost_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping -c 1 XX.lan>
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 2):  <ping: XX.lan: Name or service not known>
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'Host_local_to_Unknown', 'message': '  CRITICAL: Host_local_to_Unknown - local - HOST <XX.lan>  ping: XX.lan: Name or service not known'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping -c 1 XX.lan>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 2):  <__*****__ping: XX.lan: Name or service not known>
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ping -c 1 XX.lan', returncode: 2, stdout: '...', stderr: '__*****__ping: XX.lan: Name or service not known')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'Host_local_to_Unknown', 'message': '  CRITICAL: Host_local_to_Unknown - local - PING OF <XX.lan> FAILED - ping: XX.lan: Name or service not known'}
 
-Test 6a - Local to known unavailable host with long cmd_timeout - ERROR --------------------------------------------------
+Test 6a - Local to known unavailable host with long cmd_timeout - FAIL --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_local_to_Unavailable - lanmonitor.pinghost_plugin.setup() called:
   {'key': 'Host_local_to_Unavailable', 'tag': 'local_to_Unavailable', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhostX'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_Unavailable - lanmonitor.pinghost_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping -c 1 testhostX>
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 1):  <>
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_local_to_Unavailable', 'message': '  FAIL: Host_local_to_Unavailable - local - HOST <testhostX>  Cannot contact target host'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping -c 1 testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 1):  <__*****__>
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ping -c 1 testhostX', returncode: 1, stdout: 'PING testhostX.cjn.lan (192.168.15.41) 56(84) byte...', stderr: '__*****__')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_local_to_Unavailable', 'message': '  FAIL: Host_local_to_Unavailable - local - PING OF <testhostX> FAILED - '}
 
-Test 6b - Local to known unavailable host with short cmd_timeout - ERROR --------------------------------------------------
+Test 6b - Local to known unavailable host with short cmd_timeout - FAIL --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_local_to_Unavailable - lanmonitor.pinghost_plugin.setup() called:
   {'key': 'Host_local_to_Unavailable', 'tag': 'local_to_Unavailable', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'testhostX'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_local_to_Unavailable - lanmonitor.pinghost_plugin.eval_status() called
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <ping -c 1 testhostX>
-                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@localhost:22> EXCEPTION:  TimeoutError: 
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@localhost:22>:  TimeoutError: >
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_local_to_Unavailable', 'message': '  FAIL: Host_local_to_Unavailable - local - HOST <testhostX>  Cannot contact target host'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping -c 1 testhostX>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <__*****__CommandTimedOut: Command did not complete within 1 seconds!  Command: 'ping -c 1 testhostX'  Stdout:    Stderr:    >
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ping -c 1 testhostX', returncode: 251, stdout: '...', stderr: '__*****__CommandTimedOut: Command did not complete within 1 seconds!  Command: 'ping -c 1 testhostX'  Stdout:    Stderr:    ')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_local_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_local_to_Unavailable', 'message': "  FAIL: Host_local_to_Unavailable - local - PING OF <testhostX> FAILED - CommandTimedOut: Command did not complete within 1 seconds!  Command: 'ping -c 1 testhostX'  Stdout:    Stderr:    "}
 
-Test 7a - Remote to known unavailable remote with long cmd_timeout - ERROR --------------------------------------------------
+Test 7a - Remote to known unavailable remote with long cmd_timeout - FAIL --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_testhost2_to_Unavailable - lanmonitor.pinghost_plugin.setup() called:
   {'key': 'Host_testhost2_to_Unavailable', 'tag': 'testhost2_to_Unavailable', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhostX'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_testhost2_to_Unavailable - lanmonitor.pinghost_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ping -c 1 testhostX>
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 1):  <>
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_testhost2_to_Unavailable', 'message': '  FAIL: Host_testhost2_to_Unavailable - testhost2 - HOST <testhostX>  Cannot contact target host'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 1):  <__*****__>
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ping -c 1 testhostX', returncode: 1, stdout: 'PING testhostX.cjn.lan (192.168.15.41) 56(84) byte...', stderr: '__*****__')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_testhost2_to_Unavailable', 'message': '  FAIL: Host_testhost2_to_Unavailable - testhost2 - PING OF <testhostX> FAILED - '}
 
-Test 7b - Remote to known unavailable remote with short cmd_timeout - ERROR --------------------------------------------------
+Test 7b - Remote to known unavailable remote with short cmd_timeout - FAIL --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_testhost2_to_Unavailable - lanmonitor.pinghost_plugin.setup() called:
   {'key': 'Host_testhost2_to_Unavailable', 'tag': 'testhost2_to_Unavailable', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 1, 'check_interval': 1, 'rest_of_line': 'testhostX'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_testhost2_to_Unavailable - lanmonitor.pinghost_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ping -c 1 testhostX>
-                        lanmonfuncs._run_command         -    DEBUG:  Command execution on <me@testhost2:22> EXCEPTION:  TimeoutError: 
-                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  TimeoutError: >
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_testhost2_to_Unavailable', 'message': '  FAIL: Host_testhost2_to_Unavailable - testhost2 - HOST <testhostX>  Cannot contact target host'}
+                        lanmonfuncs._run_command         -    DEBUG:  consecutive_command_timeouts <me@testhost2:22>: 1
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  __*****__TimeoutError: >
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ping -c 1 testhostX', returncode: 251, stdout: '...', stderr: 'TimeoutError: Command execution error on <me@testhost2:22>:  __*****__TimeoutError: ')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_testhost2_to_Unavailable - eval_status() returned:  {'rslt': 2, 'notif_key': 'Host_testhost2_to_Unavailable', 'message': '  FAIL: Host_testhost2_to_Unavailable - testhost2 - PING OF <testhostX> FAILED - TimeoutError: '}
 
-Test 8 - Attempt to run on unknown remote - WARNING --------------------------------------------------
+Test 8 - Attempt to run on unknown remote - CRITICAL --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_Unknown_remote - lanmonitor.pinghost_plugin.setup() called:
   {'key': 'Host_Unknown_remote', 'tag': 'Unknown', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'testhost'}
                pinghost_plugin_test.dotest               -    DEBUG:  Host_Unknown_remote - setup() returned:  0
                     pinghost_plugin.eval_status          -    DEBUG:  Host_Unknown_remote - lanmonitor.pinghost_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
-                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unknown_remote - eval_status() returned:  {'rslt': 1, 'notif_key': 'Host_Unknown_remote', 'message': '  WARNING: Host_Unknown_remote - nosuchhost - HOST <testhost>  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts: gaierror: [Errno -2] Name or service not known'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ping -c 1 testhost', returncode: 253, stdout: '...', stderr: 'Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unknown_remote - eval_status() returned:  {'rslt': 3, 'notif_key': 'Host_Unknown_remote', 'message': '  CRITICAL: Host_Unknown_remote - nosuchhost - COULD NOT CONNECT TO EXECUTION HOST - gaierror: [Errno -2] Name or service not known'}
 
 Test 9 - Attempt to run on known unavailable remote - WARNING --------------------------------------------------
                     pinghost_plugin.setup                -    DEBUG:  Host_Unavailable_remote - lanmonitor.pinghost_plugin.setup() called:
@@ -97,5 +103,6 @@ Test 9 - Attempt to run on known unavailable remote - WARNING ------------------
                     pinghost_plugin.eval_status          -    DEBUG:  Host_Unavailable_remote - lanmonitor.pinghost_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
-                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts: OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
-               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unavailable_remote - eval_status() returned:  {'rslt': 1, 'notif_key': 'Host_Unavailable_remote', 'message': "  WARNING: Host_Unavailable_remote - testhostX - HOST <testhost>  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts: OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                    pinghost_plugin.eval_status          -    DEBUG:  cmd_check returned:  (1, (args: 'ping -c 1 testhost', returncode: 250, stdout: '...', stderr: 'Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)')
+               pinghost_plugin_test.dotest               -    DEBUG:  Host_Unavailable_remote - eval_status() returned:  {'rslt': 1, 'notif_key': 'Host_Unavailable_remote', 'message': "  WARNING: Host_Unavailable_remote - testhostX - COULD NOT CONNECT TO EXECUTION HOST - OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}

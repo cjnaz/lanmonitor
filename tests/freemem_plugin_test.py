@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""LAN Monitor plugin - freemem_plugin_test
+"""Demo/test for freemem_plugin_test
+
+Produce / compare to golden results:
+    ./freemem_plugin_test.py | diff freemem_plugin_test.golden -
+        Expected differences:
+            free mem values will vary
 """
 
 #==========================================================
@@ -14,7 +19,7 @@
 from cjnfuncs.core import set_toolname, setuplogging, logging, set_logging_level
 from cjnfuncs.configman import config_item
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS
+from lanmonitor.lanmonfuncs import RTN_PASS, host_connections
 try:
     from freemem_plugin import monitor                  # Use version in cwd
 except:
@@ -92,8 +97,11 @@ dotest (12, "Remote Both Abs - CRITICAL",
 dotest (13, "Remote Div0 - CRITICAL",
         {'key':'Freemem_Remote_Gi_Abs_Per_fail', 'tag':'Remote_Gi_Abs_Per_fail', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'0gi 5%'})
 
-dotest (14, "No such host - WARNING",
+dotest (14, "No such host - FAIL",
         {'key':'Freemem_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'  10% 10%  '})
 
 dotest (15, "Known host, unavailable - WARNING",
         {'key':'Freemem_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'  10% 10%  '})
+
+
+host_connections.close('all')

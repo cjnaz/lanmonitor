@@ -36,7 +36,7 @@ __version__ = "3.5"
 import datetime
 import re
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_COMMAND_TIMEOUT, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
 from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue
 import lanmonitor.globvars as globvars
@@ -61,7 +61,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -104,22 +104,69 @@ class monitor:
 
         cmd = 'ping -c 1 ' + self.ip_or_hostname
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        # logging.debug (f"cmd_check response:  {rslt}")
+        # logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")
+        logging.debug (f"cmd_check returned:  ({rslt[0]}, (args: '{rslt[1].args}', returncode: {rslt[1].returncode}, stdout: '{rslt[1].stdout[0:50]}...', stderr: '{rslt[1].stderr}')")
 
-        if rslt[0] == RTN_PASS:
+
+        if rslt[0] == RTN_WARNING:
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
+
+        elif rslt[0] == RTN_FAIL:
+            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+                error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            else:
+                error_msg = f'PING OF <{self.ip_or_hostname}> FAILED'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
+
+        
+        else:       # cmd_check RTN_PASS case
             ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
             if ping_rslt:
-                return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
+                return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - <{self.ip_or_hostname}> ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
             else:
                 return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  UNKNOWN ERROR"}  # This should not happen
 
-        elif rslt[0] == RTN_WARNING:
-            error_msg = rslt[1].stderr.replace('\n','')
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
 
-        else: # RTN_FAIL
-            if rslt[1].stderr == ""  or  "TimeoutError" in rslt[1].stderr:
-                error_msg = "Cannot contact target host"
+        # if rslt[0] == RTN_PASS:
+        #     ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
+        #     if ping_rslt:
+        #         return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {self.ip_or_hostname} ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
+        #     else:
+        #         return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  UNKNOWN ERROR"}  # This should not happen
+
+        # elif rslt[0] == RTN_WARNING:
+        #     error_msg = rslt[1].stderr.split('__*****__')[1]
+        #     return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
+
+        # else:   # RTN_FAIL
+        #     if rslt[1].returncode == RTNCODE_COMMAND_TIMEOUT  or  rslt[1].stderr == '__*****__':
+        #         error_msg = f"Cannot contact target host"
+        #     else:
+        #         error_msg = rslt[1].stderr.split('__*****__')[1]
+        #     return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
+
+
+
+
+        if rslt[0] == RTN_WARNING:
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
+
+        elif rslt[0] == RTN_FAIL:
+            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+                error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
             else:
-                error_msg = rslt[1].stderr.replace('\n','')
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - HOST <{self.ip_or_hostname}>  {error_msg}"}
+                error_msg = f'COULD NOT GET df OF PATH <{self.path}>'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
+
+        else:       # cmd_check RTN_PASS case
+            pass

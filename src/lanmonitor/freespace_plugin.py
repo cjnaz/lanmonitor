@@ -4,8 +4,7 @@
 
 The free space on the file system that holds the specified `path` on the specified `u@h:p` is checked. 
 Expected free space may be an absolute value or a percentage. If the path does not exist, setup() will
-pass but eval_status() will return RTN_WARNING and retry on each check_interval. This allows for 
-intermittently missing paths.
+pass but eval_status() will fail.
 
 **Typical string and dictionary-style config file lines:**
 
@@ -39,7 +38,7 @@ __version__ = "3.5"
 import datetime
 import re
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
 from cjnfuncs.core import logging
 
 # Configs / Constants
@@ -64,7 +63,7 @@ class monitor:
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the SSH call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
         Returns True if all good, else False
         """
@@ -117,17 +116,28 @@ class monitor:
         logging.debug (f"{self.key} - {__name__}.eval_status() called")
 
         cmd = 'df ' + self.path
-        df_rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        # logging.debug (f"cmd_check response:  {df_rslt}")
+        rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
+        # logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")
+        logging.debug (f"cmd_check returned ({rslt[0]}, (args: '{rslt[1].args}', returncode: '{rslt[1].returncode}', stdout: '{rslt[1].stdout[0:30]}...,' stderr: '{rslt[1].stderr}')")
 
-        if df_rslt[0] == RTN_WARNING:
-            error_msg = df_rslt[1].stderr.replace('\n','')
+
+        if rslt[0] == RTN_WARNING:
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
-        if df_rslt[0] != RTN_PASS:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT GET df OF PATH <{self.path}>"}
+        elif rslt[0] == RTN_FAIL:
+            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+                error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            else:
+                error_msg = f'COULD NOT GET df OF PATH <{self.path}>'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
 
-        out = SPACE_RE.search(df_rslt[1].stdout)
+        # cmd_check RTN_PASS case
+        out = SPACE_RE.search(rslt[1].stdout)
         if out:
             if self.free_type == 'absolute':
                 abs_free = int(out.group(1))
@@ -142,5 +152,5 @@ class monitor:
                 else:
                     return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
         else:
-            logging.debug (f"df of <{self.path}> not parsable - returned\n  {df_rslt[1].stdout}")
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - df OF PATH <{self.path}> not parsable"}
+            logging.debug (f"df of <{self.path}> not parsable - returned\n  {rslt[1].stdout}")
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - df OF PATH <{self.path}> not parsable"}

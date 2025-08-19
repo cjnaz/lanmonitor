@@ -175,7 +175,7 @@ if check_tnum('2a'):
 
 if check_tnum('2b'):
     dotest ("Cmd times out",
-            "RTN_FAIL - timeout, returncode=254, stderr=TimeoutError",
+            "RTN_FAIL - timeout, returncode=251, stderr=TimeoutError",
             cmd= "sleep 2", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -199,7 +199,7 @@ if check_tnum('2e'):
 
 if check_tnum('2f'):
     dotest ("ping known unavailable host, short timeout",
-            "RTN_FAIL - returncode=254, stderr=TimeoutError",
+            "RTN_FAIL - returncode=251, stderr=TimeoutError",
             cmd= "ping testhostx", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -236,7 +236,7 @@ if check_tnum('4a'):
     # ??? RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  timeout: timed out')
     # ??? RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  NoValidConnectionsError: [Errno None] Unable to connect to port 22 on ...')
     dotest ("echo on known unavailable host",
-            "RTN_WARNING - returncode=252, stderr=...ConnectionError / TimeoutError",
+            "RTN_WARNING - returncode=250, stderr=...ConnectionError / TimeoutError",
             cmd= "echo Hello!", user_host_port='testhostx', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
@@ -257,7 +257,7 @@ if check_tnum('4c'):
 
 if check_tnum('4d'):
     dotest ("Run remote with timeout",
-            "RTN_FAIL - returncode=254, stderr=...TimeoutError",
+            "RTN_FAIL - returncode=251, stderr=...TimeoutError",
             cmd= "sleep 2", user_host_port='me@testhost2:22', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
@@ -429,7 +429,7 @@ if check_tnum('7c'):
 if check_tnum('7d'):
     globvars.config.cfg['bad host def']['hostname'] = 'xyz'
     globvars.config.cfg['bad host def']['username'] = 'xyz'
-    dotest ("hostname and username defined in config host section",
+    dotest ("hostname and username defined in config host section, hostname unknown",
             "RTN_FAIL - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname",
             cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
             return_type='cmdrun')
@@ -455,7 +455,7 @@ if check_tnum('7f'):
 if check_tnum('8a'):
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:220
     dotest ("Check command timeout logic",
-            "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
+            "RTN_WARNING - returncode=250, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
 
@@ -464,7 +464,7 @@ if check_tnum('8b'):
     globvars.config.cfg['Test 8']['Command_max_consecutive_timeouts'] = 2
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
     dotest ("Cause 1st of 2 timeouts",
-            "RTN_FAIL - returncode=254, ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
@@ -472,7 +472,7 @@ if check_tnum('8b'):
 if check_tnum('8c'):
     print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
     dotest ("Cause 2nd of 2 timeouts",
-            "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
+            "RTN_WARNING - returncode=250, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
@@ -482,7 +482,7 @@ if check_tnum('8d'):
     globvars.config.cfg['Test 8']['Command_nTries'] = 1
     globvars.config.cfg['Test 8']['Command_max_consecutive_timeouts'] = 2
     dotest ("Cause 1st timeout",
-            "RTN_FAIL - returncode=254, ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
@@ -496,14 +496,14 @@ if check_tnum('8e'):
 
 if check_tnum('8f'):
     dotest ("Cause 1st of 2 timeouts",
-            "RTN_FAIL - returncode=254, ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
 
 if check_tnum('8g'):
     dotest ("Cause 2nd of 2 timeouts",
-            "RTN_WARNING - returncode=252, ... ConnectionError: ... TimeoutError:",
+            "RTN_WARNING - returncode=250, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
 
@@ -515,8 +515,13 @@ if check_tnum('8h'):
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
 
 
+# Dropped / recovered network test
+# - Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.
+# - On testhost network down there will be 4 attempts to run cmd resulting in  RTN_FAIL retruncode=254 TimeoutError,
+#   then the network connection to testest will be closed.
+# - Further connection attempts with testhost network down result in RTN_WARNING returncode=252 ConnectionError/TimeoutError
+# - Once testhost network is back up the connection will be reestablished and return to RTN_PASS returncode=0 Hello!!
 
-# Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.
 tnum = '20'
 if args.test == tnum:
     setuplogging (ConsoleLogFormat = '{asctime} {module:>15}.{funcName:20} {levelname:>8}:  {message}')

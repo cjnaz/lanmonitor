@@ -3,7 +3,7 @@
 ### fsactivity_plugin
 
 The age of files in a directory is checked for the newest file being more recent than `age` ago.
-Sub-directories may be optionally recursed.
+Sub-directories may be optionally recursed. Specific files (with wildcard support) may be checked.
 
 **Typical string and dictionary-style config file lines:**
 
@@ -21,7 +21,7 @@ Sub-directories may be optionally recursed.
 - If included, all directories beneath `path` are searched for the newest file
 
 `path` (str)
-- End `path` with '/' to specify that the `path` points to a directory. The newest fail in that directory will be age tested.
+- End `path` with '/' to specify that the `path` points to a directory. The newest file in that directory will be age tested.
 - If `path` does not end with '/' then the leaf node of the `path` is taken as a file to be searched for and age tested. 
 - Wildcards ('*' and '?') may be used in the file portion.
 - If the leaf node is a file and `recursive` is also specified then the file portion will be searched for in the
@@ -47,7 +47,7 @@ import lanmonitor.globvars as globvars
 from pathlib import Path
 import shlex
 
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
 from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue, retime
 
@@ -133,15 +133,26 @@ class monitor:
 
         cmd = f"find {self.path} {self.depth} {self.namepart} -type f -printf '%T@ %p\\n' | sort -nr | head -n 1"
         rslt = cmd_check(cmd, user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
-        logging.debug (f"cmd_check response:  {rslt}")
+        logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")
+        # logging.debug (f"cmd_check returned:  ({rslt[0]}, (args: '{rslt[1].args}', returncode: {rslt[1].returncode}, stdout: '{rslt[1].stdout[0:50]}...', stderr: '{rslt[1].stderr}')")
 
-        if rslt[0] == RTN_WARNING:           # ssh: Could not resolve hostname xxx: Name or service not known
-            error_msg = rslt[1].stderr.replace('\n','')
+
+        if rslt[0] == RTN_WARNING:
+            error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
-        if rslt[0] != RTN_PASS:
-            return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - COULD NOT ACCESS PATH <{self.path}/>"}
+        elif rslt[0] == RTN_FAIL:
+            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+                error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
+            else:
+                error_msg = f'COULD NOT ACCESS PATH <{self.path}/>'
+            if '__*****__' in rslt[1].stderr:
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
 
+        # cmd_check RTN_PASS case
         cmd_response = rslt[1].stdout
 
         if cmd_response == '':
