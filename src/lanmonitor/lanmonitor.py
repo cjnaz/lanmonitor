@@ -316,7 +316,7 @@ def run_item(item_key):                                                 # Given 
             try:
                 if isinstance(item_def, dict):
                     # Monitor item dict format
-                        # Host_testhostY   {'u_h_p': 'local', 'critical':False, 'timeout':'1s', 'recheck':'1m', 'rol':'testhostY.cjn.lan'}
+                        # Host_testhostY   {'u@h:p': 'local', 'critical':False, 'timeout':'1s', 'recheck':'1m', 'rol':'testhostY.cjn.lan'}
                     
                     # Required settings
                     monline['check_interval'] =     timevalue(item_def['recheck']).seconds
@@ -330,8 +330,12 @@ def run_item(item_key):                                                 # Given 
                     # Optional settings
                     for line_key in item_def:
                         if line_key.lower() == 'u@h:p':
-                            monline['user_host_port'] = item_def[line_key]
-                            _, monline['host'], _ = lanmonfuncs.split_user_host_port(item_def[line_key])
+                            uhp = item_def[line_key]
+                            monline['user_host_port'] =  monline['host'] =  uhp
+                            if '@' in uhp:
+                                _, monline['host'], _ = lanmonfuncs.split_user_host_port(uhp)
+                            # monline['user_host_port'] = item_def[line_key]
+                            # _, monline['host'], _ = lanmonfuncs.split_user_host_port(item_def[line_key])
                         elif line_key.lower() == 'critical':
                             monline['critical'] = item_def[line_key]
                         elif line_key.lower() == 'timeout':
@@ -353,9 +357,12 @@ def run_item(item_key):                                                 # Given 
                         #                                          ^^^^^^^^^^^^^^^^^^^  rest_of_line (parsed by plugin)
 
                     item_def = globvars.config.cfg[item_key].split(maxsplit=1)
-                    u_h_p = item_def[0]
-                    monline['user_host_port'] =     u_h_p
-                    _, monline['host'], _ =         lanmonfuncs.split_user_host_port(u_h_p)
+                    uhp = item_def[0]
+                    monline['user_host_port'] =  monline['host'] =  uhp
+                    if '@' in uhp:
+                        _, monline['host'], _ = lanmonfuncs.split_user_host_port(uhp)
+                    # monline['user_host_port'] =     uhp
+                    # _, monline['host'], _ =         lanmonfuncs.split_user_host_port(uhp)
                     monline['critical'] =           False
                     yy = item_def[1]
                     if yy.lower().startswith('critical'):
@@ -434,7 +441,7 @@ def run_item(item_key):                                                 # Given 
                     if not have_LAN_access:
                         logging.warning(f"WARNING:  NO ACCESS TO LAN ({globvars.config.getcfg('Gateway')}) - Checks run on remote hosts are skipped for this iteration.")
                     else:
-                        logging.debug(f"LAN access confirmed.  Proceeding with checks run on remote hosts.")
+                        logging.debug(f"LAN access confirmed - proceeding with checks run on remote hosts")
 
                 # Do the check
                 if item_inst.host == 'local' or have_LAN_access: 

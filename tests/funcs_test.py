@@ -106,6 +106,23 @@ Command_nTries =                2
 Command_retry_interval =        0.2s
 Command_max_consecutive_timeouts =  4
 
+[Test 21]
+hostname =                      testhost
+username =                      me
+
+Connection_timeout =            1.5s
+Connection_nTries =             2
+Connection_retry_interval =     0.4s
+
+Connection_keepalive_interval = 1s
+Connection_keepalive_count_max= 2
+
+
+Command_timeout =               10s
+Command_nTries =                2
+Command_retry_interval =        0.2s
+Command_max_consecutive_timeouts =  4
+
 """
 
 globvars.config = config_item()
@@ -518,7 +535,7 @@ if check_tnum('8h'):
 # Dropped / recovered network test
 # - Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.
 # - On testhost network down there will be 4 attempts to run cmd resulting in  RTN_FAIL retruncode=254 TimeoutError,
-#   then the network connection to testest will be closed.
+#   then the network connection to testhost will be closed.
 # - Further connection attempts with testhost network down result in RTN_WARNING returncode=252 ConnectionError/TimeoutError
 # - Once testhost network is back up the connection will be reestablished and return to RTN_PASS returncode=0 Hello!!
 
@@ -530,13 +547,39 @@ if args.test == tnum:
         loop_count += 1
         dotest ("Checks connection up/down logic",
             "Conseuctive command timeouts trigger closed connection.  Recover when network comes back up.",
-            cmd= "echo Hello!!",
-            user_host_port='Test 20',
-            cmd_timeout= 1,
-            return_type=        'cmdrun')
+            cmd=            "echo Hello!!",
+            user_host_port= 'Test 20',
+            cmd_timeout=    1,
+            return_type=    'cmdrun')
         # break
-        logging.info (f"Loop {loop_count}")
+        logging.info (f"Loop {loop_count}, is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
+        # logging.info (f"Loop {loop_count}")
         time.sleep (3)
+
+
+# Remote connection keepalive fail test
+# - Run from testhost2.  Loops test on testhost with long interval.  Cycle testhost network down and up.
+# - Two keepalive attempts fail and connection is closed by asyncssh.
+# - cmd_check returns stderr='ConnectionError: Command execution error on <me@testhost:22> - ConnectionLost:   __*****__ChannelOpenError: SSH connection closed')
+
+tnum = '21'
+if args.test == tnum:
+    setuplogging (ConsoleLogFormat = '{asctime} {module:>15}.{funcName:20} {levelname:>8}:  {message}')
+    loop_count = 0
+    while True:
+        loop_count += 1
+        dotest ("Checks connection keepalive logic",
+            "aysncssh keeplive closes the connection.  Recover when network comes back up.",
+            cmd=            "echo Hello!!",
+            user_host_port= 'Test 21',
+            cmd_timeout=    1,
+            return_type=    'cmdrun')
+        # break
+        # logging.info (f"Loop {loop_count} is_connected: {lanmonfuncs.host_connections.connections['me@testhost:22'].is_connected()}")
+        logging.info (f"Loop {loop_count}, is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
+            # lanmonfuncs.is_connected('me@testhost:22')}")
+        time.sleep (4)
+        # logging.info (f"Loop {loop_count} is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
 
 
 

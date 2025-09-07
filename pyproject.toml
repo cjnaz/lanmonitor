@@ -5,7 +5,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "3.5a11"
+version = "4.0b2"
+    # 4.0b2 - connection fail debug, doc work, cleanup
+    # 4.0b1 - stuff to do
+        #   4.0 in all core, plugin, test files
+        #   clean lanmonitor, lanmonfuncs
+        #   clean deployment_files
+        #   touch .md doc files for config changes, changes since prior release, add CLI section
     # 3.5a11 - Refreshed all checker plugins and their tests
     # 3.5a10 - lanmonfuncs, funcs_test.py cleanup
     # 3.5a9 - invoke for local.  fsactivity updated, tests passing.
@@ -33,10 +39,9 @@ authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
 license = "MIT"
 dependencies = [
     'cjnfuncs >= 3.0',
-    # 'fabric >= 3.2.2',
     'asyncssh >= 2.21.0',
     'invoke >= 2.2.0',
-    'importlib-metadata; python_version<"3.8"',
+#    'importlib-metadata; python_version<"3.8"',
     ]
 classifiers = [                 # https://pypi.org/classifiers/
     "Topic :: System :: Monitoring",

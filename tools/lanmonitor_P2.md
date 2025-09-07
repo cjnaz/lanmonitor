@@ -3,19 +3,18 @@
 ---
 
 ## Notable changes since prior release
-- V3.3
-  - New freemem_plugin
-  - Support dictionary-style monitor item definitions, which adds support for cmd_timeout per monitored item
-  - Tolerate temporarily missing config file
-
+- V4.0
+  - Added command line interface for targeted runs, eg: `lanmonitor service` runs all system services checks.
+  - Persistent SSH connections to remote hosts, greatly speeding up checks and eliminating SSH reconnects.
+  - Refactored the item execution core/engine using `invoke` for local checks and `asyncssh` for remote checks.
 <br/>
 
 ---
 
 ## Usage
 ```
-$ lanmonitor -h
-usage: lanmonitor [-h] [--print-log] [--verbose] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V]
+$ lanmonitor service -h
+usage: lanmonitor [-h] [--print-log] [--verbose] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V] [Items ...]
 
 LAN monitor
 
@@ -24,12 +23,19 @@ See README.md for descriptions of available plugins.
 
 Operates interactively or as a service (loop forever and controlled via systemd or other).
 
+CLI (interactive) modes
+    No Items positional arg:  Run all monitor items once
+    Given Items positional arg "xyz host":  Run all monitor items containing either 'xyz' or 'host' substrings (case insensitive)
+
 In service mode
     kill -SIGUSR1 <pid>   outputs a summary to the log file
     kill -SIGUSR2 <pid>   outputs monitored items current status to the log file
-3.3
+4.0
 
-options:
+positional arguments:
+  Items                 Run the individual check item(s) or MonTypes
+
+optional arguments:
   -h, --help            show this help message and exit
   --print-log, -p       Print the tail end of the log file (default last 40 lines).
   --verbose, -v         Display OK items in non-service mode. (-vv for debug logging)
@@ -48,7 +54,7 @@ options:
 ## Example output
 ```
 $ lanmonitor --verbose
- WARNING:  ========== lanmonitor 3.3, pid 26032 ==========
+ WARNING:  ========== lanmonitor 4.0, pid 26032 ==========
     INFO:  SELinux_local             OK - local    - enforcing
     INFO:  YumUpdate_camero          OK - local    -    7.9 days  (  35 days  max)
     INFO:  AptUpgrade_rpi3           OK - RPi3.lan -   15.5 days  (  35 days  max)
@@ -83,32 +89,66 @@ $ lanmonitor --verbose
 - Install lanmonitor from PyPI (`pip install lanmonitor`).
 - Install the initial configuration files (`lanmonitor --setup-user` places files at `~/.config/lanmonitor`).
 
-- Edit `lanmonitor.cfg` for the **Core tool parameters**:
+### Edit `lanmonitor.cfg` for the **Core tool parameters**:
 
-   Config param | Default | Description
-   --|--|--
-   `ServiceLoopTime` | | sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
-   `nTries` | 2 |sets how many tries will be made to accomplish each monitored item.
-   `RetryInterval` | 0.5s | sets the time between nTries.
-   `Cmd_timeout` | 1.0s | sets the _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
-   `SSH_timeout` | 1.0s | sets the max time for ssh connections to non-local hosts. **
-   `StartupDelay` | 0s | is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
-   `DailyRuntime` | | is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
-   `Gateway` | | is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
-   `Gateway_timeout` | 1.0s | sets the max time for checking the Gateway for LAN access health
-   `LogLevel` | 30/WARNING | controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
-   `LogFile` | | specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
+  Config param | Default | Description
+  --|--|--
+  `ServiceLoopTime` | | sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
+  `Cmd_timeout` | 1.0s | sets the _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
+  `StartupDelay` | 0s | is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
+  `DailyRuntime` | | is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
+  `Gateway` | | is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
+  `Gateway_timeout` | 1.0s | sets the max time for checking the Gateway for LAN access health
+  `LogLevel` | 30/WARNING | controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
+  `LogFile` | | specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
+  `PrintLogLength` | 40 | specifies how many tail lines from the `LogFile` are displayed using `lanmonitor -p`.
 
-   `PrintLogLength`, `ConsoleLogFormat`, and `FileLogFormat` may also be customized.
+   `ConsoleLogFormat`, and `FileLogFormat` may also be customized - see the initial configuration file example.
 
    NOTE that the config file parser accepts either whitespace, '=', or ':' between the param name (the first token on the line) and its value (the remainder of the line).
    
-   NOTE **: An SSH access failure message to a remote host can vary based on the `SSH_timeout` setting.  Shorter times (<2s) can 
-   return "timed out after X seconds", while longer times will return "ssh: connect to host \<hostname> port 22: No route to host".  Both return a warning level result.
+<br/>
+
+### Edit `lanmonitor.cfg` for the **Host connection-specific parameters**
+
+  These three service check line items demonstrate methods of specifying the host to run the item check on:
+
+      Service_firewalld    local           20s     firewalld
+      Service_firewalld    me@myhost1.lan  20s     firewalld
+      Service_firewalld    myhost2         20s     firewalld
+
+   In case 1, the host `local` refers to running on the local machine. A `[local]` or `[DEFAULT]` section may be specified in the config file in order to override the default `Command_nTries` and `Command_retry_interval` values for local command executions.
+
+   In case 2, `me@myhost1.lan` fully specifies the username and hostname to run the check on.  The port number defaults to 22 if not specified. 
+   The remaining `Connection_` settings use values from the config file `[DEFAULT]` section, or their default values if not specified.
+
+   In case 3, `myhost2` (without a `username@`) refers to a section in the config file where each of the following settings may be specified, or falling back to the `[DEFAULT]` section, or their default values if not specified.
+   At a minimum, the `hostname` and `username` must be specified, for example:
+
+      [myhost2]
+      hostname = myhost2.lan
+      username = me
+
+
+   These parameters may be defined on a per-host basis, or in a `[DEFAULT]` section and optionally overridden per-host.  The Default values apply if the param is not specified in the config file:
+
+   Config param | Default | Description
+   --|--|--
+   `username` | | Required and used only when a monitor item specifies a section name for the host to run on
+   `hostname` | | Required and used only when a monitor item specifies a section name for the host to run on
+   `Connection_timeout` | 2.0s | Max time allowed for establishing a connection to the remote host
+   `Connection_nTries` | 2 | Max number of attempts to establish a connection to the remote host
+   `Connection_retry_interval` | 0.5s | Time to wait between connection attempts to the remote host
+   `Connection_keepalive_interval` | 60s | Interval between keepalive pings to the remote host
+   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive pings to the remote host all fail
+   `Command_max_consecutive_timeouts` | 4 | The connection is closed if these number consecutive command executions on the remote host all time out
+   `Command_nTries` | 2 | Max number of attempts to execute a command on the local or remote host
+   `Command_retry_interval` | 0.5s | Time to wait between command execution attempts on the local or remote host
+
 
 <br/>
 
-- Edit `lanmonitor.cfg` for the **Notification handler parameters**:
+### Edit `lanmonitor.cfg` for the **Notification handler parameters**:
 
    Config param | Description
    --|--
@@ -122,7 +162,7 @@ $ lanmonitor --verbose
 
 <br/>
 
-- Edit `lanmonitor.cfg`  and `creds_SMTP` for the **SMTP email parameters**.
+### Edit `lanmonitor.cfg`  and `creds_SMTP` for the **SMTP email parameters**.
   - Enter `NotifList`, and `EmailTo` addresses, and import your email credentials file (`import creds_SMTP`). Any, none, or all parameters may be moved to an imported config file. All of these SMTP-related params must be in the `[SMTP]` section.
   
             EmailServer       mail.mailserver.com
@@ -131,10 +171,15 @@ $ lanmonitor --verbose
             EmailPass	      yourpassword
             EmailFrom         yourfromaddress@mailserver.com
 
+  - see [cjnfuncs.SMTP](https://github.com/cjnaz/cjnfuncs/blob/main/SMTP.md) for how to configure DKIM signed messages and setup a Messaging Service such as Twilio.
+
+<br/>
+
+### Final setup and operation
 - See [below](#monitored-items-setup) for setting up items to be monitored.
 - Run the tool with `lanmonitor --verbose`.  Make sure that the local machine and user (root?) has password-less ssh access to any remote machines.  `-v` enables INFO level logging of passing items.  `-vv` turns on DEBUG level logging.
 - Install lanmonitor as a systemd service (google how).  An example `lanmonitor.service` file is provided in the config directory.  Note that the config file may be modified while the service is running, with changes taking effect on the next ServiceLoopTime.  Make sure that the user that the service runs under (typically root) has ssh password-less access to any remotes.
-- stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeated text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
+- stock_notif sends a text message for each monitored item that is in a FAIL or CRITICAL state.  CRITICAL items have a repeat text message sent after the `CriticalReNotificationInterval`.  Notifications are typically sent as text messages, but may be (also) directed to regular email addresses.
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - **NOTE timevalues:**  All timevalues in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6.5h` is 6.5 hours.  If no suffix is provided the time value is taken as seconds.
 - **NOTE static leases:**  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router (DHCP / DNS resolver) reboot.
@@ -170,7 +215,7 @@ Items to be monitored are defined in the `lanmonitor.cfg` file.  "Plugin" module
 
 1. Begins with the `MonType_` prefix
 2. The `<type>` is used as the prefix on successive lines for monitor items of this type
-3. The `<plugin_name>` is the Python module name (implied .py suffix). An optional absolute or relative (to the lanmonitor modules directory) path may specified, eg: `MonType_XYZ ~/my_lanmon_dir/myXYZ_plugin`.
+3. The `<plugin_name>` is the Python module name (implied .py suffix). An optional absolute or relative (to the lanmonitor modules directory) path may be specified, eg: `MonType_XYZ ~/my_lanmon_dir/myXYZ_plugin`.
 
 <br/>
 
@@ -181,6 +226,7 @@ For monitored items, the _string-style_ format of a line is:
       eg:
       Host_testhost2    local  CRITICAL  5m  testhost2.lan
       Host_Yahoo        me@testhost2     1h  yahoo.com
+      Host_Yahoo2       testhost2a       1h  yahoo.com
 
 **The `Host_testhost2` example definition executes the `pinghost_plugin` on the `local` machine, every `5 minutes`, checking for a response from `testhost2.lan`.  If testhost2.lan is not available a notification is sent to the config file `NotifList`.  The `CRITICAL` tag indicates that repeat notifications will be sent per the config file `CriticalReNotificationInterval` param.**
 
@@ -188,7 +234,7 @@ Breaking down the definition line syntax terms:
 
 1. `<type>` matches the corresponding `MonType_<type>` line.
 2. `<friendly_name>` is arbitrary and is used for notifications, logging, etc. `<type>_<friendly_name>` must be unique.
-3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not "`local`" then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line above specifies that `Yahoo.com` will be pinged from the `testhost2` host by doing an `ssh me@testhost2 ping Yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.
+3. `<local or user@host[:port]>` specifies _on which machine the check will be executed from._  If not `local` then `user@host` specifies the ssh login on the remote machine.  For example, the `Host_Yahoo` line above specifies that `yahoo.com` will be pinged from the `testhost2` host by doing an `ssh me@testhost2 ping yahoo.com`.  The default ssh port is 22, but may be specified via the optional `:port` field.  Alternately, the remote host params may be specified in a config file section, eg `[testhost2a]`.
 4. `CRITICAL` may optionally be specified.  CRITICAL tagged items are those that need immediate attention.  Renotifications are sent for these items when failing by the `stock_notif.py` notification handler based on the `CriticalReNotificationInterval` config parameter.  (For critical-tagged items their `check_interval` should be less than the `CriticalReNotificationInterval`.)
 5. `<check_interval>` is the wait time between rechecks for this specific item.  Each monitored item is checked at its own check_interval.
 6. `<rest_of_line>` are the plugin-specific settings/content.

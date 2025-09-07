@@ -80,7 +80,8 @@ class monitor:
         self.service_name   = item['rest_of_line'].strip()
 
         # Identify the system manager type - expecting 'systemd' or 'init'
-        psp1_rslt = cmd_check(['ps', '-p1'], user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
+        # psp1_rslt = cmd_check(['ps', '-p1'], user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
+        psp1_rslt = cmd_check('ps -p1', user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         logging.debug (f"cmd_check returned:  {psp1_rslt}")
 
         if psp1_rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:

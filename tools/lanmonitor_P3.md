@@ -1,5 +1,5 @@
 ## Debug features:
-- lanmonitor dynamically reloads the config file when it senses that the config file has been changed.  When reloaded, all monitored items are reinitialized per the current content of the config file, and all prior monitored items and their history are discarded.  All setting may be changed, such as the core tool parameters, notification handler parameters, and setups on monitored items.
+- lanmonitor dynamically reloads the config file when it senses that the config file has been changed.  When reloaded, all monitored items are reinitialized per the current content of the config file, and all prior monitored items and their history are discarded.  All setting may be changed, such as the core tool parameters, remote host settings, notification handler parameters, and setups on monitored items.
 - Setting LogLevel to 10 in the config file enables debug level logging to the log file while running in service mode.
 - Running interactively with `-vv` enables debug level logging to the console.  A summary report is also produced, which allows checking summary report operations and content.
 - Sending a SIGUSR1 signal to lanmonitor when running in service mode causes a summary to be generated to the log file.
@@ -19,6 +19,8 @@
 ---
 
 ## Version history
+- 4.0 250907 - New CLI features, refactored lanmonfuncs for improved ssh to remotes handling, incorporated invoke and asyncssh
+- 3.3.2 250706 - cjnfuncs 3.0 dependency
 - 3.3.1 240823 - yum_update_history_plugin added '--cacheonly' to yum command to avoid timeout
 - 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, New freemem_plugin.
 - 3.2.2 240526 - yum_update_history_plugin command match bug fixes.
