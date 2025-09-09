@@ -28,26 +28,25 @@ import time
 import re
 import asyncio
 import threading
-
 import asyncssh
 import invoke
 
-from cjnfuncs.core import logging, ConfigError
+from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue
 import lanmonitor.globvars as globvars
 
 
 # Configs / Constants
-NOTIF_SUBJ =                        "LAN Monitor"
-RTN_PASS =                          0
-RTN_WARNING =                       1
-RTN_FAIL =                          2
-RTN_CRITICAL =                      3
+NOTIF_SUBJ =                                "LAN Monitor"
+RTN_PASS =                                  0
+RTN_WARNING =                               1
+RTN_FAIL =                                  2
+RTN_CRITICAL =                              3
 
-RTNCODE_REMOTE_CONNECTION_DOWN =    250
-RTNCODE_COMMAND_TIMEOUT =           251
-RTNCODE_ERROR =                     252
-RTNCODE_REMOTE_CONNECTION_ERROR =   253
+RTNCODE_REMOTE_CONNECTION_DOWN =            250
+RTNCODE_COMMAND_TIMEOUT =                   251  # << used in pinghost_plugin
+RTNCODE_ERROR =                             252
+RTNCODE_REMOTE_CONNECTION_ERROR =           253  # << used by all plugins
 
 GATEWAY_TIMEOUT_DEFAULT =                   '1.0s'
 
@@ -72,22 +71,23 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     """
     ## cmd_check (cmd, user_host_port, return_type, cmd_timeout, check_line_text=None, expected_text=None, not_text=None) - Runs the cmd and operates on the response based on return_type
 
-    The `cmd` is executed by a call to invoke.run for `local`, or asyncssh.run for remote connections.
+    The `cmd` is executed by a call to invoke.run() for `local`, or asyncssh.run() for remote connections.
     If there is no exception and the executed `cmd` returns an exit code = 0 then cmd_check checks the
-    run response (stdout) per the `return_type` selection.  Finally, a tuple of `(success_status, subprocess.CompletedProcess)`
-    is returned.  
+    run response (stdout) per the `return_type` selection.  
+    Finally, a tuple of `(success_status, subprocess.CompletedProcess)` is returned.  
 
-    The maximum total execution time of a failing local cmd_check call can be as long as:       TODO
-
-        Command_nTries*cmd_timeout + (Command_nTries-1)*Command_retry_interval
-
-    For cmd_check calls on remote systems add the connection time for the maximum total execution time:
-
+    For cmd_check calls on remote hosts the time to establish a remote connection can be as long as below.
+    The remote host connection is made once and reused indefinitely, with keepalive managed by asyncssh.
+    If the connection is lost it will automatically be restablished on the next cmd_check call for the specific host.
         Connection_nTries*Connection_timeout + (Connection_nTries-1)*Connection_retry_interval
 
+    The maximum total execution time of a failing cmd_check call can be as long as:
+        Command_nTries*cmd_timeout + (Command_nTries-1)*Command_retry_interval
+
+
     ### Args
-    `cmd`  (str or list)
-    - Command to be passed to invoke.run or asyncssh.run in list (eg: ['echo', 'hello']) or str (eg: 'echo hello') form
+    `cmd`  (str)
+    - Command to be passed to invoke.run() or asyncssh.run() in str form (eg: 'echo hello')
     - The `cmd` may use `~` user home expansion and `?` and `*` wildcard expansion for paths
     - The `cmd` may also use `|` pipes and `>` redirection
     - The `cmd` execution must have a passing (0) exit code or it will be retried and result in a 
@@ -95,7 +95,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
     `user_host_port`  (str)
     - Target machine to execute `cmd` on, eg: 'me@testhost2:2222'.  The port number is optional (default 22).
-    - `local` indicates run `cmd` on the local machine as the current user using invoke.run
+    - `local` indicates run `cmd` on the local machine as the current user using invoke.run()
 
     `cmd_timeout`  (float, value in seconds)
     - timeout value used when executing `cmd`
@@ -121,41 +121,39 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - Text that must NOT be found in the `check_line_text` (or all of `CompletedProcess.stdout`)
     
 
-    ### cfg dictionary params
-
+    ### cfg dictionary params - Defined per remote host:
     `Connection_timeout` (int, float, or timevalue, default 2.0s)
-    - Timeout used for asyncssh connections to remote hosts
+    - Timeout used for asyncssh connections to the remote host
 
     `Connection_nTries` (int, default 2)
-    - Maximum number of attempts to open an asyncssh connection to `user_host_port`
+    - Maximum number of attempts to open an asyncssh connection to the remote host
 
     `Connection_retry_interval` (int, float, or timevalue, default 0.5s)
     - Wait time between remote host `Connection_nTries`
 
     `Connection_keepalive_interval` (int, float, or timevalue, default 60s)
-    - Keepalive ping interval used by asyncssh
+    - Keepalive ping interval used by asyncssh for the connected remote host
 
     `Connection_keepalive_count_max` (int, default 3)
     - The remote ssh connection is dropped after this number of failed keepalive pings
 
     `Connection_command_max_timeouts` (int, default 4)
-    - Once reaching this number of consecutive timeouts on a remote connection, possibly
-    over successive calls to cmd_check, the remote connection is closed, thus forcing
+    - Once reaching this number of consecutive timeouts on a remote connection - possibly
+    over successive calls to cmd_check - the remote connection is closed, thus forcing
     an attempted reconnect on the next call.
-    - Not used for local connections
 
     `Command_nTries` (int, default 2)
-    - Maximum number of attempts to run `cmd`
+    - Maximum number of attempts to run `cmd` on the local or remote connection
     - (Note that the `cmd_timeout` is passed in on each call to cmd_check)
 
     `Command_retry_interval` (int, float, or timevalue, default 0.5s)
-    - Wait time between `Command_nTries`
+    - Wait time between `Command_nTries` on the local or remote connection
 
 
     ### Returns
     - 2-tuple of `(success_status, subprocess.CompletedProcess())`
       - `success_status` values:
-        - `RTN_PASS` ** (0) - the `cmd` run exited with its exit code = 0.  If `return_type`='check_string' then the checks also pass.  
+        - `RTN_PASS` ** (0) - the `cmd` run exited with its exit code = 0.  If `return_type`='check_string' then the checks must also pass.  
         Any `cmd` output is in `stdout`.
         - `RTN_WARNING` (1) - only for execution on a remote host, indicates an initial asyncssh connection failure or exceeding
         `Connection_command_max_timeouts` (potentially a connection problem) and thus triggering the connection to be closed.
@@ -164,17 +162,19 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         `stderr` contains the failure data.  Command execution timeouts result as RTN_FAIL.
 
       - If `return_type` = 'check_string':  `success_status` = 'RTN_PASS' if the `cmd` stdout response contains the `expected_text` and
-      not the `not_text` (response line qualified by `check_line_text`), else `success_status` = 'RTN_FAIL'.
+      not the `not_text` (response line qualified by `check_line_text`), else `success_status` = 'RTN_FAIL'.  The initial `cmd` run exit code 
+      may be non-zero, but the string checks are executed only on stdout.
 
       - The returned `CompletedProcess` structure contains these fields:
         - `args` - the command string executed
         - `returncode` - integer command execution status
             - 0:  `cmd` executed successfully
             - \>0: `cmd`-specific error exit code
-            - `RTNCODE_REMOTE_CONNECTION_DOWN` ** (250): Max consecutive command execution timeouts reached, or keepalive failure   TODO
-            - `RTNCODE_COMMAND_TIMEOUT` (251): Timeout during `cmd` execution 
-            - `RTNCODE_ERROR` (252): General exception
-            - `RTNCODE_REMOTE_CONNECTION_ERROR` (253): Other connection failures to a remote host
+            - `RTNCODE_REMOTE_CONNECTION_DOWN` ** (250): Failure of an established remote connection: Max consecutive command execution timeouts reached, or keepalive failure. 
+            Also failure to connect to a known remote host.
+            - `RTNCODE_COMMAND_TIMEOUT` (251): Timeout during `cmd` execution (not reaching Connection_command_max_timeouts limit)
+            - `RTNCODE_ERROR` (252): Failure establishing a remote connection - PermissionDenied, ConnectionRefusedError, ...
+            - `RTNCODE_REMOTE_CONNECTION_ERROR` (253): Failure establishing a remote connection - gaierror
         - `stdout` - holds any text returned from a passing `cmd` execution
         - `stderr` - holds any info on `cmd` execution errors and exceptions.  '\\n's are replaced with ' '.
       - ** Import these constant names from lanmonfuncs
@@ -270,7 +270,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             xx =  f"        Connection timeout   <{connection_timeout}s>, nTries <{connection_nTries}>, Retry interval <{connection_retry_interval}s>\n"
             xx += f"        Connection keepalive <{connection_keepalive_interval}s>, max count <{connection_keepalive_count_max}>\n"
             xx += f"        Command nTries       <{command_ntries}>, Retry interval <{command_retry_interval}s>, Max consecutive timeouts <{connection_command_max_timeouts}>"
-        logging.warning (f"Connection (re)established:  <{uhp}>\n{xx}")
+        logging.debug (f"Connection (re)established:  <{uhp}>\n{xx}")
 
 
     # Run the command, with retries
@@ -317,28 +317,25 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                     stderr=         run_try.stderr.strip().replace('\n',' '))
 
             except TimeoutError as e:
+                # Raised in run_command() when command execution time exceeds cmd_timeout
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
-                # error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_COMMAND_TIMEOUT, stdout='', stderr=error_msg)
-                # logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
-                logging.warning(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
+                logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 continue
 
             except ConnectionError as e:
-                # Raised in run_command() on excessive command timeouts, or connection not defined (should not happen)
+                # Raised in run_command() on excessive command timeouts, or connection lost/keepalive fail/...
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
-                # error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_DOWN, stdout='', stderr=error_msg)
-                # logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
-                logging.warning(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
+                logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 return (RTN_WARNING, run_result)
 
             except Exception as e:
+                # Raised in run_command() - catchall
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
-                # error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg)
-                # logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 logging.warning(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
+                # logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
                 continue
 
@@ -460,22 +457,22 @@ def split_user_host_port(u_h_p):
 
 class ConnectionsManager:
     """
-    host_connections is the single instance of this class.
-    All established local and remote/ssh connections are stored in the host_connections.connections dictionary.
-    local commands are executed by the invoke.run() call in cmd_check.
-    Remote commands are executed by 
-    Each connection is a dictionary with these keys:
+    `host_connections` is the single instance of this class.
+    All established local and remote/ssh connections are stored in the `host_connections.connections`
+    dictionary of connection dictionaries.
+    Local commands are executed by the invoke.run() call in cmd_check, while remote commands are 
+    executed by asyncssh using run_command in this class.
 
-    For the uhp == 'local' connection, these keys are created:
-        'ssh_conn'                          None (not used for local connections)
-        'command_ntries'
-        'command_retry_interval'
+    For the local connection the uhp key = 'local', and these keys are created:
+        'ssh_conn' = None                   Not used for local connections
+        'command_ntries'                    Local-specific command nTries
+        'command_retry_interval'            Local-specific command retry interval
 
-    For remote connections the uhp will be a fully formed 'user@host:port' string and used as the connection key,
-    and is a dictionary with these keys:
-        'ssh_conn'                          as returned by asyncssh.connect()
-        'command_ntries'                    
-        'command_retry_interval'
+    For remote connections the uhp key is a fully formed 'user@host:port' string which maps to a 
+    dictionary with these keys:
+        'ssh_conn'                          Returned by asyncssh.connect()
+        'command_ntries'                    Connection-specific command nTries
+        'command_retry_interval'            Connection-specific command retry interval
         'connection_command_max_timeouts'   The connection is dropped if this timeout count is reached
         'consecutive_command_timeouts'      incremented on each command timeout, reset to 0 on command success
         'connection_env'                               
@@ -506,9 +503,14 @@ class ConnectionsManager:
                               connection_timeout, connection_nTries, connection_retry_interval,
                               connection_keepalive_interval, connection_keepalive_count_max,
                               password):
-        # Adds new uhp connection to self.connections dict
+        # Adds new uhp connection to the self.connections dict
         # Allows a new_connection call if already exists, but ignores it
-        # Returns nothing.  
+        # Raises
+        #   asyncio.TimeoutError - Occurs if connection attempt times out
+        #   asyncssh.Error       - Occurs if any asyncssh errors
+        #   OSError              - Occurs if any TCP socket level errors (no route to host, refused, DNS...)
+        # All other exceptions are passed up
+
         conn = self.connections.get(uhp)
 
         if not conn:        #  if connection doesn't exist
@@ -528,23 +530,27 @@ class ConnectionsManager:
                     break
                     
                 except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:
-                    # asyncio.TimeoutError - Occurs if connection attempt times out
-                    # asyncssh.Error       - Occurs if...
-                    # OSError              - Occurs if...
                     logging.debug (f"Connection attempt {_try} to <{uhp}> FAILED:  {type(e).__name__}: {e}")
                     if _try < connection_nTries:
                         await asyncio.sleep(connection_retry_interval)
                         continue
                     raise ConnectionError(f"Connection to <{uhp}> FAILED after {connection_nTries} attempts __*****__{type(e).__name__}: {e}")
                 
-                # TODO catchall exception needed - all other exceptions are passed up
-
 
     def run_command(self, command, uhp, command_timeout):
         return self.run_coroutine(self._run_command(command, uhp, command_timeout))
 
 
     async def _run_command(self, command, uhp, command_timeout):
+        # Returns
+        #   command execution result with stdout / stderr
+        # Raises
+        #   TimeoutError    if command run timed out, but not reached consecutive timeouts limit
+        #   ConnectionError if:
+        #                   excessive number of timeouts (checked in this code)
+        #                   ChannelOpenError
+        #                   ConnectionLost (keepalve closed the channel)
+        # All other exceptions are passed up
         conn = self.connections.get(uhp)
         if not conn:
             raise ConnectionError(f"__*****__Connection to <{uhp}> not established")    # This should not happen
@@ -559,7 +565,7 @@ class ConnectionsManager:
         except asyncio.TimeoutError as e:
             error_msg = f"Command execution error on <{uhp}>:  __*****__{type(e).__name__}: {e}"
             conn['consecutive_command_timeouts'] += 1
-            logging.warning (f"consecutive_command_timeouts <{uhp}>: {conn['consecutive_command_timeouts']}")  # TODO debug
+            logging.debug (f"consecutive_command_timeouts <{uhp}>: {conn['consecutive_command_timeouts']}")
             if conn['consecutive_command_timeouts'] == conn['connection_command_max_timeouts']:
                 await self._close_connection(ssh_conn)
                 del self.connections[uhp]
@@ -567,14 +573,9 @@ class ConnectionsManager:
                 raise ConnectionError(error_msg)
             raise TimeoutError(error_msg)
         
-        # except (asyncssh.ConnectionLost, asyncssh.ChannelOpenError) as e:
-        except asyncssh.ChannelOpenError as e:
-            # asyncssh.ChannelOpenError - Occurs if the channel keepalive fails
+        except (asyncssh.ConnectionLost, asyncssh.ChannelOpenError) as e:
             del self.connections[uhp]
             raise ConnectionError(f"Command execution error on <{uhp}> - ConnectionLost:   __*****__{type(e).__name__}: {e}")
-
-        # Any other exceptions are passed up
-        # except (asyncio.TimeoutError, asyncssh.Error, OSError) as e:      # TODO only seeing asyncio.TimeoutError
 
 
     def close (self, uhp='all'):

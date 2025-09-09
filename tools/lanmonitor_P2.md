@@ -140,11 +140,12 @@ $ lanmonitor --verbose
    `Connection_nTries` | 2 | Max number of attempts to establish a connection to the remote host
    `Connection_retry_interval` | 0.5s | Time to wait between connection attempts to the remote host
    `Connection_keepalive_interval` | 60s | Interval between keepalive pings to the remote host
-   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive pings to the remote host all fail
+   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive pings to the remote host all fail **
    `Command_max_consecutive_timeouts` | 4 | The connection is closed if these number consecutive command executions on the remote host all time out
    `Command_nTries` | 2 | Max number of attempts to execute a command on the local or remote host
    `Command_retry_interval` | 0.5s | Time to wait between command execution attempts on the local or remote host
 
+   ** Note that a keepalive connection failure is not logged until the next attempt to run a monitor item what tries to access the remote host.
 
 <br/>
 

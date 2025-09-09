@@ -138,8 +138,9 @@ def service():
             logging.error(f"Error when loading config file.  Aborting.\n  {type(e).__name__}: {e}")
             sys.exit(1)     # TODO cleanup
 
-        if not globvars.args.service:               # In service mode, logging level is set from config file
-            set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)
+        if globvars.args.verbose is not None:
+        # if not globvars.args.service:               # In service mode, logging level is set from config file
+            set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)   # TODO allow cli log level setting in service mode?
 
 
         if first:
@@ -151,7 +152,7 @@ def service():
 
         if reloaded == 1:
             if not first:
-                logging.warning(f"NOTE - The config file has been reloaded")
+                logging.warning(f"The config file has been reloaded")
             
                 cleanup()
                 # lanmonfuncs.host_connections.closeall()

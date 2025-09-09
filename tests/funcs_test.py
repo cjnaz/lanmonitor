@@ -182,6 +182,18 @@ if check_tnum('1b'):
             cmd= "ping -c 1 testhost", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
+if check_tnum('1c'):
+    dotest ("User '~' expansiion and '*' wildcard",
+            "RTN_PASS - returncode=0, stdout=ls results",
+            cmd= "ls ~me/.bash*", user_host_port='local', cmd_timeout= 1,
+            return_type='cmdrun')
+
+if check_tnum('1d'):
+    dotest ("Pipe example",
+            "RTN_PASS - returncode=0, stdout='hello 1 2 3'",
+            cmd= 'echo -e "hello 1 2 3\\nLine 2" | grep hello', user_host_port='local', cmd_timeout= 1,
+            return_type='cmdrun')
+
 
 # Basic Fail checks run locally
 if check_tnum('2a'):
@@ -235,7 +247,7 @@ if check_tnum('3a'):
             cmd= "echo Hello!", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
-    print (f"is_connected(me@testhost2:22):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
+    print (f"is_connected('me@testhost2:22'):  {lanmonfuncs.host_connections.is_connected('me@testhost2:22')}")
 
 if check_tnum('3b'):
     dotest ("ping known from known remote",
@@ -243,15 +255,22 @@ if check_tnum('3b'):
             cmd= "ping -c 1 testhost", user_host_port='me@testhost2', cmd_timeout= 1,
             return_type='cmdrun')
 
+if check_tnum('3c'):
+    dotest ("User '~' expansiion and '*' wildcard",
+            "RTN_PASS - returncode=0, stdout=ls results",
+            cmd= "ls ~me/.bash*", user_host_port='me@testhost2', cmd_timeout= 1,
+            return_type='cmdrun')
+
+if check_tnum('3d'):
+    dotest ("Pipe example",
+            "RTN_PASS - returncode=0, stdout='hello 1 2 3'",
+            cmd= 'echo -e "hello 1 2 3\\nLine 2" | grep hello', user_host_port='me@testhost2', cmd_timeout= 1,
+            return_type='cmdrun')
+
+
 
 # Basic Fail checks run remotely
 if check_tnum('4a'):
-    # Varies between 252 and 253 ???, including:
-    # RETURNED:   RTN_WARNING, returncode=252, stderr='Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts: TimeoutError: '
-
-    # ??? RETURNED:   RTN_WARNING - CompletedProcess(... returncode=252, ... stderr='Host <me@testhostx> connection failed:  TimeoutError: timed out')
-    # ??? RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  timeout: timed out')
-    # ??? RETURNED:   RTN_FAIL    - CompletedProcess(... returncode=253, ... stderr='Host <me@testhostx> connection failed:  NoValidConnectionsError: [Errno None] Unable to connect to port 22 on ...')
     dotest ("echo on known unavailable host",
             "RTN_WARNING - returncode=250, stderr=...ConnectionError / TimeoutError",
             cmd= "echo Hello!", user_host_port='testhostx', cmd_timeout= 1,
@@ -426,7 +445,7 @@ if check_tnum('6g'):
 # Checks for connection defined by host section in config
 if check_tnum('7a'):
     dotest ("No host section in config",
-            "RAISED - cjnfuncs.core.ConfigError: Host section <bad host def X> not in config.",
+            "RTN_WARNING, returncode=252, stderr=Host section <bad host def X> not in config",
             cmd= "echo Hello", user_host_port='bad host def X', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -447,7 +466,7 @@ if check_tnum('7d'):
     globvars.config.cfg['bad host def']['hostname'] = 'xyz'
     globvars.config.cfg['bad host def']['username'] = 'xyz'
     dotest ("hostname and username defined in config host section, hostname unknown",
-            "RTN_FAIL - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname",
+            "RTN_FAIL - returncode=253, Exception while connecting to xyz@xyz:22: ConnectionError/giaerror ... No address associated with hostname",
             cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -472,7 +491,7 @@ if check_tnum('7f'):
 if check_tnum('8a'):
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:220
     dotest ("Check command timeout logic",
-            "RTN_WARNING - returncode=250, ... ConnectionError: ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
 
@@ -534,9 +553,9 @@ if check_tnum('8h'):
 
 # Dropped / recovered network test
 # - Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.
-# - On testhost network down there will be 4 attempts to run cmd resulting in  RTN_FAIL retruncode=254 TimeoutError,
+# - On testhost network down there will be 4 attempts to run cmd resulting in RTN_FAIL retruncode=251 TimeoutError,
 #   then the network connection to testhost will be closed.
-# - Further connection attempts with testhost network down result in RTN_WARNING returncode=252 ConnectionError/TimeoutError
+# - Further connection attempts with testhost network down result in RTN_WARNING returncode=250 ConnectionError/TimeoutError
 # - Once testhost network is back up the connection will be reestablished and return to RTN_PASS returncode=0 Hello!!
 
 tnum = '20'

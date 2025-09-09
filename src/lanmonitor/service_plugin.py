@@ -35,7 +35,7 @@ __version__ = "3.5"
 import datetime
 import lanmonitor.globvars as globvars
 from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
-from cjnfuncs.core import logging
+from cjnfuncs.core import logging, periodic_log
 
 # Configs / Constants
 
@@ -80,7 +80,6 @@ class monitor:
         self.service_name   = item['rest_of_line'].strip()
 
         # Identify the system manager type - expecting 'systemd' or 'init'
-        # psp1_rslt = cmd_check(['ps', '-p1'], user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         psp1_rslt = cmd_check('ps -p1', user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         logging.debug (f"cmd_check returned:  {psp1_rslt}")
 
@@ -92,8 +91,10 @@ class monitor:
             return RTN_FAIL
 
         if psp1_rslt[0] != RTN_PASS:
-            error_msg = psp1_rslt[1].stderr.split('__*****__')[1]
-            logging.error (f"  WARNING:  <{self.key}> - {self.host} - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed) - {error_msg}")
+            error_msg = 'COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)'
+            if '__*****__' in psp1_rslt[1].stderr:
+                error_msg += ' - ' + psp1_rslt[1].stderr.split('__*****__')[1]
+            periodic_log (f"  WARNING:  <{self.key}> - {self.host} - {error_msg}", category=self.key, log_interval='1h', log_level=logging.WARNING)
             return RTN_WARNING
 
         if 'systemd' in psp1_rslt[1].stdout:
