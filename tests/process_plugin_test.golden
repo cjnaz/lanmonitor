@@ -4,6 +4,8 @@ Test 1 - Local process - OK --------------------------------------------------
   {'key': 'Process_local_pass', 'tag': 'local_pass', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '/usr/sbin/sshd   '}
                 process_plugin_test.dotest               -    DEBUG:  Process_local_pass - setup() returned:  0
                      process_plugin.eval_status          -    DEBUG:  Process_local_pass - lanmonitor.process_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
+        Command nTries       <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ps -Af>
                      process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ps -Af', returncode: 0, stdout: 'UID        PID  PPID  C STIME TTY          TIME CM...', stderr: '')
                 process_plugin_test.dotest               -    DEBUG:  Process_local_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Process_local_pass', 'message': 'Process_local_pass  OK - local - /usr/sbin/sshd'}
@@ -14,7 +16,10 @@ Test 2 - Remote process - OK --------------------------------------------------
                 process_plugin_test.dotest               -    DEBUG:  Process_remote_pass - setup() returned:  0
                      process_plugin.eval_status          -    DEBUG:  Process_remote_pass - lanmonitor.process_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ps -Af>
                      process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ps -Af', returncode: 0, stdout: 'UID        PID  PPID  C STIME TTY          TIME CM...', stderr: '')
                 process_plugin_test.dotest               -    DEBUG:  Process_remote_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Process_remote_pass', 'message': 'Process_remote_pass  OK - testhost2 - /usr/sbin/sshd'}
@@ -36,8 +41,8 @@ Test 4 - No such host - FAIL --------------------------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known
-                     process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ps -Af', returncode: 253, stdout: '...', stderr: 'Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known')
-                process_plugin_test.dotest               -    DEBUG:  Process_unknown_host - eval_status() returned:  {'rslt': 2, 'notif_key': 'Process_unknown_host', 'message': '  FAIL: Process_unknown_host - nosuchhost - COULD NOT CONNECT TO EXECUTION HOST - gaierror: [Errno -2] Name or service not known'}
+                     process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'ps -Af', returncode: 252, stdout: '...', stderr: 'Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known')
+                process_plugin_test.dotest               -    DEBUG:  Process_unknown_host - eval_status() returned:  {'rslt': 2, 'notif_key': 'Process_unknown_host', 'message': '  FAIL: Process_unknown_host - nosuchhost - PROCESS </usr/bin/XXX> IS NOT RUNNING - gaierror: [Errno -2] Name or service not known'}
 
 Test 5 - Known host, unavailable - WARNING --------------------------------------------------
                      process_plugin.setup                -    DEBUG:  Process_unavailable_host - lanmonitor.process_plugin.setup() called:
@@ -47,5 +52,5 @@ Test 5 - Known host, unavailable - WARNING -------------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
-                     process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (1, (args: 'ps -Af', returncode: 250, stdout: '...', stderr: 'Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)')
+                     process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (1, (args: 'ps -Af', returncode: 253, stdout: '...', stderr: 'Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)')
                 process_plugin_test.dotest               -    DEBUG:  Process_unavailable_host - eval_status() returned:  {'rslt': 1, 'notif_key': 'Process_unavailable_host', 'message': "  WARNING: Process_unavailable_host - testhostX - COULD NOT CONNECT TO EXECUTION HOST - OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}

@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "4.0b3"
+version = "4.0b4"
+    # 4.0b4 - --print-log switch accepts count, ServiceLoopTime default, lanmonfuncs logic final, plugins and tests updated, docs updated
     # 4.0b3 - cleanup
     # 4.0b2 - connection fail debug, doc work, cleanup
     # 4.0b1 - stuff to do

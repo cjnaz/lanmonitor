@@ -1,28 +1,28 @@
 
 Test 1 - Service local - OK --------------------------------------------------
                      service_plugin.setup                -    DEBUG:  Service_local - lanmonitor.service_plugin.setup() called:
-  {'key': 'Service_local', 'tag': 'local', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '   sshd'}
-                        lanmonfuncs.cmd_check            -  WARNING:  Connection (re)established:  <local>
+  {'key': 'Service_local', 'tag': 'local', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '   sshd'}
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
         Command nTries       <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ps -p1>
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n      1 ?        00:28:39 systemd', stderr=''))
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:20 systemd', stderr=''))
                      service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
                 service_plugin_test.dotest               -    DEBUG:  Service_local - setup() returned:  0
                      service_plugin.eval_status          -    DEBUG:  Service_local - lanmonitor.service_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <systemctl status sshd>
-                     service_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'systemctl status sshd', returncode: 0, stdout: '● sshd.service - OpenSSH ...', stderr: '')
+                     service_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'systemctl status sshd', returncode: 0, stdout: '● ssh.service - OpenBSD S...', stderr: '')
                 service_plugin_test.dotest               -    DEBUG:  Service_local - eval_status() returned:  {'rslt': 0, 'notif_key': 'Service_local', 'message': 'Service_local  OK - local - sshd'}
 
 Test 2 - Service remote - OK --------------------------------------------------
                      service_plugin.setup                -    DEBUG:  Service_remote - lanmonitor.service_plugin.setup() called:
-  {'key': 'Service_remote', 'tag': 'remote', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'sshd   '}
+  {'key': 'Service_remote', 'tag': 'remote', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'sshd   '}
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs.cmd_check            -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
         Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
         Connection keepalive <60.0s>, max count <3>
         Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ps -p1>
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:10 systemd', stderr=''))
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:13 systemd', stderr=''))
                      service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
                 service_plugin_test.dotest               -    DEBUG:  Service_remote - setup() returned:  0
                      service_plugin.eval_status          -    DEBUG:  Service_remote - lanmonitor.service_plugin.eval_status() called
@@ -32,9 +32,9 @@ Test 2 - Service remote - OK --------------------------------------------------
 
 Test 3 - Service local fail - CRITICAL --------------------------------------------------
                      service_plugin.setup                -    DEBUG:  Service_fail - lanmonitor.service_plugin.setup() called:
-  {'key': 'Service_fail', 'tag': 'fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': 'xx'}
+  {'key': 'Service_fail', 'tag': 'fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'xx'}
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ps -p1>
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n      1 ?        00:28:39 systemd', stderr=''))
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:20 systemd', stderr=''))
                      service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
                 service_plugin_test.dotest               -    DEBUG:  Service_fail - setup() returned:  0
                      service_plugin.eval_status          -    DEBUG:  Service_fail - lanmonitor.service_plugin.eval_status() called
@@ -49,16 +49,16 @@ Test 4 - No such host - setup FAIL ---------------------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (2, CompletedProcess(args='ps -p1', returncode=253, stdout='', stderr='Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known'))
-                     service_plugin.setup                -    ERROR:    FAIL:  <Service_Unknown> - nosuchhost - COULD NOT CONNECT TO EXECUTION HOST - gaierror: [Errno -2] Name or service not known
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (2, CompletedProcess(args='ps -p1', returncode=252, stdout='', stderr='Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known'))
+                               core.plog                 -  WARNING:  [PLog-Service_Unknown]   <Service_Unknown> - nosuchhost - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed) - gaierror: [Errno -2] Name or service not known
                 service_plugin_test.dotest               -    DEBUG:  Service_Unknown - setup() returned:  2
 
 Test 5 - Known host, unavailable - setup WARNING --------------------------------------------------
                      service_plugin.setup                -    DEBUG:  Service_Unavailable - lanmonitor.service_plugin.setup() called:
   {'key': 'Service_Unavailable', 'tag': 'Unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'xx'}
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
-                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  TimeoutError: 
-                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__TimeoutError: 
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (1, CompletedProcess(args='ps -p1', returncode=250, stdout='', stderr='Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__TimeoutError: '))
-                               core.plog                 -  WARNING:  [PLog-Service_Unavailable]   WARNING:  <Service_Unavailable> - testhostX - COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed) - TimeoutError: 
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (1, CompletedProcess(args='ps -p1', returncode=253, stdout='', stderr="Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"))
+                               core.plog                 -  WARNING:  [PLog-Service_Unavailable]   <Service_Unavailable> - testhostX - COULD NOT CONNECT TO EXECUTION HOST - OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
                 service_plugin_test.dotest               -    DEBUG:  Service_Unavailable - setup() returned:  1

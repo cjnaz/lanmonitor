@@ -40,7 +40,7 @@ __version__ = "3.5"
 
 import datetime
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_CONNECT_ATTEMPT_FAILED, cmd_check
 from cjnfuncs.core import logging
 
 # Configs / Constants
@@ -119,7 +119,7 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         # cmd_check RTN_FAIL case
-        if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+        if rslt[1].returncode == RTNCODE_CONNECT_ATTEMPT_FAILED:
             error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
         else:
             error_msg = f"WEBPAGE <{self.url}> NOT AS EXPECTED"

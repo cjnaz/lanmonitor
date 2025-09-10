@@ -37,17 +37,12 @@ cfg = """
 Connection_timeout =            1.5s
 Connection_nTries =             2
 Connection_retry_interval =     0.4s
+# Connection_keepalive_interval = 60s
+# Connection_keepalive_count_max= 3
 
-# Command_timeout =               1.0s
 Command_nTries =                2
 Command_retry_interval =        0.2s
-Command_max_consecutive_timeouts =  4
-
-[local]
-hostname =                      localhost
-username =                      me
-port =                          22
-#env =                          {'LC_123': 'This is a test'}    # TODO add env test
+Connection_command_max_timeouts =  4
 
 [testhost]
 hostname =                      testhost
@@ -58,7 +53,7 @@ port =                          22
 hostname =                      testhost2
 username =                      me
 port =                          22
-Command_max_consecutive_timeouts = 1
+Connection_command_max_timeouts = 1
 
 [testhostx]
 hostname =                      testhostx
@@ -83,15 +78,17 @@ Connection_nTries =             11
 Connection_retry_interval =     12s
 Command_nTries =                13
 Command_retry_interval          14.2s
-Command_max_consecutive_timeouts 15
+Connection_command_max_timeouts 15
+Connection_keepalive_interval = 16
+Connection_keepalive_count_max= 17
 env = {'xyz': 'wyz'}
 
 [Test 8]
 hostname =                      testhost2
 username =                      me
-Command_nTries =                3
+Command_nTries =                2
 Command_retry_interval          0s
-Command_max_consecutive_timeouts 2
+Connection_command_max_timeouts 2
 
 [Test 20]
 hostname =                      testhost
@@ -104,7 +101,7 @@ Connection_retry_interval =     0.4s
 Command_timeout =               1.0s
 Command_nTries =                2
 Command_retry_interval =        0.2s
-Command_max_consecutive_timeouts =  4
+Connection_command_max_timeouts =  4
 
 [Test 21]
 hostname =                      testhost
@@ -113,15 +110,13 @@ username =                      me
 Connection_timeout =            1.5s
 Connection_nTries =             2
 Connection_retry_interval =     0.4s
-
 Connection_keepalive_interval = 1s
 Connection_keepalive_count_max= 2
-
 
 Command_timeout =               10s
 Command_nTries =                2
 Command_retry_interval =        0.2s
-Command_max_consecutive_timeouts =  4
+Connection_command_max_timeouts =  4
 
 """
 
@@ -204,7 +199,7 @@ if check_tnum('2a'):
 
 if check_tnum('2b'):
     dotest ("Cmd times out",
-            "RTN_FAIL - timeout, returncode=251, stderr=TimeoutError",
+            "RTN_FAIL - timeout, returncode=251, stderr=CommandTimedOut",
             cmd= "sleep 2", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -228,7 +223,7 @@ if check_tnum('2e'):
 
 if check_tnum('2f'):
     dotest ("ping known unavailable host, short timeout",
-            "RTN_FAIL - returncode=251, stderr=TimeoutError",
+            "RTN_FAIL - returncode=251, stderr=CommandTimedOut",
             cmd= "ping testhostx", user_host_port='local', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -272,7 +267,7 @@ if check_tnum('3d'):
 # Basic Fail checks run remotely
 if check_tnum('4a'):
     dotest ("echo on known unavailable host",
-            "RTN_WARNING - returncode=250, stderr=...ConnectionError / TimeoutError",
+            "RTN_WARNING - returncode=253, stderr=...ConnectionError / TimeoutError",
             cmd= "echo Hello!", user_host_port='testhostx', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections}")
@@ -445,20 +440,20 @@ if check_tnum('6g'):
 # Checks for connection defined by host section in config
 if check_tnum('7a'):
     dotest ("No host section in config",
-            "RTN_WARNING, returncode=252, stderr=Host section <bad host def X> not in config",
+            "RTN_FAIL, returncode=252, stderr=Host section <bad host def X> not in config",
             cmd= "echo Hello", user_host_port='bad host def X', cmd_timeout= 1,
             return_type='cmdrun')
 
 if check_tnum('7b'):
     dotest ("No hostname definition in config host section",
-            "RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.",
+            "RTN_FAIL, returncode=252, stderr=Missing item(s) in host section ... ConfigError: Param <[bad host def] hostname> ...",
             cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
             return_type='cmdrun')
 
 if check_tnum('7c'):
     globvars.config.cfg['bad host def']['hostname'] = 'xyz'
     dotest ("No username definition in config host section",
-            "RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.",
+            "RTN_FAIL, returncode=252, stderr=Missing item(s) in host section ... ConfigError: Param <[bad host def] username> ...",
             cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -466,7 +461,7 @@ if check_tnum('7d'):
     globvars.config.cfg['bad host def']['hostname'] = 'xyz'
     globvars.config.cfg['bad host def']['username'] = 'xyz'
     dotest ("hostname and username defined in config host section, hostname unknown",
-            "RTN_FAIL - returncode=253, Exception while connecting to xyz@xyz:22: ConnectionError/giaerror ... No address associated with hostname",
+            "RTN_FAIL - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError/giaerror ... No address associated with hostname",
             cmd= "echo Hello", user_host_port='bad host def', cmd_timeout= 1,
             return_type='cmdrun')
 
@@ -479,6 +474,7 @@ if check_tnum('7e'):
     logging.info (f"\n{lanmonfuncs.host_connections.connections['me@testhost2:22']}")
 
 if check_tnum('7f'):
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
     dotest ("host section with everything defined",
             "RTN_PASS - returncode=0, stdout=Hello!",
             cmd= "echo Hello", user_host_port='testhost2 define all', cmd_timeout= 1,
@@ -491,16 +487,16 @@ if check_tnum('7f'):
 if check_tnum('8a'):
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:220
     dotest ("Check command timeout logic",
-            "RTN_FAIL - returncode=251, ... ConnectionError: ... TimeoutError:",
+            "RTN_WARNING - returncode=250, ... ConnectionError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
 
 if check_tnum('8b'):
     globvars.config.cfg['Test 8']['Command_nTries'] = 1
-    globvars.config.cfg['Test 8']['Command_max_consecutive_timeouts'] = 2
+    globvars.config.cfg['Test 8']['Connection_command_max_timeouts'] = 2
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
     dotest ("Cause 1st of 2 timeouts",
-            "RTN_FAIL - returncode=251, ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... TimeoutError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
@@ -516,9 +512,9 @@ if check_tnum('8c'):
 if check_tnum('8d'):
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
     globvars.config.cfg['Test 8']['Command_nTries'] = 1
-    globvars.config.cfg['Test 8']['Command_max_consecutive_timeouts'] = 2
+    globvars.config.cfg['Test 8']['Connection_command_max_timeouts'] = 2
     dotest ("Cause 1st timeout",
-            "RTN_FAIL - returncode=251, ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... TimeoutError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
@@ -532,7 +528,7 @@ if check_tnum('8e'):
 
 if check_tnum('8f'):
     dotest ("Cause 1st of 2 timeouts",
-            "RTN_FAIL - returncode=251, ... TimeoutError:",
+            "RTN_FAIL - returncode=251, ... TimeoutError: ... TimeoutError:",
             cmd= "sleep 2", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
@@ -570,9 +566,7 @@ if args.test == tnum:
             user_host_port= 'Test 20',
             cmd_timeout=    1,
             return_type=    'cmdrun')
-        # break
         logging.info (f"Loop {loop_count}, is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
-        # logging.info (f"Loop {loop_count}")
         time.sleep (3)
 
 
@@ -593,13 +587,8 @@ if args.test == tnum:
             user_host_port= 'Test 21',
             cmd_timeout=    1,
             return_type=    'cmdrun')
-        # break
-        # logging.info (f"Loop {loop_count} is_connected: {lanmonfuncs.host_connections.connections['me@testhost:22'].is_connected()}")
         logging.info (f"Loop {loop_count}, is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
-            # lanmonfuncs.is_connected('me@testhost:22')}")
         time.sleep (4)
-        # logging.info (f"Loop {loop_count} is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
-
 
 
 tnum = '50'

@@ -50,11 +50,12 @@ sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      
 
 
 # Configs / Constants
-TOOLNAME =              'lanmonitor'
-CONFIG_FILE =           'lanmonitor.cfg'
-PRINTLOGLENGTH  =       40
-CMD_TIMEOUT =           '1.0s'          # Default value.  May be set in config with Cmd_timeout
-STARTUP_DELAY =         '0s'            # Default value.  May be set in config with StartupDelay
+TOOLNAME =                  'lanmonitor'
+CONFIG_FILE_DEFAULT =       'lanmonitor.cfg'
+PRINT_LOG_LENGTH_DEFAULT =  40
+CMD_TIMEOUT_DEFAULT =       '1.0s'
+STARTUP_DELAY_DEFAULT =     '0s'
+SERVICE_LOOPTIME_DEFAULT=   '10s'
 
 
 
@@ -86,12 +87,13 @@ def main():
                 if key2.startswith(montype_tag):
                     monitor_items_list.append(key2)
 
-    if globvars.config.getcfg('Gateway', False):
-        checked_have_LAN_access = have_LAN_access = False
-    else:
-        checked_have_LAN_access = have_LAN_access = True
+    checked_have_LAN_access = have_LAN_access = False
 
-    # lanmonfuncs.connections() # = lanmonfuncs.connections()
+    # if globvars.config.getcfg('Gateway', False):
+    #     checked_have_LAN_access = have_LAN_access = False
+    # else:
+    #     checked_have_LAN_access = have_LAN_access = True
+
 
     for item in globvars.args.Items:                    # Given CLI Items:  [ 'apt', 'host3' ]
         item = item.lower()
@@ -145,7 +147,7 @@ def service():
 
         if first:
             if globvars.args.service:
-                time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY)).seconds)
+                time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY_DEFAULT)).seconds)
             # lanmonfuncs.host_connections = lanmonfuncs.connections()
             reloaded = 1                            # Force calc of key and host padding lengths
 
@@ -162,7 +164,7 @@ def service():
             set_print_lengths()                     # Set pretty print field widths
 
 
-        # --------------- TOP OF NON-FIRST/RELOAD LOOP ---------------
+        # --------------- TOP OF CHECK LOOP (NON-FIRST/RELOAD) ---------------
 
         # Process each monitor type and item
         monitor_items_list = []                             # Refresh this list on every iteration since some monitor items may have had setup warnings
@@ -173,10 +175,12 @@ def service():
                     if key2.startswith(montype_tag):
                         monitor_items_list.append(key2)
 
-        if globvars.config.getcfg('Gateway', False):
-            checked_have_LAN_access = have_LAN_access = False
-        else:
-            checked_have_LAN_access = have_LAN_access = True
+        checked_have_LAN_access = have_LAN_access = False
+
+        # if globvars.config.getcfg('Gateway', False):
+        #     checked_have_LAN_access = have_LAN_access = False
+        # else:
+        #     checked_have_LAN_access = have_LAN_access = True
 
         for mon_item in monitor_items_list:
             run_item(mon_item)
@@ -196,7 +200,7 @@ def service():
             return 0
 
         first = False
-        time.sleep (timevalue(globvars.config.getcfg('ServiceLoopTime')).seconds)
+        time.sleep (timevalue(globvars.config.getcfg('ServiceLoopTime', SERVICE_LOOPTIME_DEFAULT)).seconds)
 
 
 #=====================================================================================
@@ -268,23 +272,6 @@ def run_item(item_key):                                                 # Given 
         global inst_dict
         global checked_have_LAN_access, have_LAN_access
 
-        # # Import monitor plugin if not already imported
-        # plugin_name = 'MonType_' + item_key.split('_', maxsplit=1)[0]   # 'MonType_Host'
-        # try:
-        #     montype_plugin = globvars.config.getcfg(plugin_name)        # 'pinghost_plugin'
-        #     plugin = sys.modules.get(montype_plugin)
-        #     if not plugin:
-        #         montype_plugin_mp = mungePath(montype_plugin)           # Allow for abs or rel path to lanmonitor dir
-        #         montype_plugin_parent = str(montype_plugin_mp.parent)   # montype_plugin_parent == '.' if no path specified
-        #         if montype_plugin_parent != '.'  and  montype_plugin_parent not in sys.path:
-        #             sys.path.append(montype_plugin_parent)
-        #         plugin = __import__(montype_plugin_mp.name)
-        #         logging.debug (f"Imported <{plugin_name}> monitor plugin <{montype_plugin_mp.full_path}>, version <{plugin.__version__}>")
-        # except Exception as e:
-        #     logging.exception (f"Could not find monitor plugin <{plugin_name}>.  Aborting.\n  {type(e).__name__}: {e}")
-        #     sys.exit(1)
-
-
         # Do one-time setup related stuff
         did_setup = False
         if item_key not in inst_dict:
@@ -304,7 +291,7 @@ def run_item(item_key):                                                 # Given 
                     plugin = __import__(montype_plugin_mp.name)
                     logging.debug (f"Imported <{plugin_name}> monitor plugin <{montype_plugin_mp.full_path}>, version <{plugin.__version__}>")
             except Exception as e:
-                logging.exception (f"Could not find monitor plugin <{plugin_name}>.  Aborting.\n  {type(e).__name__}: {e}")
+                logging.error (f"Could not find monitor plugin <{plugin_name}>.  Aborting.\n  {type(e).__name__}: {e}")
                 sys.exit(1)
 
 
@@ -326,21 +313,19 @@ def run_item(item_key):                                                 # Given 
                     # Default settings
                     monline['user_host_port'] =     monline['host'] = 'local'
                     monline['critical'] =           False
-                    monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT)).seconds
+                    monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
 
                     # Optional settings
                     for line_key in item_def:
                         if line_key.lower() == 'u@h:p':
                             uhp = item_def[line_key]
-                            monline['user_host_port'] =  monline['host'] =  uhp
+                            monline['user_host_port'] =     monline['host'] =  uhp
                             if '@' in uhp:
-                                _, monline['host'], _ = lanmonfuncs.split_user_host_port(uhp)
-                            # monline['user_host_port'] = item_def[line_key]
-                            # _, monline['host'], _ = lanmonfuncs.split_user_host_port(item_def[line_key])
+                                _, monline['host'], _ =     lanmonfuncs.split_user_host_port(uhp)
                         elif line_key.lower() == 'critical':
                             monline['critical'] = item_def[line_key]
                         elif line_key.lower() == 'timeout':
-                            monline['cmd_timeout'] = timevalue(item_def[line_key]).seconds
+                            monline['cmd_timeout'] =        timevalue(item_def[line_key]).seconds
                         elif line_key.lower() in ['recheck', 'rol']:
                             pass
                         else:
@@ -359,17 +344,15 @@ def run_item(item_key):                                                 # Given 
 
                     item_def = globvars.config.cfg[item_key].split(maxsplit=1)
                     uhp = item_def[0]
-                    monline['user_host_port'] =  monline['host'] =  uhp
+                    monline['user_host_port'] =     monline['host'] =  uhp
                     if '@' in uhp:
-                        _, monline['host'], _ = lanmonfuncs.split_user_host_port(uhp)
-                    # monline['user_host_port'] =     uhp
-                    # _, monline['host'], _ =         lanmonfuncs.split_user_host_port(uhp)
+                        _, monline['host'], _ =     lanmonfuncs.split_user_host_port(uhp)
                     monline['critical'] =           False
                     yy = item_def[1]
                     if yy.lower().startswith('critical'):
                         monline['critical'] =       True
                         yy = yy.split(maxsplit=1)[1]
-                    monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT)).seconds
+                    monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
                     monline['check_interval'] =     timevalue(yy.split(maxsplit=1)[0]).seconds
                     monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
 
@@ -483,7 +466,6 @@ def int_handler(sig, frame):
         return
     else:
         cleanup()
-        # lanmonfuncs.host_connections.closeall()
         sys.exit(1)
 
 signal.signal(signal.SIGINT,  int_handler)      # Ctrl-C  (2)
@@ -499,12 +481,12 @@ def cli():
     parser = argparse.ArgumentParser(description=__doc__ + __version__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('Items', nargs='*',
                         help=f"Run the individual check item(s) or MonTypes")
-    parser.add_argument('--print-log', '-p', action='store_true',
-                        help=f"Print the tail end of the log file (default last {PRINTLOGLENGTH} lines).")
+    parser.add_argument('--print-log', '-p', nargs='?', const=PRINT_LOG_LENGTH_DEFAULT, type=int,
+                        help=f"Print the tail end of the log file (default last {PRINT_LOG_LENGTH_DEFAULT} lines).")
     parser.add_argument('--verbose', '-v', action='count',
                         help="Display OK items in non-service mode. (-vv for debug logging)")
-    parser.add_argument('--config-file', '-c', type=str, default=CONFIG_FILE,
-                        help=f"Path to the config file (Default <{CONFIG_FILE})> in user/site config directory.")
+    parser.add_argument('--config-file', '-c', type=str, default=CONFIG_FILE_DEFAULT,
+                        help=f"Path to the config file (Default <{CONFIG_FILE_DEFAULT})> in user/site config directory.")
     parser.add_argument('--service', action='store_true',
                         help="Enter endless loop for use as a systemd service.")
     parser.add_argument('--setup-user', action='store_true',
@@ -519,7 +501,7 @@ def cli():
     # Deploy template files
     if globvars.args.setup_user:
         deploy_files([
-            { 'source': CONFIG_FILE,          'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
+            { 'source': CONFIG_FILE_DEFAULT,  'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
             { 'source': 'creds_SMTP',         'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o600},
             { 'source': 'lanmonitor.service', 'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644},
             ])
@@ -527,7 +509,7 @@ def cli():
 
     if globvars.args.setup_site:
         deploy_files([
-            { 'source': CONFIG_FILE,          'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
+            { 'source': CONFIG_FILE_DEFAULT,  'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
             { 'source': 'creds_SMTP',         'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o600},
             { 'source': 'lanmonitor.service', 'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644},
             ])
@@ -554,7 +536,7 @@ def cli():
         try:
             _lf = mungePath(globvars.config.getcfg('LogFile'), core.tool.log_dir_base).full_path
             print (f"Tail of  <{_lf}>:")
-            _xx = collections.deque(_lf.open(), globvars.config.getcfg('PrintLogLength', PRINTLOGLENGTH))
+            _xx = collections.deque(_lf.open(), globvars.args.print_log)
             for line in _xx:
                 print (line, end='')
         except Exception as e:

@@ -39,7 +39,7 @@ __version__ = '3.5'
 import datetime
 import re
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_CONNECT_ATTEMPT_FAILED, cmd_check
 from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue, retime
 
@@ -123,7 +123,7 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         elif rslt[0] == RTN_FAIL:
-            if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+            if rslt[1].returncode == RTNCODE_CONNECT_ATTEMPT_FAILED:
                 error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
             else:
                 error_msg = f'READ FROM DD-WRD ROUTER FAILED'

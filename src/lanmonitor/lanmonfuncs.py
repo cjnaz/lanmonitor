@@ -46,7 +46,8 @@ RTN_CRITICAL =                              3
 RTNCODE_REMOTE_CONNECTION_DOWN =            250
 RTNCODE_COMMAND_TIMEOUT =                   251  # << used in pinghost_plugin
 RTNCODE_ERROR =                             252
-RTNCODE_REMOTE_CONNECTION_ERROR =           253  # << used by all plugins
+RTNCODE_CONNECT_ATTEMPT_FAILED =            253  # << used by all plugins
+
 
 GATEWAY_TIMEOUT_DEFAULT =                   '1.0s'
 
@@ -161,7 +162,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         - `RTN_FAIL` (2) - the `cmd` run exited with exit code > 0, or an exception was raised, or `return_type`='check_string' and checks fail.
         `stderr` contains the failure data.  Command execution timeouts result as RTN_FAIL.
 
-      - If `return_type` = 'check_string':  `success_status` = 'RTN_PASS' if the `cmd` stdout response contains the `expected_text` and
+      - If `return_type` = 'check_string':  `success_status` = 'RTN_PASS' if the `cmd` stdout response contains the `expected_text` and 
       not the `not_text` (response line qualified by `check_line_text`), else `success_status` = 'RTN_FAIL'.  The initial `cmd` run exit code 
       may be non-zero, but the string checks are executed only on stdout.
 
@@ -170,11 +171,10 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         - `returncode` - integer command execution status
             - 0:  `cmd` executed successfully
             - \>0: `cmd`-specific error exit code
-            - `RTNCODE_REMOTE_CONNECTION_DOWN` ** (250): Failure of an established remote connection: Max consecutive command execution timeouts reached, or keepalive failure. 
-            Also failure to connect to a known remote host.
-            - `RTNCODE_COMMAND_TIMEOUT` (251): Timeout during `cmd` execution (not reaching Connection_command_max_timeouts limit)
-            - `RTNCODE_ERROR` (252): Failure establishing a remote connection - PermissionDenied, ConnectionRefusedError, ...
-            - `RTNCODE_REMOTE_CONNECTION_ERROR` (253): Failure establishing a remote connection - gaierror
+            - `RTNCODE_REMOTE_CONNECTION_DOWN` ** (250): Max consecutive command execution timeouts reached, or keepalive failure.  Returned with RTN_WARNING.
+            - `RTNCODE_COMMAND_TIMEOUT` (251): Timeout during `cmd` execution (not reaching the remote host Connection_command_max_timeouts limit).  Returned with RTN_FAIL.
+            - `RTNCODE_ERROR` (252): Failure establishing a remote connection - PermissionDenied, ConnectionRefusedError, giaerror ...  Returned with RTN_FAIL.
+            - `RTNCODE_CONNECT_ATTEMPT_FAILED` (253): Failure to establish a remote connection - ConnectionError, OSError.  Returned with RTN_WARNING.
         - `stdout` - holds any text returned from a passing `cmd` execution
         - `stderr` - holds any info on `cmd` execution errors and exceptions.  '\\n's are replaced with ' '.
       - ** Import these constant names from lanmonfuncs
@@ -182,14 +182,16 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - A ValueError exception is raised if the call to cmd_check has errors, such as invalid `return_type` or `user_host_port`.
 
     ### Behaviors and rules
-    - A typical `cmd` execution timeout exception results in success_status `RTN_FAIL` with `returncode`=`RTNCODE_COMMAND_TIMEOUT`
-    and further details in `stderr`.
+    - A typical `cmd` execution timeout exception results in `success_status = RTN_FAIL` with `returncode = RTNCODE_COMMAND_TIMEOUT`,
+    with further details in `stderr`.
+    - Attempting to connect to a remote host but the hostname cannot be resolved (DNS failure) results in `success_status = RTN_FAIL` 
+    with `returncode = RTNCODE_ERROR`, with further details in `stderr`.
     - If `cmd` is executed on a remote system and the number of consecutive `cmd` execution timeouts reaches the 
-    `Connection_command_max_timeouts` limit then the remote connection is closed, the success_status is `RTN_WARNING`, and 
-    `returncode`=`RTNCODE_REMOTE_CONNECTION_DOWN`, with further details in `stderr`.
-    - Any other exception result in `success_status`=`RTN_FAIL`, `returncode`=`RTNCODE_ERROR`, with further details in `stderr`.
-    - If there are no timeout or other exceptions then `returncode` is the value returned from the `cmd` execution, with results 
-    in `stdout` or `stderr`.
+    `Connection_command_max_timeouts` limit then the remote connection is closed, `success_status = RTN_WARNING` with 
+    `returncode = RTNCODE_REMOTE_CONNECTION_DOWN`, and with further details in `stderr` is returned.
+    - Any other exception results in `success_status = RTN_FAIL`, `returncode = RTNCODE_ERROR`, with further details in `stderr`.
+    - If there are no timeout or other exceptions then `returncode` is the value returned from the `cmd` execution (with `return_type` = 'cmdrun'), with results 
+    in `stdout` or `stderr`.  If `return_type` = 'check_string' the returncode value is from the string match checks.
     """
 
     global host_connections
@@ -207,15 +209,23 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         if '@' in user_host_port:
             user, host, port = split_user_host_port(user_host_port)
             host_section = ''
-        else:   # Hostname only provided - get params from config
+        else:   # Section name provided - get params from config
             host_section = user_host_port
             if host_section not in globvars.config.sections():
                 error_msg = f"__*****__Host section <{host_section}> not in config."
-                return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
+                # return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
+                return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
+                # Or, sys.exit() - Not exiting since this would terminate testing
 
-            host =      globvars.config.getcfg('hostname',       section=host_section)
-            user =      globvars.config.getcfg('username',       section=host_section)
-            port =  str(globvars.config.getcfg('port',     '22', section=host_section))
+            try:
+                host =      globvars.config.getcfg('hostname',       section=host_section)
+                user =      globvars.config.getcfg('username',       section=host_section)
+                port =  str(globvars.config.getcfg('port',     '22', section=host_section))
+            except Exception as e:
+                error_msg = f"__*****__Missing item(s) in host section <{host_section}> - {type(e).__name__}: {e}"
+                return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
+                # logging.error (f"hostname or username not specified in section <{host_section}>.  Aborting.\n  {type(e).__name__}: {e}")
+                # sys.exit(1)
 
         uhp = f"{user}@{host}:{port}"
 
@@ -250,11 +260,17 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             error_msg = f"Exception while connecting to {uhp}: {type(e).__name__} - "  + str(e).replace('\n',' ')
             logging.debug(error_msg)
             # logging.exception(error_msg)
+            # if 'TimeoutError' in error_msg  or  'OSError' in error_msg:
+            #     return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_DOWN, stdout='', stderr=error_msg))
+            # elif 'gaierror' in error_msg:
+            #     return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_CONNECT_ATTEMPT_FAILED, stdout='', stderr=error_msg))
+            # else:
+            #     return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
             if 'TimeoutError' in error_msg  or  'OSError' in error_msg:
-                return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_DOWN, stdout='', stderr=error_msg))
-            elif 'gaierror' in error_msg:
-                return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_ERROR, stdout='', stderr=error_msg))
+                # OSError will occur for a known unavailable host (DNS resolved but no response)
+                return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_CONNECT_ATTEMPT_FAILED, stdout='', stderr=error_msg))
             else:
+                # return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_CONNECT_ATTEMPT_FAILED, stdout='', stderr=error_msg))
                 return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
 
 
@@ -655,19 +671,18 @@ def check_LAN_access(host=None):
 
     ### Returns
     - Returns True if the `host` or config `Gateway` host can be pinged, else False.
+    - If neither config `Gateway` nor called `host` are provided then return True (default to LAN access passes)
     """
 
     ip_or_hostname = globvars.config.getcfg('Gateway', host)
     if not ip_or_hostname:
-        logging.error (f"  ERROR:  PARAMETER 'Gateway' NOT DEFINED IN CONFIG FILE - Aborting.")
-        sys.exit(1)
+        return True
 
     if (IP_RE.match(ip_or_hostname) is None)  and  (HOSTNAME_RE.match(ip_or_hostname) is None):
         logging.error (f"  ERROR:  INVALID IP ADDRESS OR HOSTNAME <{ip_or_hostname}> - Aborting.")
         sys.exit(1)
 
     gateway_timeout = timevalue(globvars.config.getcfg('Gateway_timeout', GATEWAY_TIMEOUT_DEFAULT)).seconds
-    # pingrslt = cmd_check(['ping', '-c', '1', globvars.config.getcfg('Gateway')],
     pingrslt = cmd_check(f'ping -c 1 {globvars.config.getcfg("Gateway")}',
                          cmd_timeout=gateway_timeout, user_host_port='local', return_type='cmdrun')
     if pingrslt[0] == RTN_PASS:

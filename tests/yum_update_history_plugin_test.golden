@@ -4,9 +4,11 @@ Test 1 - YumUpdate pass - OK --------------------------------------------------
   {'key': 'YumUpdate_Pass', 'tag': 'Pass', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 2, 'check_interval': 1, 'rest_of_line': '   90d update  '}
      yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - setup() returned:  0
           yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_Pass - lanmonitor.yum_update_history_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
+        Command nTries       <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <yum history --cacheonly>
           yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'yum history --cacheonly', returncode: 0, stdout: 'Not root, Subscription Management repositories not...', stderr: '')
-     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'YumUpdate_Pass', 'message': 'YumUpdate_Pass  OK - local -   27.5 days  (  90 days  max)'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'YumUpdate_Pass', 'message': 'YumUpdate_Pass  OK - local -   21.3 days  (  90 days  max)'}
 
 Test 2 - YumUpdate too old - CRITICAL --------------------------------------------------
           yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_TooOld - lanmonitor.yum_update_history_plugin.setup() called:
@@ -15,7 +17,7 @@ Test 2 - YumUpdate too old - CRITICAL ------------------------------------------
           yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_TooOld - lanmonitor.yum_update_history_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <yum history --cacheonly>
           yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'yum history --cacheonly', returncode: 0, stdout: 'Not root, Subscription Management repositories not...', stderr: '')
-     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_TooOld', 'message': '  CRITICAL: YumUpdate_TooOld - local - YUM UPDATE TOO LONG AGO - 39592.3 mins  (  10 mins  max)'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_TooOld', 'message': '  CRITICAL: YumUpdate_TooOld - local - YUM UPDATE TOO LONG AGO - 30671.6 mins  (  10 mins  max)'}
 
 Test 3 - Bad definition - setup ERROR --------------------------------------------------
           yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_baddef - lanmonitor.yum_update_history_plugin.setup() called:
@@ -37,7 +39,10 @@ Test 5 - Remote not running yum - Can't get history - CRITICAL -----------------
      yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_remote - setup() returned:  0
           yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_remote - lanmonitor.yum_update_history_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <yum history --cacheonly>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 127):  <__*****__bash: line 1: yum: command not found>
           yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'yum history --cacheonly', returncode: 127, stdout: '...', stderr: '__*****__bash: line 1: yum: command not found')
@@ -60,8 +65,8 @@ Test 7 - No such host - CRITICAL -----------------------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known
-          yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'yum history --cacheonly', returncode: 253, stdout: '...', stderr: 'Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known')
-     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_Unknown', 'message': '  CRITICAL: YumUpdate_Unknown - nosuchhost - COULD NOT CONNECT TO EXECUTION HOST - gaierror: [Errno -2] Name or service not known'}
+          yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'yum history --cacheonly', returncode: 252, stdout: '...', stderr: 'Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known')
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_Unknown', 'message': '  CRITICAL: YumUpdate_Unknown - nosuchhost - COULD NOT GET YUM HISTORY - gaierror: [Errno -2] Name or service not known'}
 
 Test 8 - Known host, unavailable - WARNING --------------------------------------------------
           yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_Unavailable - lanmonitor.yum_update_history_plugin.setup() called:
@@ -71,7 +76,7 @@ Test 8 - Known host, unavailable - WARNING -------------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  TimeoutError: 
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__TimeoutError: 
-          yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (1, (args: 'yum history --cacheonly', returncode: 250, stdout: '...', stderr: 'Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__TimeoutError: ')
+          yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (1, (args: 'yum history --cacheonly', returncode: 253, stdout: '...', stderr: 'Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__TimeoutError: ')
      yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Unavailable - eval_status() returned:  {'rslt': 1, 'notif_key': 'YumUpdate_Unavailable', 'message': '  WARNING: YumUpdate_Unavailable - testhostX - COULD NOT CONNECT TO EXECUTION HOST - TimeoutError: '}
 
 Test 9 - Invalid rest_of_line - setup Error --------------------------------------------------

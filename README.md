@@ -130,17 +130,16 @@ $ lanmonitor --verbose
 
   Config param | Default | Description
   --|--|--
-  `ServiceLoopTime` | | sets how long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
-  `Cmd_timeout` | 1.0s | sets the _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
-  `StartupDelay` | 0s | is a wait time (default 0 seconds) when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
-  `DailyRuntime` | | is the run time for monitored items that run at daily or longer check intervals (optional).  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
-  `Gateway` | | is any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  `Gateway` is optional - if not defined then remote-based checks are always run.
-  `Gateway_timeout` | 1.0s | sets the max time for checking the Gateway for LAN access health
-  `LogLevel` | 30/WARNING | controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
-  `LogFile` | | specifies the log file in --service mode.  The path may be absolute or relative to the script's directory.  Interactive usage (non --service mode) logging goes to the console.
-  `PrintLogLength` | 40 | specifies how many tail lines from the `LogFile` are displayed using `lanmonitor -p`.
+  `ServiceLoopTime` | 10s | How long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
+  `Cmd_timeout` | 1.0s | The _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
+  `StartupDelay` | 0s | The wait time when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
+  `DailyRuntime` | Optional | The run time for monitored items that run at daily or longer check intervals.  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
+  `Gateway` | Optional | Any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  If not defined then remote-based checks are always run.
+  `Gateway_timeout` | 1.0s | The max time for checking the Gateway for LAN access health
+  `LogLevel` | 30/WARNING | Controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
+  `LogFile` | Optional | The log file in --service mode.  The path may be absolute or relative to the default config file directory (eg, ~/.config/lanmonitor). If not specified then --service mode output goes to the console.  For interactive usage (non --service mode) logging goes to the console, overriding any `LogFile` specified in the config file.
 
-   `ConsoleLogFormat`, and `FileLogFormat` may also be customized - see the initial configuration file example.
+   `ConsoleLogFormat`, and `FileLogFormat` may also be customized - see the starter configuration file example.
 
    NOTE that the config file parser accepts either whitespace, '=', or ':' between the param name (the first token on the line) and its value (the remainder of the line).
    
@@ -167,7 +166,7 @@ $ lanmonitor --verbose
       username = me
 
 
-   These parameters may be defined on a per-host basis, or in a `[DEFAULT]` section and optionally overridden per-host.  The Default values apply if the param is not specified in the config file:
+   These parameters may be defined on a per-host section basis, or in a `[DEFAULT]` section and optionally overridden per-host section.  The Default values apply if the param is not specified in the config file:
 
    Config param | Default | Description
    --|--|--
@@ -177,11 +176,12 @@ $ lanmonitor --verbose
    `Connection_nTries` | 2 | Max number of attempts to establish a connection to the remote host
    `Connection_retry_interval` | 0.5s | Time to wait between connection attempts to the remote host
    `Connection_keepalive_interval` | 60s | Interval between keepalive pings to the remote host
-   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive pings to the remote host all fail
+   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive pings to the remote host all fail **
    `Command_max_consecutive_timeouts` | 4 | The connection is closed if these number consecutive command executions on the remote host all time out
    `Command_nTries` | 2 | Max number of attempts to execute a command on the local or remote host
    `Command_retry_interval` | 0.5s | Time to wait between command execution attempts on the local or remote host
 
+   ** Note that a keepalive connection loss is not logged until the next attempt to run a monitor item what tries to access the remote host.
 
 <br/>
 

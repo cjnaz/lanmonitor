@@ -34,7 +34,7 @@ __version__ = "3.5"
 
 import datetime
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_REMOTE_CONNECTION_ERROR, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_CONNECT_ATTEMPT_FAILED, cmd_check
 from cjnfuncs.core import logging, periodic_log
 
 # Configs / Constants
@@ -83,19 +83,20 @@ class monitor:
         psp1_rslt = cmd_check('ps -p1', user_host_port=self.user_host_port, return_type='cmdrun', cmd_timeout=self.cmd_timeout)
         logging.debug (f"cmd_check returned:  {psp1_rslt}")
 
-        if psp1_rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+        if psp1_rslt[1].returncode == RTNCODE_CONNECT_ATTEMPT_FAILED:
             error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
             if '__*****__' in psp1_rslt[1].stderr:
                 error_msg += ' - ' + psp1_rslt[1].stderr.split('__*****__')[1]
-            logging.error (f"  FAIL:  <{self.key}> - {self.host} - {error_msg}")
-            return RTN_FAIL
+            periodic_log (f"  <{self.key}> - {self.host} - {error_msg}", category=self.key, log_interval='1h', log_level=logging.WARNING)
+            # logging.error (f"  FAIL:  <{self.key}> - {self.host} - {error_msg}")
+            return RTN_WARNING
 
         if psp1_rslt[0] != RTN_PASS:
             error_msg = 'COULD NOT READ SYSTEM MANAGER TYPE (ps -p1 run failed)'
             if '__*****__' in psp1_rslt[1].stderr:
                 error_msg += ' - ' + psp1_rslt[1].stderr.split('__*****__')[1]
-            periodic_log (f"  WARNING:  <{self.key}> - {self.host} - {error_msg}", category=self.key, log_interval='1h', log_level=logging.WARNING)
-            return RTN_WARNING
+            periodic_log (f"  <{self.key}> - {self.host} - {error_msg}", category=self.key, log_interval='1h', log_level=logging.WARNING)
+            return RTN_FAIL
 
         if 'systemd' in psp1_rslt[1].stdout:
             logging.debug ("Found system manager type:  systemd")
@@ -142,7 +143,7 @@ class monitor:
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         # cmd_check RTN_FAIL case
-        if rslt[1].returncode == RTNCODE_REMOTE_CONNECTION_ERROR:
+        if rslt[1].returncode == RTNCODE_CONNECT_ATTEMPT_FAILED:
             error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
         else:
             error_msg = f"SERVICE <{self.service_name}> IS NOT RUNNING"

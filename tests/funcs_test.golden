@@ -4,6 +4,8 @@
 Test 1a - A basic function test
   GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
   EXPECT:     RTN_PASS - returncode=0, stdout='Hello!'
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
+        Command nTries       <2>, Retry interval <0.2s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <echo Hello!>
                          funcs_test.dotest               -  WARNING:  
   RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')
@@ -15,7 +17,25 @@ Test 1b - ping known from local
   EXPECT:     RTN_PASS - returncode=0, stdout=PING results
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping -c 1 testhost>
                          funcs_test.dotest               -  WARNING:  
-  RETURNED:   RTN_PASS - CompletedProcess(args='ping -c 1 testhost', returncode=0, stdout='PING testhost.cjn.lan (192.168.15.40) 56(84) bytes of data.\n64 bytes from testhost.cjn.lan (192.168.15.40): icmp_seq=1 ttl=64 time=0.077 ms\n\n--- testhost.cjn.lan ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms\nrtt min/avg/max/mdev = 0.077/0.077/0.077/0.000 ms', stderr='')
+  RETURNED:   RTN_PASS - CompletedProcess(args='ping -c 1 testhost', returncode=0, stdout='PING testhost.cjn.lan (192.168.15.40) 56(84) bytes of data.\n64 bytes from testhost.cjn.lan (192.168.15.40): icmp_seq=1 ttl=64 time=0.061 ms\n\n--- testhost.cjn.lan ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms\nrtt min/avg/max/mdev = 0.061/0.061/0.061/0.000 ms', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1c - User '~' expansiion and '*' wildcard
+  GIVEN:      (), {'cmd': 'ls ~me/.bash*', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=ls results
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ls ~me/.bash*>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='ls ~me/.bash*', returncode=0, stdout='/home/me/.bash_history\n/home/me/.bash_logout\n/home/me/.bashrc', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1d - Pipe example
+  GIVEN:      (), {'cmd': 'echo -e "hello 1 2 3\\nLine 2" | grep hello', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout='hello 1 2 3'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <echo -e "hello 1 2 3\nLine 2" | grep hello>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo -e "hello 1 2 3\\nLine 2" | grep hello', returncode=0, stdout='hello 1 2 3', stderr='')
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -33,7 +53,7 @@ Test 2a - Invalid command switch
 ==============================================================================================
 Test 2b - Cmd times out
   GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_FAIL - timeout, returncode=251, stderr=TimeoutError
+  EXPECT:     RTN_FAIL - timeout, returncode=251, stderr=CommandTimedOut
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <sleep 2>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <__*****__CommandTimedOut: Command did not complete within 1 seconds!  Command: 'sleep 2'  Stdout:    Stderr:    >
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <local>:  <sleep 2>
@@ -78,7 +98,7 @@ Test 2e - ping unknown host
 ==============================================================================================
 Test 2f - ping known unavailable host, short timeout
   GIVEN:      (), {'cmd': 'ping testhostx', 'user_host_port': 'local', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_FAIL - returncode=251, stderr=TimeoutError
+  EXPECT:     RTN_FAIL - returncode=251, stderr=CommandTimedOut
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ping testhostx>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <__*****__CommandTimedOut: Command did not complete within 1 seconds!  Command: 'ping testhostx'  Stdout:    Stderr:    >
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 2 on <local>:  <ping testhostx>
@@ -105,7 +125,10 @@ Test 3a - echo on known available host
   GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
   EXPECT:     RTN_PASS - returncode=0, stdout=Hello!
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <1.5s>, nTries <2>, Retry interval <0.4s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <2>, Retry interval <0.2s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello!>
                          funcs_test.dotest               -  WARNING:  
   RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')
@@ -114,7 +137,7 @@ Current connections:
   <local>
   <me@testhost2:22>
 
-is_connected(me@testhost2:22):  True
+is_connected('me@testhost2:22'):  True
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -123,13 +146,31 @@ Test 3b - ping known from known remote
   EXPECT:     RTN_PASS - returncode=0, stdout=PING results
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ping -c 1 testhost>
                          funcs_test.dotest               -  WARNING:  
-  RETURNED:   RTN_PASS - CompletedProcess(args='ping -c 1 testhost', returncode=0, stdout='PING testhost.cjn.lan (192.168.15.40) 56(84) bytes of data.\n64 bytes from testhost.cjn.lan (192.168.15.40): icmp_seq=1 ttl=64 time=2.06 ms\n\n--- testhost.cjn.lan ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms\nrtt min/avg/max/mdev = 2.060/2.060/2.060/0.000 ms', stderr='')
+  RETURNED:   RTN_PASS - CompletedProcess(args='ping -c 1 testhost', returncode=0, stdout='PING testhost.cjn.lan (192.168.15.40) 56(84) bytes of data.\n64 bytes from testhost.cjn.lan (192.168.15.40): icmp_seq=1 ttl=64 time=6.90 ms\n\n--- testhost.cjn.lan ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms\nrtt min/avg/max/mdev = 6.898/6.898/6.898/0.000 ms', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3c - User '~' expansiion and '*' wildcard
+  GIVEN:      (), {'cmd': 'ls ~me/.bash*', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout=ls results
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ls ~me/.bash*>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='ls ~me/.bash*', returncode=0, stdout='/home/me/.bash_history\n/home/me/.bash_logout\n/home/me/.bashrc', stderr='')
+                         funcs_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3d - Pipe example
+  GIVEN:      (), {'cmd': 'echo -e "hello 1 2 3\\nLine 2" | grep hello', 'user_host_port': 'me@testhost2', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
+  EXPECT:     RTN_PASS - returncode=0, stdout='hello 1 2 3'
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo -e "hello 1 2 3\nLine 2" | grep hello>
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_PASS - CompletedProcess(args='echo -e "hello 1 2 3\\nLine 2" | grep hello', returncode=0, stdout='hello 1 2 3', stderr='')
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
 Test 4a - echo on known unavailable host
   GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'testhostx', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_WARNING - returncode=250, stderr=...ConnectionError / TimeoutError
+  EXPECT:     RTN_WARNING - returncode=253, stderr=...ConnectionError / TimeoutError
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  TimeoutError: 
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <me@testhostx:22>
@@ -138,7 +179,7 @@ Test 4a - echo on known unavailable host
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 3 to <me@testhostx:22> FAILED:  TimeoutError: 
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts __*****__TimeoutError: 
                          funcs_test.dotest               -  WARNING:  
-  RETURNED:   RTN_WARNING - CompletedProcess(args='echo Hello!', returncode=250, stdout='', stderr='Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts __*****__TimeoutError: ')
+  RETURNED:   RTN_WARNING - CompletedProcess(args='echo Hello!', returncode=253, stdout='', stderr='Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 3 attempts __*****__TimeoutError: ')
                          funcs_test.<module>             -     INFO:  
 Current connections:
   <local>
@@ -355,31 +396,31 @@ Test 6g - Neither expected_text nor not_text are given
 ==============================================================================================
 Test 7a - No host section in config
   GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def X', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RAISED - cjnfuncs.core.ConfigError: Host section <bad host def X> not in config.
-                         funcs_test.dotest               -    ERROR:  
-  RAISED:     ConfigError: Host section <bad host def X> not in config.
+  EXPECT:     RTN_FAIL, returncode=252, stderr=Host section <bad host def X> not in config
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='echo Hello', returncode=252, stdout='', stderr='__*****__Host section <bad host def X> not in config.')
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
 Test 7b - No hostname definition in config host section
   GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.
-                         funcs_test.dotest               -    ERROR:  
-  RAISED:     ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.
+  EXPECT:     RTN_FAIL, returncode=252, stderr=Missing item(s) in host section ... ConfigError: Param <[bad host def] hostname> ...
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='echo Hello', returncode=252, stdout='', stderr='__*****__Missing item(s) in host section <bad host def> - ConfigError: Param <[bad host def] hostname> not in <None> and no default or fallback.')
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
 Test 7c - No username definition in config host section
   GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RAISED - cjnfuncs.core.ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.
-                         funcs_test.dotest               -    ERROR:  
-  RAISED:     ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.
+  EXPECT:     RTN_FAIL, returncode=252, stderr=Missing item(s) in host section ... ConfigError: Param <[bad host def] username> ...
+                         funcs_test.dotest               -  WARNING:  
+  RETURNED:   RTN_FAIL - CompletedProcess(args='echo Hello', returncode=252, stdout='', stderr='__*****__Missing item(s) in host section <bad host def> - ConfigError: Param <[bad host def] username> not in <None> and no default or fallback.')
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
 Test 7d - hostname and username defined in config host section, hostname unknown
   GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'bad host def', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_FAIL - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError ... No address associated with hostname
+  EXPECT:     RTN_FAIL - returncode=252, Exception while connecting to xyz@xyz:22: ConnectionError/giaerror ... No address associated with hostname
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <xyz@xyz:22>
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <xyz@xyz:22> FAILED:  gaierror: [Errno -5] No address associated with hostname
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 2 to <xyz@xyz:22>
@@ -394,23 +435,31 @@ Test 7e - host section with minimal defs and defaults
   GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'testhost2 with defaults', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
   EXPECT:     RTN_PASS - returncode=0, stdout=Hello!
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <1.5s>, nTries <2>, Retry interval <0.4s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <2>, Retry interval <0.2s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
                          funcs_test.dotest               -  WARNING:  
   RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr='')
                          funcs_test.<module>             -     INFO:  
-{'ssh_conn': <asyncssh.connection.SSHClientConnection object at 0x747e6c58>, 'command_ntries': 2, 'command_retry_interval': 0.2, 'command_max_consecutive_timeouts': 4, 'env': {}, 'consecutive_command_timeouts': 0}
+{'ssh_conn': <asyncssh.connection.SSHClientConnection object at 0x7487ce20>, 'command_ntries': 2, 'command_retry_interval': 0.2, 'connection_command_max_timeouts': 4, 'connection_env': {}, 'consecutive_command_timeouts': 0}
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
 Test 7f - host section with everything defined
   GIVEN:      (), {'cmd': 'echo Hello', 'user_host_port': 'testhost2 define all', 'cmd_timeout': 1, 'return_type': 'cmdrun'}
   EXPECT:     RTN_PASS - returncode=0, stdout=Hello!
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <10.0s>, nTries <11>, Retry interval <12.0s>
+        Connection keepalive <16.0s>, max count <17>
+        Command nTries       <13>, Retry interval <14.2s>, Max consecutive timeouts <15>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
                          funcs_test.dotest               -  WARNING:  
   RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr='')
                          funcs_test.<module>             -     INFO:  
-{'ssh_conn': <asyncssh.connection.SSHClientConnection object at 0x747e6c58>, 'command_ntries': 2, 'command_retry_interval': 0.2, 'command_max_consecutive_timeouts': 4, 'env': {}, 'consecutive_command_timeouts': 0}
+{'ssh_conn': <asyncssh.connection.SSHClientConnection object at 0x7487c628>, 'command_ntries': 13, 'command_retry_interval': 14.2, 'connection_command_max_timeouts': 15, 'connection_env': {}, 'consecutive_command_timeouts': 0}
                          funcs_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -418,7 +467,10 @@ Test 8a - Check command timeout logic
   GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
   EXPECT:     RTN_WARNING - returncode=250, ... ConnectionError: ... TimeoutError:
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <1.5s>, nTries <2>, Retry interval <0.4s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <2>, Retry interval <0.0s>, Max consecutive timeouts <2>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
                         lanmonfuncs._run_command         -    DEBUG:  consecutive_command_timeouts <me@testhost2:22>: 1
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  __*****__TimeoutError: >
@@ -433,9 +485,12 @@ Test 8a - Check command timeout logic
 ==============================================================================================
 Test 8b - Cause 1st of 2 timeouts
   GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_FAIL - returncode=251, ... TimeoutError:
+  EXPECT:     RTN_FAIL - returncode=251, ... TimeoutError: ... TimeoutError:
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <1.5s>, nTries <2>, Retry interval <0.4s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <2>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
                         lanmonfuncs._run_command         -    DEBUG:  consecutive_command_timeouts <me@testhost2:22>: 1
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  __*****__TimeoutError: >
@@ -461,9 +516,12 @@ is_connected(me@testhost2:22):  False
 ==============================================================================================
 Test 8d - Cause 1st timeout
   GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_FAIL - returncode=251, ... TimeoutError:
+  EXPECT:     RTN_FAIL - returncode=251, ... TimeoutError: ... TimeoutError:
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <1.5s>, nTries <2>, Retry interval <0.4s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <2>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
                         lanmonfuncs._run_command         -    DEBUG:  consecutive_command_timeouts <me@testhost2:22>: 1
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  __*****__TimeoutError: >
@@ -485,7 +543,7 @@ Test 8e - Reset of consecutive_command_timeouts
 ==============================================================================================
 Test 8f - Cause 1st of 2 timeouts
   GIVEN:      (), {'cmd': 'sleep 2', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
-  EXPECT:     RTN_FAIL - returncode=251, ... TimeoutError:
+  EXPECT:     RTN_FAIL - returncode=251, ... TimeoutError: ... TimeoutError:
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <sleep 2>
                         lanmonfuncs._run_command         -    DEBUG:  consecutive_command_timeouts <me@testhost2:22>: 1
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (exception):  <TimeoutError: Command execution error on <me@testhost2:22>:  __*****__TimeoutError: >
@@ -511,7 +569,10 @@ Test 8h - Create new connection
   GIVEN:      (), {'cmd': 'echo Hello!', 'user_host_port': 'Test 8', 'cmd_timeout': 0.5, 'return_type': 'cmdrun'}
   EXPECT:     RTN_PASS - returncode=0, stdout='Hello!'
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
-                        lanmonfuncs._new_connection      -  WARNING:  Connection (re)established:  <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout   <1.5s>, nTries <2>, Retry interval <0.4s>
+        Connection keepalive <60.0s>, max count <3>
+        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <2>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello!>
                          funcs_test.dotest               -  WARNING:  
   RETURNED:   RTN_PASS - CompletedProcess(args='echo Hello!', returncode=0, stdout='Hello!', stderr='')

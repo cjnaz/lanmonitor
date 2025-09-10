@@ -60,13 +60,13 @@ def dotest (tnum, desc, test):
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
 dotest (1, "Service local - OK",
-        {'key':'Service_local', 'tag':'local', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'   sshd'})
+        {'key':'Service_local', 'tag':'local', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'   sshd'})
 
 dotest (2, "Service remote - OK",
-        {'key':'Service_remote', 'tag':'remote', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'sshd   '})
+        {'key':'Service_remote', 'tag':'remote', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'sshd   '})
 
 dotest (3, "Service local fail - CRITICAL",
-        {'key':'Service_fail', 'tag':'fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'xx'})
+        {'key':'Service_fail', 'tag':'fail', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'xx'})
 
 dotest (4, "No such host - setup FAIL",
         {'key':'Service_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'xx'})
