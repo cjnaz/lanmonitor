@@ -7,8 +7,9 @@ See README.md for descriptions of available plugins.
 Operates interactively or as a service (loop forever and controlled via systemd or other).
 
 CLI (interactive) modes
-    No Items positional arg:  Run all monitor items once
-    Given Items positional arg "xyz host":  Run all monitor items containing either 'xyz' or 'host' substrings (case insensitive)
+   - No Items positional arg:  Run all monitor items once
+   - Given Items positional arg "xyz host":  Run all monitor items containing either 'xyz' or 'host' substrings (case insensitive)
+     in the monitor item name or the u@h:p field
 
 In service mode
     kill -SIGUSR1 <pid>   outputs a summary to the log file
@@ -53,10 +54,8 @@ sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      
 TOOLNAME =                  'lanmonitor'
 CONFIG_FILE_DEFAULT =       'lanmonitor.cfg'
 PRINT_LOG_LENGTH_DEFAULT =  40
-CMD_TIMEOUT_DEFAULT =       '1.0s'
 STARTUP_DELAY_DEFAULT =     '0s'
 SERVICE_LOOPTIME_DEFAULT=   '10s'
-
 
 
 #=====================================================================================
@@ -65,15 +64,14 @@ SERVICE_LOOPTIME_DEFAULT=   '10s'
 #=====================================================================================
 #=====================================================================================
 
-
 def main():
     global inst_dict
     global checked_have_LAN_access, have_LAN_access
 
     set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.INFO), save=False)
     inst_dict = {}
-    setup_notif_handlers()                              # Refresh the notifications handlers
-    set_print_lengths()                                 # Set pretty print field widths
+    setup_notif_handlers()                                          # Refresh the notifications handlers
+    set_print_lengths()                                             # Set pretty print field widths
 
     # Build list of all possible monitor items
         # Given in config file:
@@ -81,27 +79,39 @@ def main():
         # Freemem_host3 =         {'u@h:p':'local', 'recheck':'30m', 'rol':'20%'} # 20%'}
     monitor_items_list = []
     for key in globvars.config.cfg:
-        if key.startswith('MonType_'):                  # 'MonType_Freemem'
-            montype_tag = key.split('_')[1] + '_'       # 'Freemem_'
+        if key.startswith('MonType_'):                              # 'MonType_Freemem'
+            montype_tag = key.split('_')[1] + '_'                   # 'Freemem_'
             for key2 in globvars.config.cfg:
                 if key2.startswith(montype_tag):
                     monitor_items_list.append(key2)
 
-    checked_have_LAN_access = have_LAN_access = False
 
-    # if globvars.config.getcfg('Gateway', False):
-    #     checked_have_LAN_access = have_LAN_access = False
-    # else:
-    #     checked_have_LAN_access = have_LAN_access = True
+    # Run monitor items that have matches in the item name or u@h:p field (dict or str format)
+    checked_have_LAN_access = have_LAN_access = False               # Checked run_item()
 
-    for item in globvars.args.Items:                    # Given CLI Items:  [ 'apt', 'host3' ]
+    for item in globvars.args.Items:                                # Given CLI Items:  [ 'apt', 'host3' ]
         item = item.lower()
+
         for mon_item in monitor_items_list:
+            runit = False
+
             if item in mon_item.lower():
+                runit = True
+            elif isinstance(globvars.config.cfg[mon_item], dict):   # dict format
+                uhp = globvars.config.cfg[mon_item].get('u@h:p', ''.lower())
+                if item in uhp:
+                    runit = True
+            else:                                                   # str format
+                uhp = globvars.config.cfg[mon_item].split(maxsplit=1)[0].lower()
+                if item in uhp:
+                    runit = True
+    
+            if runit:
                 logging.debug ("")
                 run_item(mon_item)
 
     cleanup()
+    return 0
 
 
 #=====================================================================================
@@ -137,7 +147,8 @@ def service():
                     logging.warning(f"Config file <{globvars.config.config_full_path}> found again")
         except Exception as e:
             logging.error(f"Error when loading config file.  Aborting.\n  {type(e).__name__}: {e}")
-            sys.exit(1)     # TODO cleanup
+            cleanup()
+            return (1)
 
         if globvars.args.verbose is not None:
             set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)
@@ -146,17 +157,14 @@ def service():
         if first:
             if globvars.args.service:
                 time.sleep (timevalue(globvars.config.getcfg('StartupDelay', STARTUP_DELAY_DEFAULT)).seconds)
-            # lanmonfuncs.host_connections = lanmonfuncs.connections()
             reloaded = 1                            # Force calc of key and host padding lengths
 
 
         if reloaded == 1:
             if not first:
                 logging.warning(f"The config file has been reloaded")
-            
                 cleanup()
-                # lanmonfuncs.host_connections.closeall()
-                # lanmonfuncs.host_connections = lanmonfuncs.connections()
+
             setup_notif_handlers()                  # Refresh the notifications handlers
             inst_dict.clear()                       # Clear out all current instances, forcing re-setup
             set_print_lengths()                     # Set pretty print field widths
@@ -174,12 +182,6 @@ def service():
                         monitor_items_list.append(key2)
 
         checked_have_LAN_access = have_LAN_access = False
-
-        # if globvars.config.getcfg('Gateway', False):
-        #     checked_have_LAN_access = have_LAN_access = False
-        # else:
-        #     checked_have_LAN_access = have_LAN_access = True
-
         for mon_item in monitor_items_list:
             run_item(mon_item)
 
@@ -227,6 +229,7 @@ def setup_notif_handlers():
                 notif_handlers_list.extend([notif_inst])
     except Exception as e:
         logging.error (f"Unable to load notification handler <{handler}>.  Aborting.\n  {type(e).__name__}: {e}")
+        cleanup()
         sys.exit(1)
 
 
@@ -240,21 +243,32 @@ def set_print_lengths():
     # Get keylen and hostlen field widths across all monitored items for pretty printing
     globvars.keylen = 0
     globvars.hostlen = 0
+
     for key in globvars.config.cfg:
         if key.startswith('MonType_'):
-            montype_tag = key.split('_')[1]
+            montype_tag = key.split('_')[1] + '_'
+
             for key2 in globvars.config.cfg:
                 try:
-                    if key2.startswith(montype_tag + '_'):
-                        if len(key2) > globvars.keylen:
-                            globvars.keylen = len(key2)
+                    if key2.startswith(montype_tag):
+
+                        # Capture max length of monitor item names
+                        if (xx := len(key2)) > globvars.keylen:
+                            globvars.keylen = xx
+
+                        # Capture max length of host portion of uhp
                         item_def = globvars.config.cfg[key2]
                         if isinstance(item_def, dict):
-                            host = lanmonfuncs.split_user_host_port(item_def['u@h:p'])[1]
+                            uhp = item_def.get('u@h:p', '')     # dict format
                         else:
-                            host = lanmonfuncs.split_user_host_port(item_def.split(maxsplit=1)[0])[1]
-                        if len(host) > globvars.hostlen:
-                            globvars.hostlen = len(host)
+                            uhp = item_def.split(maxsplit=1)[0] # str format
+
+                        if '@' in uhp:                          # not reference to host section
+                            _, uhp, _ = lanmonfuncs.split_user_host_port(uhp)
+
+                        if (xx := len(uhp)) > globvars.hostlen:
+                            globvars.hostlen = xx
+
                 except Exception as e:
                     pass    # Issue will be caught and logged in the following setup code
 
@@ -265,7 +279,7 @@ def set_print_lengths():
 #=====================================================================================
 #=====================================================================================
 
-def run_item(item_key):                                                 # Given item_key:  'Host_hostxyz'
+def run_item(item_key):                                                     # Given item_key:  'Host_hostxyz'
         global notif_handlers_list
         global inst_dict
         global checked_have_LAN_access, have_LAN_access
@@ -274,7 +288,6 @@ def run_item(item_key):                                                 # Given 
         did_setup = False
         if item_key not in inst_dict:
             did_setup = True
-
 
             # Import monitor plugin if not already imported
             plugin_name = 'MonType_' + item_key.split('_', maxsplit=1)[0]   # 'MonType_Host'
@@ -290,6 +303,7 @@ def run_item(item_key):                                                 # Given 
                     logging.debug (f"Imported <{plugin_name}> monitor plugin <{montype_plugin_mp.full_path}>, version <{plugin.__version__}>")
             except Exception as e:
                 logging.error (f"Could not find monitor plugin <{plugin_name}>.  Aborting.\n  {type(e).__name__}: {e}")
+                cleanup()
                 sys.exit(1)
 
 
@@ -311,7 +325,6 @@ def run_item(item_key):                                                 # Given 
                     # Default settings
                     monline['user_host_port'] =     monline['host'] = 'local'
                     monline['critical'] =           False
-                    # monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
                     monline['cmd_timeout'] =        None
 
                     # Optional settings
@@ -322,7 +335,7 @@ def run_item(item_key):                                                 # Given 
                             if '@' in uhp:
                                 _, monline['host'], _ =     lanmonfuncs.split_user_host_port(uhp)
                         elif line_key.lower() == 'critical':
-                            monline['critical'] = item_def[line_key]
+                            monline['critical'] =           item_def[line_key]
                         elif line_key.lower() == 'timeout':
                             monline['cmd_timeout'] =        timevalue(item_def[line_key]).seconds
                         elif line_key.lower() in ['recheck', 'rol']:
@@ -351,7 +364,6 @@ def run_item(item_key):                                                 # Given 
                     if yy.lower().startswith('critical'):
                         monline['critical'] =       True
                         yy = yy.split(maxsplit=1)[1]
-                    # monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
                     monline['cmd_timeout'] =        None
                     monline['check_interval'] =     timevalue(yy.split(maxsplit=1)[0]).seconds
                     monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
@@ -387,7 +399,7 @@ def run_item(item_key):                                                 # Given 
                     inst_dict[item_key] = item_inst
 
                 else:
-                    logging.critical (f"Setup for <{item_key}> returned illegal value {rslt}.  Aborting.")
+                    logging.error (f"Setup for <{item_key}> returned illegal value {rslt}.  Aborting.")
                     cleanup()
                     sys.exit(1)
 
@@ -415,6 +427,7 @@ def run_item(item_key):                                                 # Given 
                         item_inst.next_run = item_inst.next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
                     except Exception as e:
                         logging.error (f"Cannot parse <DailyRuntime> in config:  {globvars.config.getcfg('DailyRuntime')}.  Aborting.\n  {type(e).__name__}: {e}")
+                        cleanup()
                         sys.exit(1)
                 logging.debug(f"{item_key} - Next runtime: {item_inst.next_run}")
 
@@ -505,7 +518,7 @@ def cli():
             { 'source': 'creds_SMTP',         'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o600},
             { 'source': 'lanmonitor.service', 'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644},
             ])
-        sys.exit(0)
+        return 0
 
     if globvars.args.setup_site:
         deploy_files([
@@ -513,7 +526,7 @@ def cli():
             { 'source': 'creds_SMTP',         'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o600},
             { 'source': 'lanmonitor.service', 'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644},
             ])
-        sys.exit(0)
+        return 0
 
 
     # Load config file and setup logging
@@ -524,7 +537,7 @@ def cli():
     except Exception as e:
         logging.error(f"Failed loading config file <{globvars.args.config_file}>. \
 \n  Run with  '--setup-user' or '--setup-site' to install starter files.  Aborting.\n  {type(e).__name__}: {e}")
-        sys.exit(1)
+        return 1
 
 
     logging.warning (f"========== {core.tool.toolname} {__version__}, pid {os.getpid()} ==========")
@@ -541,20 +554,19 @@ def cli():
                 print (line, end='')
         except Exception as e:
             print (f"Couldn't print the log file.  LogFile defined in the config file?\n  {type(e).__name__}: {e}")
-        sys.exit(1)
+        return 0
 
 
     # Run in service or interactive modes
     if globvars.args.service:
-        service()
-        sys.exit(0)
+        return service()
 
-    if len(globvars.args.Items) == 0:   # Interactive mode run all.  Force default INFO level logging.
+    if len(globvars.args.Items) == 0:           # Interactive mode run all
         if globvars.args.verbose is None:
             globvars.args.verbose = 1
-        service()
+        return service()
     else:
-        main()                          # Interactive mode for specified items
+        return main()                           # Interactive mode for specified items
 
     
 if __name__ == '__main__':

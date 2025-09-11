@@ -11,7 +11,7 @@ Produce / compare to golden results:
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5
+# 4.0 250911 - Updated to lanmonitor V4.0
 # 3.3 240805 - New
 #
 #==========================================================

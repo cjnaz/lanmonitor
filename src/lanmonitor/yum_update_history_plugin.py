@@ -26,13 +26,13 @@ systems save the history in the yum database, and `dnf history` and `yum history
 - Internal whitespace must match exactly.  Leading and trailing whitespace is trimmed off.
 """
 
-__version__ = "3.5"
+__version__ = '4.0'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5.
+# 4.0 250911 - Updated to lanmonitor V4.0.
 # 3.3.1 240823 - Added '--cacheonly' to yum history command to avoid temporary database updates
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.2.1 240116 - Bug fix yum command match .strip()

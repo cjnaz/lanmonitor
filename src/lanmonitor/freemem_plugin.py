@@ -29,13 +29,13 @@ One may be an absolute limit while the other is a percentage limit, eg `5Gi 20%`
 - No whitespace between value and suffix
 """
 
-__version__ = "3.5"
+__version__ = '4.0'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5.
+# 4.0 250911 - Updated to lanmonitor V4.0.
 # 3.3 240805 - New
 #   
 #==========================================================

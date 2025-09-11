@@ -13,9 +13,11 @@ Produce / compare to golden results:
 #
 #  Chris Nelson, 2025-2025
 #
+# 4.0 250911 - New
+#
 #==========================================================
 
-__version__ =   '3.5'
+__version__ =   '4.0'
 TOOLNAME =      'demo_funcs'
 
 import argparse
@@ -495,7 +497,7 @@ if check_tnum('7f'):
 if check_tnum('7g'):
     lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
     dotest ("Environment vars passed check",    # Env var 'xyz' not passed since not allowed in /etc/ssh/sshd_config AcceptEnv
-            "RTN_PASS - returncode=0, stdout='LC_2=To Be...\nLC_1=1234\nxyz=<>'",
+            "RTN_PASS - returncode=0, stdout='LC_2=To Be...\\nLC_1=1234\\nxyz=<>'",
             cmd= "env | grep LC; echo xyz='<'$xyz'>'", user_host_port='Test 7g', cmd_timeout= 1,
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections.connections['me@testhost2:22']}")

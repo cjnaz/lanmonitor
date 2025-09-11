@@ -5,11 +5,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "4.0b5"
+version = "4.0rc1"
+    # 4.0rc1 - feature complete, no known bugs, fixed print host length calc, added cli host match
     # 4.0b5 - env support, Command_timeout default chain, template lanmonitor.cfg updated
-                fix '  ' on fail messages in plugins
-                fix host length calc
-                cleanup pinghost_plugin
     # 4.0b4 - --print-log switch accepts count, ServiceLoopTime default, lanmonfuncs logic final, plugins and tests updated, docs updated
     # 4.0b3 - cleanup
     # 4.0b2 - connection fail debug, doc work, cleanup

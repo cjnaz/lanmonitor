@@ -9,10 +9,10 @@ Test 1a - Local dir activity pass
              fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
-                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757479343.7813428580 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
-                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-09 21:42:23.781343>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757626600.8874649960 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-11 14:36:40.887465>
              fsactivity_plugin_test.dotest               -  WARNING:  
   RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
              fsactivity_plugin_test.dotest               -  WARNING:  
@@ -29,7 +29,7 @@ Test 1b - Local specific file activity pass
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name a1file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.9874982000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a1file>, datetime <2025-08-12 08:39:30.987498>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    4.1 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    4.3 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -44,7 +44,7 @@ Test 1c - Local wildcard file activity pass
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name 'a*file' -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.4995401000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a2file>, datetime <2025-08-12 08:39:40.499540>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    4.1 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    4.3 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -59,7 +59,7 @@ Test 1d - Local space in filename pass
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name '* name' -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755037800.0000000000 /mnt/RAMDRIVE/fsactivity/space in name', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/space in name>, datetime <2025-08-12 15:30:00>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    4.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/space in name'}
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_local_dir_pass', 'message': 'Activity_local_dir_pass  OK - local -    4.3 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/space in name'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -127,8 +127,8 @@ Test 2d - Local dir too old FAIL
              fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_local_dir_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
-                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757479343.7813428580 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
-                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-09 21:42:23.781343>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757626600.8874649960 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-11 14:36:40.887465>
              fsactivity_plugin_test.dotest               -  WARNING:  
   RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_dir_too_old_fail', 'message': '  FAIL: Activity_local_dir_too_old_fail  STALE FILES - local -    1.5 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
              fsactivity_plugin_test.dotest               -  WARNING:  
@@ -145,7 +145,7 @@ Test 2e - Local specific file too old FAIL
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name a1file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.9874982000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a1file>, datetime <2025-08-12 08:39:30.987498>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_specific_file_too_old_fail', 'message': '  FAIL: Activity_local_specific_file_too_old_fail  STALE FILES - local - 2466175.4 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_specific_file_too_old_fail', 'message': '  FAIL: Activity_local_specific_file_too_old_fail  STALE FILES - local - 2613432.5 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -160,7 +160,7 @@ Test 2f - Local wildcard file too old FAIL
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name 'a*file' -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.4995401000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a2file>, datetime <2025-08-12 08:39:40.499540>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_local_wildcard_file_too_old_fail  STALE FILES - local - 2466166.9 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_local_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_local_wildcard_file_too_old_fail  STALE FILES - local - 2613424.1 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -173,12 +173,13 @@ Test 3a - Remote dir activity pass
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_pass - lanmonitor.fsactivity_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
-                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757479351.3648786410 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
-                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-09 21:42:31.364879>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757626608.6118335340 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-11 14:36:48.611834>
              fsactivity_plugin_test.dotest               -  WARNING:  
   RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
              fsactivity_plugin_test.dotest               -  WARNING:  
@@ -195,7 +196,7 @@ Test 3b - Remote specific file activity pass
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name a1file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.0000000000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a1file>, datetime <2025-08-12 08:39:30>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    4.1 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    4.3 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -210,7 +211,7 @@ Test 3c - Remote wildcard file activity pass
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name 'a*file' -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.0000000000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a2file>, datetime <2025-08-12 08:39:40>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    4.1 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    4.3 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a2file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -225,7 +226,7 @@ Test 3d - Remote space in filename pass
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name '* name' -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755037800.0000000000 /mnt/RAMDRIVE/fsactivity/space in name', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/space in name>, datetime <2025-08-12 15:30:00>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    4.0 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/space in name'}
+  RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_dir_pass', 'message': 'Activity_remote_dir_pass  OK - testhost2 -    4.3 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/space in name'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -293,10 +294,10 @@ Test 4d - Remote dir too old FAIL
              fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_dir_too_old_fail - lanmonitor.fsactivity_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
-                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757479351.3648786410 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
-                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-09 21:42:31.364879>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/ -maxdepth 1  -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757626608.6118335340 /mnt/RAMDRIVE/fsactivity/newfile', stderr=''))
+                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/newfile>, datetime <2025-09-11 14:36:48.611834>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_dir_too_old_fail', 'message': '  FAIL: Activity_remote_dir_too_old_fail  STALE FILES - testhost2 -    2.6 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_dir_too_old_fail', 'message': '  FAIL: Activity_remote_dir_too_old_fail  STALE FILES - testhost2 -    2.5 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/newfile'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -311,7 +312,7 @@ Test 4e - Remote specific file too old FAIL
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name a1file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013170.0000000000 /mnt/RAMDRIVE/fsactivity/a1file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a1file>, datetime <2025-08-12 08:39:30>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_specific_file_too_old_fail', 'message': '  FAIL: Activity_remote_specific_file_too_old_fail  STALE FILES - testhost2 - 2466185.0 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_specific_file_too_old_fail', 'message': '  FAIL: Activity_remote_specific_file_too_old_fail  STALE FILES - testhost2 - 2613442.2 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a1file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -326,7 +327,7 @@ Test 4f - Remote wildcard file too old FAIL
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity -maxdepth 1 -name 'a*file' -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.0000000000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a2file>, datetime <2025-08-12 08:39:40>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_remote_wildcard_file_too_old_fail  STALE FILES - testhost2 - 2466176.1 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_wildcard_file_too_old_fail', 'message': '  FAIL: Activity_remote_wildcard_file_too_old_fail  STALE FILES - testhost2 - 2613433.3 secs  (   1 secs  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -370,8 +371,8 @@ Test 6a - Recursive find
              fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_recursive - lanmonitor.fsactivity_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
-                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757479359.5713144730 /mnt/RAMDRIVE/fsactivity/recursive tests/george', stderr=''))
-                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/recursive tests/george>, datetime <2025-09-09 21:42:39.571315>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757626616.8474556800 /mnt/RAMDRIVE/fsactivity/recursive tests/george', stderr=''))
+                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/recursive tests/george>, datetime <2025-09-11 14:36:56.847456>
              fsactivity_plugin_test.dotest               -  WARNING:  
   RETURNED:   {'rslt': 0, 'notif_key': 'Activity_recursive', 'message': 'Activity_recursive  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/george'}
              fsactivity_plugin_test.dotest               -  WARNING:  
@@ -388,7 +389,7 @@ Test 6b1 - Recursion with specific file specified
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity  -name a3file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755038130.4342912000 /mnt/RAMDRIVE/fsactivity/recursive tests/a3file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/recursive tests/a3file>, datetime <2025-08-12 15:35:30.434291>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_recursive_with_specific_file', 'message': '  FAIL: Activity_recursive_with_specific_file  STALE FILES - local - 40687.2 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/a3file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_recursive_with_specific_file', 'message': '  FAIL: Activity_recursive_with_specific_file  STALE FILES - local - 43141.4 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/a3file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -403,7 +404,7 @@ Test 6b2 - Recursion with specific file specified
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity  -name a2file -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755013180.4995401000 /mnt/RAMDRIVE/fsactivity/a2file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/a2file>, datetime <2025-08-12 08:39:40.499540>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_recursive_with_specific_file', 'message': '  FAIL: Activity_recursive_with_specific_file  STALE FILES - local - 41103.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_recursive_with_specific_file', 'message': '  FAIL: Activity_recursive_with_specific_file  STALE FILES - local - 43557.3 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/a2file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -418,7 +419,7 @@ Test 6c - Remote recursive find
                   fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1755038141.0000000000 /mnt/RAMDRIVE/fsactivity/recursive tests/a4file', stderr=''))
                   fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/recursive tests/a4file>, datetime <2025-08-12 15:35:41>
              fsactivity_plugin_test.dotest               -  WARNING:  
-  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_recursive', 'message': '  FAIL: Activity_remote_recursive  STALE FILES - testhost2 - 40687.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/a4file'}
+  RETURNED:   {'rslt': 2, 'notif_key': 'Activity_remote_recursive', 'message': '  FAIL: Activity_remote_recursive  STALE FILES - testhost2 - 43141.3 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/a4file'}
              fsactivity_plugin_test.dotest               -  WARNING:  
 
 ==============================================================================================
@@ -430,7 +431,7 @@ Test 6d - Remote recursive find
              fsactivity_plugin_test.dotest               -    DEBUG:  setup() returned:  0
                   fsactivity_plugin.eval_status          -    DEBUG:  Activity_remote_recursive - lanmonitor.fsactivity_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\n' | sort -nr | head -n 1>
-                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757479363.2048219450 /mnt/RAMDRIVE/fsactivity/recursive tests/mahesh', stderr=''))
-                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/recursive tests/mahesh>, datetime <2025-09-09 21:42:43.204822>
+                  fsactivity_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args="find /mnt/RAMDRIVE/fsactivity/   -type f -printf '%T@ %p\\n' | sort -nr | head -n 1", returncode=0, stdout='1757626620.4818076200 /mnt/RAMDRIVE/fsactivity/recursive tests/mahesh', stderr=''))
+                  fsactivity_plugin.eval_status          -    DEBUG:  Newest file: </mnt/RAMDRIVE/fsactivity/recursive tests/mahesh>, datetime <2025-09-11 14:37:00.481808>
              fsactivity_plugin_test.dotest               -  WARNING:  
   RETURNED:   {'rslt': 0, 'notif_key': 'Activity_remote_recursive', 'message': 'Activity_remote_recursive  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/mahesh'}

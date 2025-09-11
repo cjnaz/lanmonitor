@@ -51,8 +51,8 @@ for plugin implementation details.
 
 ## Usage
 ```
-$ lanmonitor service -h
-usage: lanmonitor [-h] [--print-log] [--verbose] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V] [Items ...]
+$ lanmonitor -h
+usage: lanmonitor [-h] [--print-log [PRINT_LOG]] [--verbose] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V] [Items ...]
 
 LAN monitor
 
@@ -73,9 +73,10 @@ In service mode
 positional arguments:
   Items                 Run the individual check item(s) or MonTypes
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  --print-log, -p       Print the tail end of the log file (default last 40 lines).
+  --print-log [PRINT_LOG], -p [PRINT_LOG]
+                        Print the tail end of the log file (default last 40 lines).
   --verbose, -v         Display OK items in non-service mode. (-vv for debug logging)
   --config-file CONFIG_FILE, -c CONFIG_FILE
                         Path to the config file (Default <lanmonitor.cfg)> in user/site config directory.
@@ -125,20 +126,19 @@ $ lanmonitor --verbose
 
 ## Setup and Usage notes
 - Install lanmonitor from PyPI (`pip install lanmonitor`).
-- Install the initial configuration files (`lanmonitor --setup-user` places files at `~/.config/lanmonitor`).
+- Install the starter configuration files (`lanmonitor --setup-user` places files at `~/.config/lanmonitor`).
 
 ### Edit `lanmonitor.cfg` for the **Core tool parameters**:
 
   Config param | Default | Description
   --|--|--
-  `ServiceLoopTime` | 10s | How long between rechecks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
-  `Cmd_timeout` | 1.0s | The _default_ max time for completion of the command for each monitor item check.  Can be overridden for each monitor item definition.
+  `ServiceLoopTime` | 10s | How long between schedule checks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
   `StartupDelay` | 0s | The wait time when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
   `DailyRuntime` | Optional | The run time for monitored items that run at daily or longer check intervals.  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
-  `Gateway` | Optional | Any reliable host on your LAN (typically your router) that will be checked for access as a gate for any monitor items to be run from/on/via other hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be accessed.  If not defined then remote-based checks are always run.
+  `Gateway` | Optional | IP or Hostname used for checking for network access as a gate for checks to be run on non-local hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be pinged.  If not defined then remote-based checks are always run.
   `Gateway_timeout` | 1.0s | The max time for checking the Gateway for LAN access health
-  `LogLevel` | 30/WARNING | Controls what gets written to the log file.  At LogLevel 30 (the default if not specified), only warning/fail/critical events are logged.  LogLevel 20 logs passing events also.  For interactive use (non --service mode) the command line --verbose switch controls loglevel.
-  `LogFile` | Optional | The log file in --service mode.  The path may be absolute or relative to the default config file directory (eg, ~/.config/lanmonitor). If not specified then --service mode output goes to the console.  For interactive usage (non --service mode) logging goes to the console, overriding any `LogFile` specified in the config file.
+  `LogLevel` | 30/WARNING | --service mode logging level - LogLevel 30 logs only warning/fail/critical events. LogLevel 20 logs passing events also. The command line --verbose switch applies in interactive mode and overrides the config LogLevel in service mode.
+  `LogFile` | Optional | --service mode log file - If not specified then --service mode output goes to the console.  For interactive usage (non --service mode) logging goes to the console, overriding any `LogFile` specified in the config file. The path may be absolute or relative to the default config file directory (eg, ~/.config/lanmonitor). 
 
    `ConsoleLogFormat`, and `FileLogFormat` may also be customized - see the starter configuration file example.
 
@@ -154,12 +154,14 @@ $ lanmonitor --verbose
       Service_firewalld    me@myhost1.lan  20s     firewalld
       Service_firewalld    myhost2         20s     firewalld
 
-   In case 1, the host `local` refers to running on the local machine. A `[local]` or `[DEFAULT]` section may be specified in the config file in order to override the default `Command_nTries` and `Command_retry_interval` values for local command executions.
+   In case 1, the host `local` refers to running on the local machine. A `[local]` or `[DEFAULT]` section may be specified in the config file in order 
+   to override the default `Command_timeout`, `Command_nTries` and `Command_retry_interval` values for local command executions.
 
    In case 2, `me@myhost1.lan` fully specifies the username and hostname to run the check on.  The port number defaults to 22 if not specified. 
    The remaining `Connection_` settings use values from the config file `[DEFAULT]` section, or their default values if not specified.
 
-   In case 3, `myhost2` (without a `username@`) refers to a section in the config file where each of the following settings may be specified, or falling back to the `[DEFAULT]` section, or their default values if not specified.
+   In case 3, `myhost2` (without a `username@`) refers to a section in the config file where each of the following settings may be specified, or f
+   alling back to the `[DEFAULT]` section, or their default values if not specified.
    At a minimum, the `hostname` and `username` must be specified, for example:
 
       [myhost2]
@@ -167,7 +169,8 @@ $ lanmonitor --verbose
       username = me
 
 
-   These parameters may be defined on a per-host section basis, or in a `[DEFAULT]` section and optionally overridden per-host section.  The Default values apply if the param is not specified in the config file:
+   These parameters may be defined on a per-host section basis, or in a `[DEFAULT]` section and optionally overridden a per-host section.
+   The Default values apply if the param is not specified in the config file:
 
    Config param | Default | Description
    --|--|--
@@ -177,10 +180,12 @@ $ lanmonitor --verbose
    `Connection_nTries` | 2 | Max number of attempts to establish a connection to the remote host
    `Connection_retry_interval` | 0.5s | Time to wait between connection attempts to the remote host
    `Connection_keepalive_interval` | 60s | Interval between keepalive pings to the remote host
-   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive pings to the remote host all fail **
-   `Command_max_consecutive_timeouts` | 4 | The connection is closed if these number consecutive command executions on the remote host all time out
-   `Command_nTries` | 2 | Max number of attempts to execute a command on the local or remote host
-   `Command_retry_interval` | 0.5s | Time to wait between command execution attempts on the local or remote host
+   `Connection_keepalive_count_max` | 3 | The connection is closed if this number of consecutive keepalive pings to the remote host all fail **
+   `Connection_command_max_timeouts` | 4 | The connection is closed if these number consecutive command executions on the remote host all time out
+   `Connection_env` | {} | Environment variables set on a remote host when running a command
+   `Command_timeout` | 1.0s | Max time allowed for a command execution call, if not specified on the monitor item
+   `Command_nTries` | 2 | Max number of attempts to execute a command
+   `Command_retry_interval` | 0.5s | Time to wait between command execution attempts
 
    ** Note that a keepalive connection loss is not logged until the next attempt to run a monitor item what tries to access the remote host.
 
@@ -639,7 +644,7 @@ systems save the history in the yum database, and `dnf history` and `yum history
 ---
 
 ## Version history
-- 4.0 250907 - New CLI features, refactored lanmonfuncs for improved ssh to remotes handling, incorporated invoke and asyncssh
+- 4.0 250907 - New CLI features, refactored lanmonfuncs for improved ssh to remotes handling, incorporated invoke and asyncssh, Enhanced fsactivity_plugin with recursion and wildcard support.
 - 3.3.2 250706 - cjnfuncs 3.0 dependency
 - 3.3.1 240823 - yum_update_history_plugin added '--cacheonly' to yum command to avoid timeout
 - 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, New freemem_plugin.

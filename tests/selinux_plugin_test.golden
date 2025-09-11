@@ -5,7 +5,7 @@ Test 1 - SELinux local - OK --------------------------------------------------
                 selinux_plugin_test.dotest               -    DEBUG:  SELinux_local - setup() returned:  0
                      selinux_plugin.eval_status          -    DEBUG:  SELinux_local - lanmonitor.selinux_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <sestatus>
                      selinux_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'sestatus', returncode: 0, stdout: 'SELinux status:                 enabled...', stderr: '')
                 selinux_plugin_test.dotest               -    DEBUG:  SELinux_local - eval_status() returned:  {'rslt': 0, 'notif_key': 'SELinux_local', 'message': 'SELinux_local  OK - local - enforcing'}
@@ -26,9 +26,10 @@ Test 2 - SELinux remote not running - FAIL -------------------------------------
                      selinux_plugin.eval_status          -    DEBUG:  SELinux_remote - lanmonitor.selinux_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost:22>:  <sestatus>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 127):  <__*****__bash: line 1: sestatus: command not found>
                      selinux_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'sestatus', returncode: 1, stdout: '...', stderr: 'No text_to_check!')

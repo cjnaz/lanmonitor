@@ -5,10 +5,10 @@ Test 1 - YumUpdate pass - OK --------------------------------------------------
      yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - setup() returned:  0
           yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_Pass - lanmonitor.yum_update_history_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <yum history --cacheonly>
           yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'yum history --cacheonly', returncode: 0, stdout: 'Not root, Subscription Management repositories not...', stderr: '')
-     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'YumUpdate_Pass', 'message': 'YumUpdate_Pass  OK - local -   21.3 days  (  90 days  max)'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'YumUpdate_Pass', 'message': 'YumUpdate_Pass  OK - local -   23.0 days  (  90 days  max)'}
 
 Test 2 - YumUpdate too old - CRITICAL --------------------------------------------------
           yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_TooOld - lanmonitor.yum_update_history_plugin.setup() called:
@@ -17,7 +17,7 @@ Test 2 - YumUpdate too old - CRITICAL ------------------------------------------
           yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_TooOld - lanmonitor.yum_update_history_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <yum history --cacheonly>
           yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'yum history --cacheonly', returncode: 0, stdout: 'Not root, Subscription Management repositories not...', stderr: '')
-     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_TooOld', 'message': '  CRITICAL: YumUpdate_TooOld - local - YUM UPDATE TOO LONG AGO - 30671.6 mins  (  10 mins  max)'}
+     yum_update_history_plugin_test.dotest               -    DEBUG:  YumUpdate_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'YumUpdate_TooOld', 'message': '  CRITICAL: YumUpdate_TooOld - local - YUM UPDATE TOO LONG AGO - 33086.0 mins  (  10 mins  max)'}
 
 Test 3 - Bad definition - setup ERROR --------------------------------------------------
           yum_update_history_plugin.setup                -    DEBUG:  YumUpdate_baddef - lanmonitor.yum_update_history_plugin.setup() called:
@@ -40,9 +40,10 @@ Test 5 - Remote not running yum - Can't get history - CRITICAL -----------------
           yum_update_history_plugin.eval_status          -    DEBUG:  YumUpdate_remote - lanmonitor.yum_update_history_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <yum history --cacheonly>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 failed (returncode 127):  <__*****__bash: line 1: yum: command not found>
           yum_update_history_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'yum history --cacheonly', returncode: 127, stdout: '...', stderr: '__*****__bash: line 1: yum: command not found')

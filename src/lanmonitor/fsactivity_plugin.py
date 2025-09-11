@@ -28,13 +28,13 @@ Sub-directories may be optionally recursed. Specific files (with wildcard suppor
 specified parent folder _and all subdirectories_.
 """
 
-__version__ = "3.5"
+__version__ = '4.0'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5.  Rewrote check logic using find
+# 4.0 250911 - Updated to lanmonitor V4.0.  Rewrote check logic using find
 # 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.2 230602 - Changed individual file method so as to detect file missing
 # 3.1 230320 - Warning for ssh fail to remote

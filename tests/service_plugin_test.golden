@@ -3,9 +3,9 @@ Test 1 - Service local - OK --------------------------------------------------
                      service_plugin.setup                -    DEBUG:  Service_local - lanmonitor.service_plugin.setup() called:
   {'key': 'Service_local', 'tag': 'local', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': '   sshd'}
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ps -p1>
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:20 systemd', stderr=''))
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:26 systemd', stderr=''))
                      service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
                 service_plugin_test.dotest               -    DEBUG:  Service_local - setup() returned:  0
                      service_plugin.eval_status          -    DEBUG:  Service_local - lanmonitor.service_plugin.eval_status() called
@@ -18,11 +18,12 @@ Test 2 - Service remote - OK --------------------------------------------------
   {'key': 'Service_remote', 'tag': 'remote', 'host': 'testhost2', 'user_host_port': 'me@testhost2', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'sshd   '}
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ps -p1>
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:13 systemd', stderr=''))
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:22 systemd', stderr=''))
                      service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
                 service_plugin_test.dotest               -    DEBUG:  Service_remote - setup() returned:  0
                      service_plugin.eval_status          -    DEBUG:  Service_remote - lanmonitor.service_plugin.eval_status() called
@@ -34,7 +35,7 @@ Test 3 - Service local fail - CRITICAL -----------------------------------------
                      service_plugin.setup                -    DEBUG:  Service_fail - lanmonitor.service_plugin.setup() called:
   {'key': 'Service_fail', 'tag': 'fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'xx'}
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ps -p1>
-                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:20 systemd', stderr=''))
+                     service_plugin.setup                -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='ps -p1', returncode=0, stdout='PID TTY          TIME CMD\n    1 ?        00:00:26 systemd', stderr=''))
                      service_plugin.setup                -    DEBUG:  Found system manager type:  systemd
                 service_plugin_test.dotest               -    DEBUG:  Service_fail - setup() returned:  0
                      service_plugin.eval_status          -    DEBUG:  Service_fail - lanmonitor.service_plugin.eval_status() called

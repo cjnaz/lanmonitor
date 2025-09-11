@@ -5,10 +5,10 @@ Test 1 - Local pass - OK --------------------------------------------------
     apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Pass - setup() returned:  0
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_Pass - lanmonitor.apt_upgrade_history_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <zcat -qf /var/log/apt/history.log*>
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'zcat -qf /var/log/apt/history.log*', returncode: '0', stdout: 'Start-Date: 2024-09-21  08:31:...,' stderr: '')
-    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'AptUpgrade_Pass', 'message': 'AptUpgrade_Pass  OK - local -    3.0 weeks ( 500 weeks max)'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_Pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'AptUpgrade_Pass', 'message': 'AptUpgrade_Pass  OK - local -    3.3 weeks ( 500 weeks max)'}
 
 Test 2 - Local too old - CRITICAL --------------------------------------------------
          apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_TooOld - lanmonitor.apt_upgrade_history_plugin.setup() called:
@@ -17,7 +17,7 @@ Test 2 - Local too old - CRITICAL ----------------------------------------------
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_TooOld - lanmonitor.apt_upgrade_history_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <zcat -qf /var/log/apt/history.log*>
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'zcat -qf /var/log/apt/history.log*', returncode: '0', stdout: 'Start-Date: 2024-09-21  08:31:...,' stderr: '')
-    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'AptUpgrade_TooOld', 'message': '  CRITICAL: AptUpgrade_TooOld - local - APT UPGRADE TOO LONG AGO - 30452.4 mins  (   1 mins  max)'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_TooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'AptUpgrade_TooOld', 'message': '  CRITICAL: AptUpgrade_TooOld - local - APT UPGRADE TOO LONG AGO - 33159.2 mins  (   1 mins  max)'}
 
 Test 3 - Local no Upgrades in history - CRITICAL --------------------------------------------------
          apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_NoUpgrades - lanmonitor.apt_upgrade_history_plugin.setup() called:
@@ -35,12 +35,13 @@ Test 4 - Remote pass - OK --------------------------------------------------
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_RemotePass - lanmonitor.apt_upgrade_history_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <zcat -qf /var/log/apt/history.log*>
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'zcat -qf /var/log/apt/history.log*', returncode: '0', stdout: 'Start-Date: 2025-08-19  13:52:...,' stderr: '')
-    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemotePass - eval_status() returned:  {'rslt': 0, 'notif_key': 'AptUpgrade_RemotePass', 'message': 'AptUpgrade_RemotePass  OK - testhost2 -    3.0 weeks ( 500 weeks max)'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemotePass - eval_status() returned:  {'rslt': 0, 'notif_key': 'AptUpgrade_RemotePass', 'message': 'AptUpgrade_RemotePass  OK - testhost2 -    3.3 weeks ( 500 weeks max)'}
 
 Test 5 - Remote too old - CRITICAL --------------------------------------------------
          apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_RemoteTooOld - lanmonitor.apt_upgrade_history_plugin.setup() called:
@@ -49,7 +50,7 @@ Test 5 - Remote too old - CRITICAL ---------------------------------------------
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  AptUpgrade_RemoteTooOld - lanmonitor.apt_upgrade_history_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <zcat -qf /var/log/apt/history.log*>
          apt_upgrade_history_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'zcat -qf /var/log/apt/history.log*', returncode: '0', stdout: 'Start-Date: 2025-08-19  13:52:...,' stderr: '')
-    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemoteTooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'AptUpgrade_RemoteTooOld', 'message': '  CRITICAL: AptUpgrade_RemoteTooOld - testhost2 - APT UPGRADE TOO LONG AGO - 30453.3 mins  (   1 mins  max)'}
+    apt_upgrade_history_plugin_test.dotest               -    DEBUG:  AptUpgrade_RemoteTooOld - eval_status() returned:  {'rslt': 3, 'notif_key': 'AptUpgrade_RemoteTooOld', 'message': '  CRITICAL: AptUpgrade_RemoteTooOld - testhost2 - APT UPGRADE TOO LONG AGO - 33160.1 mins  (   1 mins  max)'}
 
 Test 6 - Remote no Upgrades in history - CRITICAL --------------------------------------------------
          apt_upgrade_history_plugin.setup                -    DEBUG:  AptUpgrade_RemoteNoUpgrades - lanmonitor.apt_upgrade_history_plugin.setup() called:

@@ -5,7 +5,7 @@ Test 1 - Loopback Interface local - OK -----------------------------------------
               interface_plugin_test.dotest               -    DEBUG:  Interface_local_lo - setup() returned:  0
                    interface_plugin.eval_status          -    DEBUG:  Interface_local_lo - lanmonitor.interface_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ifconfig lo>
                    interface_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ifconfig lo', returncode: 0, stdout: 'lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 6...', stderr: '')
               interface_plugin_test.dotest               -    DEBUG:  Interface_local_lo - eval_status() returned:  {'rslt': 0, 'notif_key': 'Interface_local_lo', 'message': 'Interface_local_lo  OK - local - Interface <lo> is Up and Running'}
@@ -17,9 +17,10 @@ Test 2 - Loopback Interface remote - OK ----------------------------------------
                    interface_plugin.eval_status          -    DEBUG:  Interface_remote_lo - lanmonitor.interface_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ifconfig lo>
                    interface_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ifconfig lo', returncode: 0, stdout: 'lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 6...', stderr: '')
               interface_plugin_test.dotest               -    DEBUG:  Interface_remote_lo - eval_status() returned:  {'rslt': 0, 'notif_key': 'Interface_remote_lo', 'message': 'Interface_remote_lo  OK - testhost2 - Interface <lo> is Up and Running'}

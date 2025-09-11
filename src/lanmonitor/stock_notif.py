@@ -2,13 +2,13 @@
 """LAN monitor stock notifications handler
 """
 
-__version__ = '3.4'
+__version__ = '4.0'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2024
 #
-# 3.4 250908 - changed exception logging
+# 4.0 250911 - changed exception logging
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Debug mode status dump 
 # 3.0 230301 - Packaged
@@ -34,7 +34,7 @@ from cjnfuncs.SMTP import snd_email, snd_notif
 
 
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import next_summary_timestring, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
+from lanmonitor.lanmonfuncs import next_summary_dt, RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
 from lanmonitor.lanmonitor import inst_dict
 
 # Configs / Constants
@@ -50,7 +50,7 @@ class notif_class:
 
     def __init__(self):
         logging.debug (f"Notif handler <{__name__}> initialized")
-        self.next_summary = next_summary_timestring()
+        self.next_summary = next_summary_dt()
         if not globvars.args.service:
             self.next_summary = datetime.datetime.now()     # force summary in interactive debug level logging 
         self.next_renotif = datetime.datetime.now().replace(microsecond=0)  # forcing int seconds keeps logging value prettier
@@ -219,4 +219,4 @@ class notif_class:
                 if globvars.config.getcfg('LogSummary', False):
                     logging.warning(f"Summary:\n{sum}")
 
-                self.next_summary = next_summary_timestring()
+                self.next_summary = next_summary_dt()

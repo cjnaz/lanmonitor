@@ -5,10 +5,10 @@ Test 1 - Freemem as a percentage - OK ------------------------------------------
                 freemem_plugin_test.dotest               -    DEBUG:  Freemem_Per_pass - setup() returned:  0
                      freemem_plugin.eval_status          -    DEBUG:  Freemem_Per_pass - lanmonitor.freemem_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <free --kibi>
                      freemem_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'free --kibi', returncode: '0', stdout: 'total        used        free ...,' stderr: '')
-                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Per_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Per_pass', 'message': 'Freemem_Per_pass  OK - local - Free mem  68.1%  (minfree 30%)'}
+                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Per_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Per_pass', 'message': 'Freemem_Per_pass  OK - local - Free mem  68.9%  (minfree 30%)'}
 
 Test 2 - Freemem as a absolute - OK --------------------------------------------------
                      freemem_plugin.setup                -    DEBUG:  Freemem_Aps_pass - lanmonitor.freemem_plugin.setup() called:
@@ -17,7 +17,7 @@ Test 2 - Freemem as a absolute - OK --------------------------------------------
                      freemem_plugin.eval_status          -    DEBUG:  Freemem_Aps_pass - lanmonitor.freemem_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <free --kibi>
                      freemem_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'free --kibi', returncode: '0', stdout: 'total        used        free ...,' stderr: '')
-                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Aps_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Aps_pass', 'message': 'Freemem_Aps_pass  OK - local - Free mem 296932ki  (minfree 30ki)'}
+                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Aps_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Aps_pass', 'message': 'Freemem_Aps_pass  OK - local - Free mem 301068ki  (minfree 30ki)'}
 
 Test 3 - Freemem & swap 1 - OK --------------------------------------------------
                      freemem_plugin.setup                -    DEBUG:  Freemem_Both1_pass - lanmonitor.freemem_plugin.setup() called:
@@ -26,7 +26,7 @@ Test 3 - Freemem & swap 1 - OK -------------------------------------------------
                      freemem_plugin.eval_status          -    DEBUG:  Freemem_Both1_pass - lanmonitor.freemem_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <free --mebi>
                      freemem_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'free --mebi', returncode: '0', stdout: 'total        used        free ...,' stderr: '')
-                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Both1_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Both1_pass', 'message': 'Freemem_Both1_pass  OK - local - Free mem  67.8%  (minfree 30%),  Free swap 91mi  (minfree 20mi)'}
+                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Both1_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Both1_pass', 'message': 'Freemem_Both1_pass  OK - local - Free mem  69.0%  (minfree 30%),  Free swap 93mi  (minfree 20mi)'}
 
 Test 4 - Freemem & swap 2 - OK --------------------------------------------------
                      freemem_plugin.setup                -    DEBUG:  Freemem_Both2_pass - lanmonitor.freemem_plugin.setup() called:
@@ -35,7 +35,7 @@ Test 4 - Freemem & swap 2 - OK -------------------------------------------------
                      freemem_plugin.eval_status          -    DEBUG:  Freemem_Both2_pass - lanmonitor.freemem_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <free --mebi>
                      freemem_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'free --mebi', returncode: '0', stdout: 'total        used        free ...,' stderr: '')
-                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Both2_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Both2_pass', 'message': 'Freemem_Both2_pass  OK - local - Free mem 289mi  (minfree 30mi),  Free swap 100.0%  (minfree 10%)'}
+                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Both2_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Both2_pass', 'message': 'Freemem_Both2_pass  OK - local - Free mem 294mi  (minfree 30mi),  Free swap  92.9%  (minfree 10%)'}
 
 Test 5 - Invalid swap limit - Setup ERROR --------------------------------------------------
                      freemem_plugin.setup                -    DEBUG:  Freemem_swap_inv_setup_error - lanmonitor.freemem_plugin.setup() called:
@@ -75,12 +75,13 @@ Test 10 - Remote %/% - OK --------------------------------------------------
                      freemem_plugin.eval_status          -    DEBUG:  Freemem_Remote_per_per_pass - lanmonitor.freemem_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <free --kibi>
                      freemem_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'free --kibi', returncode: '0', stdout: 'total        used        free ...,' stderr: '')
-                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Remote_per_per_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Remote_per_per_pass', 'message': 'Freemem_Remote_per_per_pass  OK - testhost2 - Free mem  71.5%  (minfree 10%),  Free swap 100.0%  (minfree 10%)'}
+                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Remote_per_per_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Remote_per_per_pass', 'message': 'Freemem_Remote_per_per_pass  OK - testhost2 - Free mem  71.4%  (minfree 10%),  Free swap 100.0%  (minfree 10%)'}
 
 Test 11 - Remote Both Abs - OK --------------------------------------------------
                      freemem_plugin.setup                -    DEBUG:  Freemem_Remote_Abs_pass - lanmonitor.freemem_plugin.setup() called:
@@ -89,7 +90,7 @@ Test 11 - Remote Both Abs - OK -------------------------------------------------
                      freemem_plugin.eval_status          -    DEBUG:  Freemem_Remote_Abs_pass - lanmonitor.freemem_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <free --mebi>
                      freemem_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'free --mebi', returncode: '0', stdout: 'total        used        free ...,' stderr: '')
-                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Remote_Abs_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Remote_Abs_pass', 'message': 'Freemem_Remote_Abs_pass  OK - testhost2 - Free mem 305mi  (minfree 5mi),  Free swap 150mi  (minfree 5mi)'}
+                freemem_plugin_test.dotest               -    DEBUG:  Freemem_Remote_Abs_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Freemem_Remote_Abs_pass', 'message': 'Freemem_Remote_Abs_pass  OK - testhost2 - Free mem 304mi  (minfree 5mi),  Free swap 125mi  (minfree 5mi)'}
 
 Test 12 - Remote Both Abs - CRITICAL --------------------------------------------------
                      freemem_plugin.setup                -    DEBUG:  Freemem_Remote_Mem_Abs_fail - lanmonitor.freemem_plugin.setup() called:

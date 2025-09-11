@@ -12,11 +12,11 @@ Produce / compare to golden results:
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5
+# 4.0 250911 - Updated to lanmonitor V4.0
 #
 #==========================================================
 
-__version__ =   '3.5'
+__version__ =   '4.0'
 TOOLNAME =      'demo_fsactivity_plugin'
 
 import argparse

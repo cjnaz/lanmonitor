@@ -5,7 +5,7 @@ Test 1 - Freespace as a percentage - OK ----------------------------------------
               freespace_plugin_test.dotest               -    DEBUG:  Free_Per_pass - setup() returned:  0
                    freespace_plugin.eval_status          -    DEBUG:  Free_Per_pass - lanmonitor.freespace_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <df "/home">
                    freespace_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'df "/home"', returncode: '0', stdout: 'Filesystem     1K-blocks    Us...,' stderr: '')
               freespace_plugin_test.dotest               -    DEBUG:  Free_Per_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_Per_pass', 'message': 'Free_Per_pass  OK - local - free 90%  (minfree 30%)  "/home"'}
@@ -26,9 +26,10 @@ Test 3 - Freespace as a absolute min remote - OK -------------------------------
                    freespace_plugin.eval_status          -    DEBUG:  Free_Abs_pass - lanmonitor.freespace_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <df "/mnt/RAMDRIVE">
                    freespace_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'df "/mnt/RAMDRIVE"', returncode: '0', stdout: 'Filesystem     1K-blocks  Used...,' stderr: '')
               freespace_plugin_test.dotest               -    DEBUG:  Free_Abs_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_Abs_pass', 'message': 'Free_Abs_pass  OK - testhost2 - free 20476  (minfree 1000)  "/mnt/RAMDRIVE"'}
@@ -59,7 +60,7 @@ Test 6 - Space in path - OK --------------------------------------------------
                    freespace_plugin.eval_status          -    DEBUG:  Free_pathWithSpaces - lanmonitor.freespace_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <df "/mnt/share/tmp/Ripped videos">
                    freespace_plugin.eval_status          -    DEBUG:  cmd_check returned (0, (args: 'df "/mnt/share/tmp/Ripped videos"', returncode: '0', stdout: 'Filesystem             1K-bloc...,' stderr: '')
-              freespace_plugin_test.dotest               -    DEBUG:  Free_pathWithSpaces - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_pathWithSpaces', 'message': 'Free_pathWithSpaces  OK - local - free 30%  (minfree 10%)  "/mnt/share/tmp/Ripped videos"'}
+              freespace_plugin_test.dotest               -    DEBUG:  Free_pathWithSpaces - eval_status() returned:  {'rslt': 0, 'notif_key': 'Free_pathWithSpaces', 'message': 'Free_pathWithSpaces  OK - local - free 29%  (minfree 10%)  "/mnt/share/tmp/Ripped videos"'}
 
 Test 7 - Bad limit value - setup ERROR --------------------------------------------------
                    freespace_plugin.setup                -    DEBUG:  Free_badlimit - lanmonitor.freespace_plugin.setup() called:

@@ -5,7 +5,7 @@ Test 1 - Local, page found - OK ------------------------------------------------
                 webpage_plugin_test.dotest               -    DEBUG:  Page_WeeWX - setup() returned:  0
                      webpage_plugin.eval_status          -    DEBUG:  Page_WeeWX - lanmonitor.webpage_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <curl http://localhost/weewx/>
                      webpage_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'curl http://localhost/weewx/', returncode: 0, stdout: '<!DOCTYPE html>...', stderr: '% Total   ')
                 webpage_plugin_test.dotest               -    DEBUG:  Page_WeeWX - eval_status() returned:  {'rslt': 0, 'notif_key': 'Page_WeeWX', 'message': 'Page_WeeWX  OK - local - http://localhost/weewx/'}
@@ -35,9 +35,10 @@ Test 4 - Remote, page found - OK -----------------------------------------------
                      webpage_plugin.eval_status          -    DEBUG:  Page_xBrowserSync - lanmonitor.webpage_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <curl https://www.xbrowsersync.org/>
                      webpage_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'curl https://www.xbrowsersync.org/', returncode: 0, stdout: '<!DOCTYPE html>...', stderr: '% Total   ')
                 webpage_plugin_test.dotest               -    DEBUG:  Page_xBrowserSync - eval_status() returned:  {'rslt': 0, 'notif_key': 'Page_xBrowserSync', 'message': 'Page_xBrowserSync  OK - testhost2 - https://www.xbrowsersync.org/'}

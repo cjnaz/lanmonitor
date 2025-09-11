@@ -19,13 +19,13 @@ Checks that the `sestatus` _Current mode:_ value matches the `expected_mode`.
 Note: If selinux is not installed on the target host, then this plugin reports "NOT IN EXPECTED STATE...".
 """
 
-__version__ = "3.5"
+__version__ = '4.0'
 
 #==========================================================
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5.
+# 4.0 250911 - Updated to lanmonitor V4.0.
 # 3.3 240805 - Updated to lanmonitor V3.3.
 # 3.1 230320 - Warning for ssh fail to remote
 # 3.0 230301 - Packaged

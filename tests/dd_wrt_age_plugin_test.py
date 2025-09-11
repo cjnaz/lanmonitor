@@ -8,7 +8,7 @@ Note:  I no longer have a dd-wrt router for testing this plugin.
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250811 - Updated to lanmonitor V3.5.
+# 4.0 250911 - Updated to lanmonitor V4.0.
 # 3.1 230320 - Added ssh access warning cases
 # 3.0 230301 - Packaged
 #

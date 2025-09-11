@@ -6,7 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250815 - asyncssh and invoke incorporation for remote/local command execution in cmd_check
+# 3.5 250911 - asyncssh and invoke incorporation for remote/local command execution in cmd_check
 # 3.3 240805 - Reworked debug level logging in cmd_check, Added cmd_timeout for each monitored item.
 # 3.1 230320 - Added cfg param SSH_timeout, fixed cmd_check command fail retry bug, 
 #   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
@@ -31,8 +31,8 @@ import threading
 import asyncssh
 import invoke
 
-from cjnfuncs.core import logging
-from cjnfuncs.timevalue import timevalue
+from cjnfuncs.core import logging, ConfigError
+from cjnfuncs.timevalue import timevalue, get_next_dt
 import lanmonitor.globvars as globvars
 
 
@@ -44,9 +44,9 @@ RTN_FAIL =                                  2
 RTN_CRITICAL =                              3
 
 RTNCODE_REMOTE_CONNECTION_DOWN =            250
-RTNCODE_COMMAND_TIMEOUT =                   251  # << used in pinghost_plugin
+RTNCODE_COMMAND_TIMEOUT =                   251
 RTNCODE_ERROR =                             252
-RTNCODE_CONNECT_ATTEMPT_FAILED =            253  # << used by all plugins
+RTNCODE_CONNECT_ATTEMPT_FAILED =            253
 
 
 GATEWAY_TIMEOUT_DEFAULT =                   '1.0s'
@@ -56,7 +56,7 @@ CONNECTION_NTRIES_DEFAULT =                 2
 CONNECTION_RETRY_INTERVAL_DEFAULT =         '0.5s'
 CONNECTION_KEEPALIVE_INTERVAL_DEFAULT =     '60s'
 CONNECTION_KEEPALIVE_COUNT_MAX_DEFAULT =    3
-CONNECTION_COMMAND_MAX_TIMEOUTS_DEFAULT =   4       # At this count, close/delete the conn
+CONNECTION_COMMAND_MAX_TIMEOUTS_DEFAULT =   4
 
 COMMAND_TIMEOUT_DEFAULT =                   '1.0s'
 COMMAND_NTRIES_DEFAULT =                    2
@@ -80,7 +80,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
     For cmd_check calls on remote hosts the time to establish a remote connection can be as long as below.
     The remote host connection is made once and reused indefinitely, with keepalive managed by asyncssh.
-    If the connection is lost it will automatically be restablished on the next cmd_check call for the specific host.
+    If the connection is lost it will automatically be reestablished on the next cmd_check call for the specific host.
         Connection_nTries*Connection_timeout + (Connection_nTries-1)*Connection_retry_interval
 
     The maximum total execution time of a failing cmd_check call can be as long as:
@@ -97,10 +97,12 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
     `user_host_port`  (str)
     - Target machine to execute `cmd` on, eg: 'me@testhost2:2222'.  The port number is optional (default 22).
+    - Alternately, `user_host_port` may be a reference to a host section in the config file.
     - `local` indicates run `cmd` on the local machine as the current user using invoke.run()
 
-    `cmd_timeout`  (float, value in seconds)
-    - timeout value used when executing `cmd`
+    `cmd_timeout`  (float, value in seconds, or None)
+    - If not None, then this timeout value is used when executing `cmd`
+    - If None, see the last Behaviors and rules note, below
 
     `return_type`  (str - either 'cmdrun' or 'check_string')
     - If `return_type` = 'cmdrun' then RTN_PASS (`cmd` exit code = 0) or RTN_FAIL (`cmd` exit code != 0) and
@@ -123,7 +125,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - Text that must NOT be found in the `check_line_text` (or all of `CompletedProcess.stdout`)
     
 
-    ### cfg dictionary params - Defined per remote host:
+    ### cfg dictionary params - Optionally defined per remote host:
     `Connection_timeout` (int, float, or timevalue, default 2.0s)
     - Timeout used for asyncssh connections to the remote host
 
@@ -143,6 +145,9 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     - Once reaching this number of consecutive timeouts on a remote connection - possibly
     over successive calls to cmd_check - the remote connection is closed, thus forcing
     an attempted reconnect on the next call.
+
+    `Command_timeout` (int, float, or timevalue, default 1.0s)
+    - Max time allowed for a command execution call, if not specified by the monitor item (cmd_check cmd_timeout = None)
 
     `Command_nTries` (int, default 2)
     - Maximum number of attempts to run `cmd` on the local or remote connection
@@ -187,12 +192,20 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     with further details in `stderr`.
     - Attempting to connect to a remote host but the hostname cannot be resolved (DNS failure) results in `success_status = RTN_FAIL` 
     with `returncode = RTNCODE_ERROR`, with further details in `stderr`.
+    - Attempting to connect to a known remote host (no DNS failure) but the connection still fails (eg, timeouts), result in `success_status = RTN_WARNING` 
+    with `returncode = RTNCODE_CONNECT_ATTEMPT_FAILED`, with further details in `stderr`.
     - If `cmd` is executed on a remote system and the number of consecutive `cmd` execution timeouts reaches the 
     `Connection_command_max_timeouts` limit then the remote connection is closed, `success_status = RTN_WARNING` with 
     `returncode = RTNCODE_REMOTE_CONNECTION_DOWN`, and with further details in `stderr` is returned.
     - Any other exception results in `success_status = RTN_FAIL`, `returncode = RTNCODE_ERROR`, with further details in `stderr`.
     - If there are no timeout or other exceptions then `returncode` is the value returned from the `cmd` execution (with `return_type` = 'cmdrun'), with results 
     in `stdout` or `stderr`.  If `return_type` = 'check_string' the returncode value is from the string match checks.
+    - The order of precedence for Connection_ and Command_ defaults is:
+      1. For command execution timeout, the `timeout` value specified in a dictionary-style monitor item is highest precedent.
+      2. `Command_timeout` specified in a host-section is used, if provided.
+      3. `Command_timeout` specified in a [DEFAULT] section is used, if provided.
+      4. The `COMMAND_TIMEOUT_DEFAULT` value ('1.0s') is used if no other timeout values are provided.
+      - All other Connection_ and Command_ defaults follow the same scheme, except that only the command execution `timeout` can be specified on a monitor item definition.
     """
 
     global host_connections
@@ -214,7 +227,6 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             host_section = user_host_port
             if host_section not in globvars.config.sections():
                 error_msg = f"__*****__Host section <{host_section}> not in config."
-                # return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
                 return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
                 # Or, sys.exit() - Not exiting since this would terminate testing
 
@@ -225,15 +237,13 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             except Exception as e:
                 error_msg = f"__*****__Missing item(s) in host section <{host_section}> - {type(e).__name__}: {e}"
                 return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
-                # logging.error (f"hostname or username not specified in section <{host_section}>.  Aborting.\n  {type(e).__name__}: {e}")
-                # sys.exit(1)
 
         uhp = f"{user}@{host}:{port}"
 
 
     # Get host local or SSH connection
     if uhp not in host_connections.connections:
-        command_timeout =                       timevalue(globvars.config.getcfg('Command_timeout',                 COMMAND_TIMEOUT_DEFAULT,                section=host_section)).seconds
+        command_timeout =                   timevalue(globvars.config.getcfg('Command_timeout',                 COMMAND_TIMEOUT_DEFAULT,                section=host_section)).seconds
         command_ntries =                              globvars.config.getcfg('Command_nTries',                  COMMAND_NTRIES_DEFAULT,                 section=host_section)
         command_retry_interval =            timevalue(globvars.config.getcfg('Command_retry_interval',          COMMAND_RETRY_INTERVAL_DEFAULT,         section=host_section)).seconds
 
@@ -251,28 +261,20 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             connection_env  =                         globvars.config.getcfg('Connection_env',                  {},                                     section=host_section)
 
         try:
-            host_connections.new_connection(        uhp,                # If local, then just creates empty host_connections.connections['local'] dict
+            host_connections.new_connection(        uhp,                # If local, then just creates placeholder host_connections.connections['local'] dict
                     connection_timeout=             connection_timeout,
                     connection_nTries=              connection_nTries,
                     connection_retry_interval=      connection_retry_interval,
                     connection_keepalive_interval=  connection_keepalive_interval,
-                    connection_keepalive_count_max= connection_keepalive_count_max) #  TODO password
+                    connection_keepalive_count_max= connection_keepalive_count_max)
             
         except Exception as e:
             error_msg = f"Exception while connecting to {uhp}: {type(e).__name__} - "  + str(e).replace('\n',' ')
             logging.debug(error_msg)
-            # logging.exception(error_msg)
-            # if 'TimeoutError' in error_msg  or  'OSError' in error_msg:
-            #     return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_REMOTE_CONNECTION_DOWN, stdout='', stderr=error_msg))
-            # elif 'gaierror' in error_msg:
-            #     return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_CONNECT_ATTEMPT_FAILED, stdout='', stderr=error_msg))
-            # else:
-            #     return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
             if 'TimeoutError' in error_msg  or  'OSError' in error_msg:
                 # OSError will occur for a known unavailable host (DNS resolved but no response)
                 return (RTN_WARNING, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_CONNECT_ATTEMPT_FAILED, stdout='', stderr=error_msg))
             else:
-                # return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_CONNECT_ATTEMPT_FAILED, stdout='', stderr=error_msg))
                 return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
 
 
@@ -284,13 +286,12 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         host_connections.connections[uhp]['consecutive_command_timeouts'] =     0
 
         if uhp == 'local':
-            # xx =  f"        Command nTries       <{command_ntries}>, Retry interval <{command_retry_interval}s>"
             xx =  f"        Command timeout        <{command_timeout}>, nTries <{command_ntries}>, Retry interval <{command_retry_interval}s>"
         else:
             xx =  f"        Connection timeout     <{connection_timeout}s>, nTries <{connection_nTries}>, Retry interval <{connection_retry_interval}s>\n"
             xx += f"        Connection keepalive   <{connection_keepalive_interval}s>, max count <{connection_keepalive_count_max}>\n"
             xx += f"        Connection environment <{connection_env}>\n"
-            xx += f"        Command timeout        <{command_timeout}>, nTries <{command_ntries}>, Retry interval <{command_retry_interval}s>"
+            xx += f"        Command timeout        <{command_timeout}>, nTries <{command_ntries}>, Retry interval <{command_retry_interval}s>, Max consecutive timeouts <{connection_command_max_timeouts}>"
         logging.debug (f"Connection (re)established:  <{uhp}>\n{xx}")
 
 
@@ -299,7 +300,6 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
     _cmd_timeout = host_connections.connections[uhp]['command_timeout']  if cmd_timeout is None  else cmd_timeout
 
     for nTry in range (host_connections.connections[uhp]['command_ntries']):
-
         if nTry > 0:
             time.sleep (host_connections.connections[uhp]['command_retry_interval'])
         logging.debug(f"cmd try {nTry+1} on <{uhp}>:  <{cmd}>")
@@ -324,7 +324,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                 error_msg = '__*****__' + type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
-                # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
+                # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")     # for debug
                 continue
 
         else:   # Remote execution
@@ -341,7 +341,6 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                     stderr=         run_try.stderr.strip().replace('\n',' '))
 
             except TimeoutError as e:
-                # Raised in run_command() when command execution time exceeds _cmd_timeout
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_COMMAND_TIMEOUT, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
@@ -358,15 +357,14 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                 # Raised in run_command() - catchall
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg)
-                logging.warning(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
-                # logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
-                # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
+                logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
+                # logging.exception(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")     # for debug
                 continue
 
         if run_result.returncode != 0:           # no exception, but non-passing result
             run_result.stderr = error_msg = '__*****__' + run_result.stderr
             logging.debug(f"cmd try {nTry+1} failed (returncode {run_result.returncode}):  <{error_msg}>")
-        # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")      # Uncomment for debug.  stdout can be huge.
+        # logging.debug(f"cmd_check subprocess.run returned <{run_try}>")      # for debug.  stdout can be huge.
 
 
         if return_type == 'check_string':
@@ -483,24 +481,26 @@ class ConnectionsManager:
     """
     `host_connections` is the single instance of this class.
     All established local and remote/ssh connections are stored in the `host_connections.connections`
-    dictionary of connection dictionaries.
-    Local commands are executed by the invoke.run() call in cmd_check, while remote commands are 
-    executed by asyncssh using run_command in this class.
+    dictionary.
+    Local commands are executed by the invoke.run() call in cmd_check(), while remote commands are 
+    executed by asyncssh using run_command() in this class.
 
-    For the local connection the uhp key = 'local', and these keys are created:
-        'ssh_conn' = None                   Not used for local connections
-        'command_ntries'                    Local-specific command nTries
-        'command_retry_interval'            Local-specific command retry interval
+    The value-portion of each `host_connections.connections` entry is in-turn a dictionary.  new_connection()
+    populates `host_connections.connections['local'] = {'ssh_conn': None}` for the local connection, and populates
+    `host_connections.connections[uhp] = {'ssh_conn': asyncssh.connect()}` for new remote connections.
 
-    For remote connections the uhp key is a fully formed 'user@host:port' string which maps to a 
-    dictionary with these keys:
-        'ssh_conn'                          Returned by asyncssh.connect()
+    cmd_check() populates several other keys in each connection's dictionary that are used by invoke.run() (for local)
+    or asyncssh.run() in self.run_command().  The fully populated connection dictionary contains:
+
+        'ssh_conn'                          None (for local) or as returned by asyncssh.connect()
+        'command_timeout'                   Connection-specific default command execution timeout if not specified on the cmd_check call
         'command_ntries'                    Connection-specific command nTries
         'command_retry_interval'            Connection-specific command retry interval
         'connection_command_max_timeouts'   The connection is dropped if this timeout count is reached
-        'consecutive_command_timeouts'      incremented on each command timeout, reset to 0 on command success
-        'connection_env'                    Connection-specific environment vars passed with each connection.run() call
+        'consecutive_command_timeouts'      Incremented on each command execution timeout, reset to 0 on command success
+        'connection_env'                    Connection-specific environment vars passed with each asyncssh.run() call (not used for local)
     """
+
     def __init__(self, logging_level=logging.WARNING):
         self.connections = {}
         self.loop = asyncio.new_event_loop()
@@ -549,7 +549,7 @@ class ConnectionsManager:
                                                                         connect_timeout=connection_timeout,
                                                                         keepalive_interval=connection_keepalive_interval,
                                                                         keepalive_count_max=connection_keepalive_count_max),
-                                                        timeout=connection_timeout+1)                                           # TODO +1?
+                                                        timeout=connection_timeout+1)
                     self.connections[uhp] = {'ssh_conn': ssh_conn}
                     break
                     
@@ -575,10 +575,10 @@ class ConnectionsManager:
         #                   ChannelOpenError
         #                   ConnectionLost (keepalve closed the channel)
         # All other exceptions are passed up
+
         conn = self.connections.get(uhp)
         if not conn:
             raise ConnectionError(f"__*****__Connection to <{uhp}> not established")    # This should not happen
-
         ssh_conn = conn['ssh_conn']
 
         try:
@@ -594,7 +594,7 @@ class ConnectionsManager:
             if conn['consecutive_command_timeouts'] == conn['connection_command_max_timeouts']:
                 await self._close_connection(ssh_conn)
                 del self.connections[uhp]
-                logging.warning (f"Excessive command timeouts on <{uhp}> - Closed connection")  # TODO debug
+                logging.warning (f"Excessive command timeouts on <{uhp}> - Closed connection")
                 raise ConnectionError(error_msg)
             raise TimeoutError(error_msg)
         
@@ -702,51 +702,36 @@ def check_LAN_access(host=None):
 
 #=====================================================================================
 #=====================================================================================
-#  n e x t _ s u m m a r y _ t i m e s t r i n g
+#  n e x t _ s u m m a r y _ d t
 #=====================================================================================
 #=====================================================================================
-def next_summary_timestring():
+def next_summary_dt():
     """
-    ## next_summary_timestring () - Calculate the datetime timestring of next summary
+    ## next_summary_dt() - Calculate the datetime of next summary
 
     Example config file items
     ```
-        SummaryDays   1 2 3 4 5 6 7  # Days of week: 1 = Monday, 7 = Sunday.  = 0 or comment out to disable summaries
-        SummaryTime   9:45           # 24 hour clock
+        SummaryDays   [1, 3, 5]     # Days of week: 1 = Monday, 7 = Sunday.  = 0 for every day
+        SummaryTime   9:45          # 24 hour clock
     ```
 
-    - NOTE:  May be off by 1 hour over a DTS changes.
-    - Don't define SummaryDays to disable summaries.
+    Don't define SummaryDays to disable summaries
 
     ### Returns
     - datetime of next summary
     """
-    if globvars.config.getcfg('SummaryDays', None) is None:
+
+    if (days := globvars.config.getcfg('SummaryDays', None)) is None:
         logging.debug(f"SummaryDays not defined.  Summaries are disabled.")
         return None
+
     try:
-        target_hour   = int(globvars.config.getcfg('SummaryTime','').split(':')[0])
-        target_minute = int(globvars.config.getcfg('SummaryTime','').split(':')[1])
-        today_day_num = datetime.datetime.today().isoweekday()
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
-        next_summary = now + datetime.timedelta(days=30)
-        xx = globvars.config.getcfg('SummaryDays')
-        days = [xx]  if type(xx) is int  else [int(day) for day in xx.split()]
-        for daynum in days:
-            offset_num_days = daynum - today_day_num
-            if offset_num_days < 0:
-                offset_num_days += 7
-            plus_day =  now + datetime.timedelta(days=offset_num_days)
-            with_time = plus_day.replace(hour=target_hour, minute=target_minute)
-            if with_time < datetime.datetime.now():
-                with_time = with_time + datetime.timedelta(days=7)
-            if with_time < next_summary:
-                next_summary = with_time
-        logging.debug(f"Next summary:  {next_summary}")
-        return next_summary
+        times = globvars.config.getcfg('SummaryTime', '')
+        next_summary_dt = get_next_dt(times, days)
+        logging.debug(f"Next summary:  {next_summary_dt}")
+        return next_summary_dt
+
     except Exception as e:
-        _msg = f"SummaryDays <{globvars.config.getcfg('SummaryDays','')}> or SummaryTime <{globvars.config.getcfg('SummaryTime','')}> settings could not be parsed\n  {e}"
-        logging.error(f"ERROR:  {_msg}")
-        sys.exit(1)
-        # raise ValueError (_msg) from None
-        
+        # _msg = f"SummaryDays <{days}> or SummaryTime <{times}> settings could not be parsed\n  {type(e).__name__}: {e}"
+        _msg = f"SummaryDays <{days}> or SummaryTime <{times}> settings could not be parsed - {e}"
+        raise ConfigError (_msg)

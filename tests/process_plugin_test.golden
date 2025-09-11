@@ -5,7 +5,7 @@ Test 1 - Local process - OK --------------------------------------------------
                 process_plugin_test.dotest               -    DEBUG:  Process_local_pass - setup() returned:  0
                      process_plugin.eval_status          -    DEBUG:  Process_local_pass - lanmonitor.process_plugin.eval_status() called
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
-        Command nTries       <1>, Retry interval <0.0s>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <ps -Af>
                      process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ps -Af', returncode: 0, stdout: 'UID        PID  PPID  C STIME TTY          TIME CM...', stderr: '')
                 process_plugin_test.dotest               -    DEBUG:  Process_local_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Process_local_pass', 'message': 'Process_local_pass  OK - local - /usr/sbin/sshd'}
@@ -17,9 +17,10 @@ Test 2 - Remote process - OK --------------------------------------------------
                      process_plugin.eval_status          -    DEBUG:  Process_remote_pass - lanmonitor.process_plugin.eval_status() called
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
                         lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
-        Connection timeout   <4.0s>, nTries <1>, Retry interval <0.0s>
-        Connection keepalive <60.0s>, max count <3>
-        Command nTries       <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
                         lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <ps -Af>
                      process_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, (args: 'ps -Af', returncode: 0, stdout: 'UID        PID  PPID  C STIME TTY          TIME CM...', stderr: '')
                 process_plugin_test.dotest               -    DEBUG:  Process_remote_pass - eval_status() returned:  {'rslt': 0, 'notif_key': 'Process_remote_pass', 'message': 'Process_remote_pass  OK - testhost2 - /usr/sbin/sshd'}
