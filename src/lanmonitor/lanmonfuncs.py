@@ -58,6 +58,7 @@ CONNECTION_KEEPALIVE_INTERVAL_DEFAULT =     '60s'
 CONNECTION_KEEPALIVE_COUNT_MAX_DEFAULT =    3
 CONNECTION_COMMAND_MAX_TIMEOUTS_DEFAULT =   4       # At this count, close/delete the conn
 
+COMMAND_TIMEOUT_DEFAULT =                   '1.0s'
 COMMAND_NTRIES_DEFAULT =                    2
 COMMAND_RETRY_INTERVAL_DEFAULT =            '0.5s'
 
@@ -232,6 +233,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
     # Get host local or SSH connection
     if uhp not in host_connections.connections:
+        command_timeout =                       timevalue(globvars.config.getcfg('Command_timeout',                 COMMAND_TIMEOUT_DEFAULT,                section=host_section)).seconds
         command_ntries =                              globvars.config.getcfg('Command_nTries',                  COMMAND_NTRIES_DEFAULT,                 section=host_section)
         command_retry_interval =            timevalue(globvars.config.getcfg('Command_retry_interval',          COMMAND_RETRY_INTERVAL_DEFAULT,         section=host_section)).seconds
 
@@ -246,7 +248,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
             connection_keepalive_interval = timevalue(globvars.config.getcfg('Connection_keepalive_interval',   CONNECTION_KEEPALIVE_INTERVAL_DEFAULT,  section=host_section)).seconds
             connection_keepalive_count_max =          globvars.config.getcfg('Connection_keepalive_count_max',  CONNECTION_KEEPALIVE_COUNT_MAX_DEFAULT, section=host_section)
             connection_command_max_timeouts =         globvars.config.getcfg('Connection_command_max_timeouts', CONNECTION_COMMAND_MAX_TIMEOUTS_DEFAULT,section=host_section)
-            connection_env  =                         globvars.config.getcfg('connection_env',                  {},                                     section=host_section)
+            connection_env  =                         globvars.config.getcfg('Connection_env',                  {},                                     section=host_section)
 
         try:
             host_connections.new_connection(        uhp,                # If local, then just creates empty host_connections.connections['local'] dict
@@ -274,6 +276,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                 return (RTN_FAIL, subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_ERROR, stdout='', stderr=error_msg))
 
 
+        host_connections.connections[uhp]['command_timeout'] =                  command_timeout
         host_connections.connections[uhp]['command_ntries'] =                   command_ntries
         host_connections.connections[uhp]['command_retry_interval'] =           command_retry_interval
         host_connections.connections[uhp]['connection_command_max_timeouts'] =  connection_command_max_timeouts
@@ -281,15 +284,20 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
         host_connections.connections[uhp]['consecutive_command_timeouts'] =     0
 
         if uhp == 'local':
-            xx =  f"        Command nTries       <{command_ntries}>, Retry interval <{command_retry_interval}s>"
+            # xx =  f"        Command nTries       <{command_ntries}>, Retry interval <{command_retry_interval}s>"
+            xx =  f"        Command timeout        <{command_timeout}>, nTries <{command_ntries}>, Retry interval <{command_retry_interval}s>"
         else:
-            xx =  f"        Connection timeout   <{connection_timeout}s>, nTries <{connection_nTries}>, Retry interval <{connection_retry_interval}s>\n"
-            xx += f"        Connection keepalive <{connection_keepalive_interval}s>, max count <{connection_keepalive_count_max}>\n"
-            xx += f"        Command nTries       <{command_ntries}>, Retry interval <{command_retry_interval}s>, Max consecutive timeouts <{connection_command_max_timeouts}>"
+            xx =  f"        Connection timeout     <{connection_timeout}s>, nTries <{connection_nTries}>, Retry interval <{connection_retry_interval}s>\n"
+            xx += f"        Connection keepalive   <{connection_keepalive_interval}s>, max count <{connection_keepalive_count_max}>\n"
+            xx += f"        Connection environment <{connection_env}>\n"
+            xx += f"        Command timeout        <{command_timeout}>, nTries <{command_ntries}>, Retry interval <{command_retry_interval}s>"
         logging.debug (f"Connection (re)established:  <{uhp}>\n{xx}")
 
 
     # Run the command, with retries
+
+    _cmd_timeout = host_connections.connections[uhp]['command_timeout']  if cmd_timeout is None  else cmd_timeout
+
     for nTry in range (host_connections.connections[uhp]['command_ntries']):
 
         if nTry > 0:
@@ -298,7 +306,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
         if uhp == 'local':
             try:
-                run_try = invoke.run(cmd, hide=True, timeout=cmd_timeout, warn=True)
+                run_try = invoke.run(cmd, hide=True, timeout=_cmd_timeout, warn=True)
 
                 run_result = subprocess.CompletedProcess(
                     args=           run_try.command,
@@ -324,7 +332,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                 run_try = host_connections.run_command(
                     command =       cmd,
                     uhp =           uhp,
-                    command_timeout=cmd_timeout)
+                    command_timeout=_cmd_timeout)
 
                 run_result = subprocess.CompletedProcess(
                     args=           cmd,
@@ -333,7 +341,7 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
                     stderr=         run_try.stderr.strip().replace('\n',' '))
 
             except TimeoutError as e:
-                # Raised in run_command() when command execution time exceeds cmd_timeout
+                # Raised in run_command() when command execution time exceeds _cmd_timeout
                 error_msg = type(e).__name__ + ": " + str(e).replace('\n',' ')
                 run_result = subprocess.CompletedProcess(args=cmd, returncode=RTNCODE_COMMAND_TIMEOUT, stdout='', stderr=error_msg)
                 logging.debug(f"cmd try {nTry+1} failed (exception):  <{error_msg}>")
@@ -491,7 +499,7 @@ class ConnectionsManager:
         'command_retry_interval'            Connection-specific command retry interval
         'connection_command_max_timeouts'   The connection is dropped if this timeout count is reached
         'consecutive_command_timeouts'      incremented on each command timeout, reset to 0 on command success
-        'connection_env'                               
+        'connection_env'                    Connection-specific environment vars passed with each connection.run() call
     """
     def __init__(self, logging_level=logging.WARNING):
         self.connections = {}
@@ -574,7 +582,8 @@ class ConnectionsManager:
         ssh_conn = conn['ssh_conn']
 
         try:
-            result = await asyncio.wait_for(ssh_conn.run(command), timeout=command_timeout)     # TODO env
+            result = await asyncio.wait_for(ssh_conn.run(command, env= conn['connection_env']), 
+                                            timeout=command_timeout)
             conn['consecutive_command_timeouts'] = 0
             return result
 

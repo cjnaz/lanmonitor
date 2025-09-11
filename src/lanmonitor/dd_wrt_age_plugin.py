@@ -126,7 +126,7 @@ class monitor:
             if rslt[1].returncode == RTNCODE_CONNECT_ATTEMPT_FAILED:
                 error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
             else:
-                error_msg = f'READ FROM DD-WRD ROUTER FAILED'
+                error_msg = f'READ FROM DD-WRT ROUTER FAILED'
             if '__*****__' in rslt[1].stderr:
                 error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1][:100]
             return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}

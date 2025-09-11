@@ -94,7 +94,6 @@ def main():
     # else:
     #     checked_have_LAN_access = have_LAN_access = True
 
-
     for item in globvars.args.Items:                    # Given CLI Items:  [ 'apt', 'host3' ]
         item = item.lower()
         for mon_item in monitor_items_list:
@@ -141,8 +140,7 @@ def service():
             sys.exit(1)     # TODO cleanup
 
         if globvars.args.verbose is not None:
-        # if not globvars.args.service:               # In service mode, logging level is set from config file
-            set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)   # TODO allow cli log level setting in service mode?
+            set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.WARNING), save=False)
 
 
         if first:
@@ -313,7 +311,8 @@ def run_item(item_key):                                                 # Given 
                     # Default settings
                     monline['user_host_port'] =     monline['host'] = 'local'
                     monline['critical'] =           False
-                    monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
+                    # monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
+                    monline['cmd_timeout'] =        None
 
                     # Optional settings
                     for line_key in item_def:
@@ -335,7 +334,7 @@ def run_item(item_key):                                                 # Given 
                     # Monitor item str format
                         #   montype_xyz   pi@rpi3:80 CRITICAL  5m  xyz config specific
                         #   ^^^^^^^^^^^  key
-                        #           ^^^  tag
+                        #           ^^^  tagcmd_timeout
                         #                 ^^^^^^^^^^ user_host_port
                         #                    ^^^^      host
                         #                            ^^^^^^^^  critical  (optional, case insensitive, saved as boolean)
@@ -352,7 +351,8 @@ def run_item(item_key):                                                 # Given 
                     if yy.lower().startswith('critical'):
                         monline['critical'] =       True
                         yy = yy.split(maxsplit=1)[1]
-                    monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
+                    # monline['cmd_timeout'] =        timevalue(globvars.config.getcfg('Cmd_timeout', CMD_TIMEOUT_DEFAULT)).seconds
+                    monline['cmd_timeout'] =        None
                     monline['check_interval'] =     timevalue(yy.split(maxsplit=1)[0]).seconds
                     monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
 

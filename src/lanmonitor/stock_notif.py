@@ -123,11 +123,12 @@ class notif_class:
 
         status_log = f"  {'Monitor item'.ljust(globvars.keylen)}  Prior run time       Next run time          Last check status\n"
         for key in inst_dict:
-            if key in self.events:
-                status = self.events[key]['message']
-            else:
-                status = "  OK"
-            status_log += f"  {key.ljust(globvars.keylen)}  {inst_dict[key].prior_run}  {inst_dict[key].next_run}  {status}\n"
+            if inst_dict[key]:                  # Will be False if failed in setup()
+                if key in self.events:
+                    status = self.events[key]['message']
+                else:
+                    status = "  OK"
+                status_log += f"  {key.ljust(globvars.keylen)}  {inst_dict[key].prior_run}  {inst_dict[key].next_run}  {status}\n"
             # NOTE - prior_run vars are not defined until after first run.  each_loop() isn't called until after check items have been run, so _shouldn't_ crash.
 
         logging.warning(f"On-demand status dump:\n{status_log}")

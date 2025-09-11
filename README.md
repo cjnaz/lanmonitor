@@ -44,6 +44,7 @@ for plugin implementation details.
   - Added command line interface for targeted runs, eg: `lanmonitor service` runs all system services checks.
   - Persistent SSH connections to remote hosts, greatly speeding up checks and eliminating SSH reconnects.
   - Refactored the item execution core/engine using `invoke` for local checks and `asyncssh` for remote checks.
+  - Enhanced the fsactivity_plugin with support for directory tree recursion and wildcard in filenames.
 <br/>
 
 ---

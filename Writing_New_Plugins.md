@@ -12,13 +12,19 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
   - Adjust the `rest_of_line` parsing, creating new vars as needed.
   - Add any checker code to validate these new values.
 - Within the `eval_status()` function:
-  - Adjust the `cmd` for your needed subprocess call command.
-  - The `cmd_check()` function can check the returncode or return text.  It also returns the full subprocess call response.  _See the cmd_check function within the lanmonfuncs.py module for built-in checking features._  Uncomment the `# logging.debug (f"cmd_check response:  {rslt}")` line to see what's available for building response checker code.
+  - Adjust the `cmd` for your needed command execution call.
+  - The `cmd_check()` function can check the returncode or return text.  It also returns the full command execution call response.  _See the cmd_check function within the lanmonfuncs.py module for built-in checking features._  Uncomment the `# logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")` line to see the full command execution response and what's available for building response checker code.
   - Adjust the `if rslt[0] == RTN_PASS: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
 - Create a companion `mynewitem_plugin_test.py` by copying from the lanmonitor/tests directory, and create `dotest()` calls to exercise all possible good, bad, and invalid conditions.
 - Debug and validate the new plugin module by running standalone (`./mynewitem_plugin_test.py`).
 - Add the `MonType_<your_monitor_type> <abs_path_to>/mynewitem_plugin>` line and specific monitor items to your config file.
   - New plugins are welcome for bundling into the lanmonitor distribution.  Open a github issue.
+
+The best examples to follow:
+- `fsactivity_plugin_test.py` has the latest features for running individual tests via the command line.
+- `service_plugin.py` demos running commands from setup() code (determines the system manager type for the target host).
+- `pinghost_plugin.py` has the standard template structure for a `eval_status() return_type='cmdrun'` plugin.
+- `webpage_plugin.py` has the standard template structure for a `eval_status() return_type='check_string` plugin.
 
 <br/>
 
@@ -32,7 +38,7 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
             host            'local' or 'hostname' from config file line
             critical        True if 'CRITICAL' is in the config file line
             check_interval  Time in seconds between rechecks
-            cmd_timeout     Max time in seconds allowed for the subprocess.run call in cmd_check()
+            cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
 
     - setup() must return RTN_PASS, RTN_WARNING, or RTN_FAIL.  If RTN_FAIL the setup failure is permanent and the item will not be monitored (but setup() will be retried again after a config file edit).  If RTN_WARNING the setup will be retried on the next checking iteration, thus allowing for intermittent issues during setup.  Warnings and Fails are logged.
@@ -47,8 +53,7 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
 
       - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`lanmonitor -vv`, or run the plugin's `..._test.py` script)
       to see the available cmd_check() response data. See `lanmonfuncs.py` for cmd_check feature details and the return structure.
-      - If the host is not `local` then the lanmonitor core will check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access()` check is performed only once per check iteration.  Thus, your eval_status() code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check (using the pinghost plugin) earlier in the config file to limit fail ambiguity.
-      - In addition to the `Gateway` access check, if a monitor item is to be executed on a remote host (not `local`) and the results are not passing, then `cmd_check` double checks that ssh-based access to the target host is working.  `cmd_check` returns RTN_WARNING if there is an ssh access issue, versus RTN_PASS/RTN_FAIL for the specific checked item.  Your plugin should distinguish between ssh access vs. real failures.
+      - If the host is not `local` then the lanmonitor core will optionally check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access()` check is performed only once per check iteration.  Thus, your eval_status() code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check (using the pinghost plugin) earlier in the config file to limit fail ambiguity.
 
 3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `'check_interval':1` as a placeholder.)
 

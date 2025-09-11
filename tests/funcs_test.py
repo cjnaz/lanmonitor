@@ -54,6 +54,7 @@ hostname =                      testhost2
 username =                      me
 port =                          22
 Connection_command_max_timeouts = 1
+Connection_env = {'xyz': 'wxy', 'LC_1':'1234', 'LC_2':'To Be...'}
 
 [testhostx]
 hostname =                      testhostx
@@ -81,7 +82,12 @@ Command_retry_interval          14.2s
 Connection_command_max_timeouts 15
 Connection_keepalive_interval = 16
 Connection_keepalive_count_max= 17
-env = {'xyz': 'wyz'}
+
+[Test 7g]
+hostname =                      testhost2
+username =                      me
+port =                          22
+Connection_env = {'xyz': 'wxy', 'LC_1':'1234', 'LC_2':'To Be...'}
 
 [Test 8]
 hostname =                      testhost2
@@ -89,6 +95,11 @@ username =                      me
 Command_nTries =                2
 Command_retry_interval          0s
 Connection_command_max_timeouts 2
+
+[Test 9]
+hostname =                      testhost2
+username =                      me
+Command_timeout                 5
 
 [Test 20]
 hostname =                      testhost
@@ -481,6 +492,14 @@ if check_tnum('7f'):
             return_type='cmdrun')
     logging.info (f"\n{lanmonfuncs.host_connections.connections['me@testhost2:22']}")
 
+if check_tnum('7g'):
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    dotest ("Environment vars passed check",    # Env var 'xyz' not passed since not allowed in /etc/ssh/sshd_config AcceptEnv
+            "RTN_PASS - returncode=0, stdout='LC_2=To Be...\nLC_1=1234\nxyz=<>'",
+            cmd= "env | grep LC; echo xyz='<'$xyz'>'", user_host_port='Test 7g', cmd_timeout= 1,
+            return_type='cmdrun')
+    logging.info (f"\n{lanmonfuncs.host_connections.connections['me@testhost2:22']}")
+
 
 # Check consecutive command timeouts logic
 # These tests are effective when run in the full test 8 sequence.
@@ -545,6 +564,40 @@ if check_tnum('8h'):
             cmd= "echo Hello!", user_host_port='Test 8', cmd_timeout= 0.5,
             return_type='cmdrun')
     logging.info (f"Consecutive timeouts count: {lanmonfuncs.host_connections.connections['me@testhost2:22']['consecutive_command_timeouts']}")
+
+
+# Check Command_timeout default handling
+# These tests are effective when run in the full test 9 sequence.
+if check_tnum('9a'):
+    lanmonfuncs.host_connections.close('all')   # Whack any previous definition of me@testhost2:22
+    globvars.config.defaults['Command_timeout'] = 3
+    dotest ("Full chain of defaults in place.  cmd_timeout wins",
+            "RTN_FAIL - returncode=251, TimeoutError",
+            cmd= "echo Hello!", user_host_port='Test 9', cmd_timeout= 0.001,
+            return_type='cmdrun')
+
+if check_tnum('9b'):
+    dotest ("Connection Test 9 Command_timeout wins",
+            "RTN_PASS - returncode=0, stdout='Hello!'",
+            cmd= "echo Hello!", user_host_port='Test 9', cmd_timeout= None,
+            return_type='cmdrun')
+
+if check_tnum('9c'):
+    lanmonfuncs.host_connections.close('all')
+    del globvars.config.cfg['Test 9']['Command_timeout']
+    dotest ("DEFAULT section Command_timeout wins",
+            "RTN_PASS - returncode=0, stdout='Hello!'",
+            cmd= "echo Hello!", user_host_port='Test 9', cmd_timeout= None,
+            return_type='cmdrun')
+
+if check_tnum('9d'):
+    lanmonfuncs.host_connections.close('all')
+    del globvars.config.defaults['Command_timeout']
+    dotest ("COMMAND_TIMEOUT_DEFAULT wins",
+            "RTN_PASS - returncode=0, stdout='Hello!'",
+            cmd= "echo Hello!", user_host_port='Test 9', cmd_timeout= None,
+            return_type='cmdrun')
+
 
 
 # Dropped / recovered network test
