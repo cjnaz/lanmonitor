@@ -26,6 +26,12 @@ Sub-directories may be optionally recursed. Specific files (with wildcard suppor
 - Wildcards ('*' and '?') may be used in the file portion.
 - If the leaf node is a file and `recursive` is also specified then the file portion will be searched for in the
 specified parent folder _and all subdirectories_.
+
+**Config file switches defined in [fsactivity] section**
+
+`Show_filenames`  (bool, default False)
+- If True, log output includes the full path to the newest found file.
+- If False, the directory or file path from the config file is logged.
 """
 
 __version__ = '4.0'
@@ -90,6 +96,8 @@ class monitor:
         self.next_run       = datetime.datetime.now().replace(microsecond=0)
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
+
+        self.show_filenames = globvars.config.getcfg('Show_filenames', False, section='fsactivity')
 
         xx = item['rest_of_line'].split(maxsplit=1)
         try:
@@ -165,7 +173,8 @@ class monitor:
 
         logging.debug (f"Newest file: <{newest_file}>, datetime <{datetime.datetime.fromtimestamp(_newest_timestamp)}>")
 
+        xx = newest_file  if self.show_filenames  else self.path_for_logging
         if newest_age < self.maxage_sec:
-            return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {newest_file}"}
+            return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {xx}"}
         else:
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {newest_file}"}
+            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key}  STALE FILES - {self.host} - {retime(newest_age, self.unitsC):6.1f} {self.units:5} ({int(retime(self.maxage_sec, self.unitsC)):>4} {self.units:5} max)  {xx}"}

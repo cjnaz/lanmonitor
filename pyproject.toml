@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lanmonitor"
 version = "4.0rc1"
-    # 4.0rc1 - feature complete, no known bugs, fixed print host length calc, added cli host match
+    # 4.0rc1 - feature complete, no known bugs, fixed print host length calc, added cli host match, fsactivity Show_filenames switch
     # 4.0b5 - env support, Command_timeout default chain, template lanmonitor.cfg updated
     # 4.0b4 - --print-log switch accepts count, ServiceLoopTime default, lanmonfuncs logic final, plugins and tests updated, docs updated
     # 4.0b3 - cleanup
@@ -42,7 +42,7 @@ requires-python = ">=3.9"       # RHEL 9 uses 3.9
 authors = [ {name = "Chris Nelson", email = "github@cjnaz.com"} ]
 license = "MIT"
 dependencies = [
-    'cjnfuncs >= 3.0',
+    'cjnfuncs >= 3.0.1',
     'asyncssh >= 2.21.0',
     'invoke >= 2.2.0',
 #    'importlib-metadata; python_version<"3.8"',

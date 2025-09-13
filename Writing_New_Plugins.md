@@ -21,10 +21,11 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
   - New plugins are welcome for bundling into the lanmonitor distribution.  Open a github issue.
 
 The best examples to follow:
-- `fsactivity_plugin_test.py` has the latest features for running individual tests via the command line.
 - `service_plugin.py` demos running commands from setup() code (determines the system manager type for the target host).
 - `pinghost_plugin.py` has the standard template structure for a `eval_status() return_type='cmdrun'` plugin.
 - `webpage_plugin.py` has the standard template structure for a `eval_status() return_type='check_string` plugin.
+- `fsactivity_plugin.py` demos a plugin module configuration/mode switch (control whether filename full paths are logged).
+- `fsactivity_plugin_test.py` has the latest features for running individual tests via the command line.
 
 <br/>
 

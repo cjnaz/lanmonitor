@@ -48,6 +48,13 @@ Connection_retry_interval =     0s
 Command_nTries =                1
 Command_retry_interval =        0s
 Command_max_consecutive_timeouts =  2
+
+[localhost]
+hostname = localhost
+username = me
+
+[fsactivity]
+Show_filenames
 """
 globvars.config = config_item()
 globvars.config.read_string(cfg)
@@ -273,6 +280,28 @@ if check_tnum('6d'):
             "{'rslt': 0, 'notif_key': 'Activity_remote_recursive', 'message': 'Activity_remote_recursive  OK - testhost2 -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/recursive tests/mahesh'}",
             {'key':'Activity_remote_recursive', 'tag':'remote_recursive', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m recursive /mnt/RAMDRIVE/fsactivity/'})
 
+
+# Show_filename = False tests
+globvars.config.cfg['fsactivity']['Show_filenames'] = False
+if check_tnum('7a'):
+    dotest ("Show_filenames=False, target: dir",
+            "{'rslt': 0, 'notif_key': 'Activity_NoFilenames_7a', 'message': 'Activity_NoFilenames_7a  OK - local -    0.0 mins  (   1 mins  max)  /mnt/RAMDRIVE/fsactivity/'}",
+            {'key':'Activity_NoFilenames_7a', 'tag':'NoFilenames_7a', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1m  /mnt/RAMDRIVE/fsactivity/   '})
+
+if check_tnum('7b'):
+    dotest ("Show_filenames=False, target: Specific file",
+            "{'rslt': 0, 'notif_key': 'Activity_NoFilenames_7b', 'message': 'Activity_NoFilenames_7b  OK - local -    4.4 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a1file'}",
+            {'key':'Activity_NoFilenames_7b', 'tag':'NoFilenames_7b', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000w /mnt/RAMDRIVE/fsactivity/a1file'})
+
+if check_tnum('7c'):
+    dotest ("Show_filenames=False, target: Wildcard file",
+            "{'rslt': 0, 'notif_key': 'Activity_NoFilenames_7c', 'message': 'Activity_NoFilenames_7c  OK - local -    4.4 weeks (1000 weeks max)  /mnt/RAMDRIVE/fsactivity/a*file'}",
+            {'key':'Activity_NoFilenames_7c', 'tag':'NoFilenames_7c', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'1000w /mnt/RAMDRIVE/fsactivity/a*file'})
+
+if check_tnum('7d'):
+    dotest ("Show_filenames=False, target: dir FAIL",
+            "{'rslt': 2, 'notif_key': 'Activity_NoFilenames_7d', 'message': '  FAIL: Activity_NoFilenames_7d  STALE FILES - local -    0.2 secs  (   0 secs  max)  /mnt/RAMDRIVE/fsactivity/'}",
+            {'key':'Activity_NoFilenames_7d', 'tag':'NoFilenames_7d', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'0s  /mnt/RAMDRIVE/fsactivity/   '})
 
 
 # Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.

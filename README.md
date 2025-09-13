@@ -454,6 +454,12 @@ Sub-directories may be optionally recursed. Specific files (with wildcard suppor
 - If the leaf node is a file and `recursive` is also specified then the file portion will be searched for in the
 specified parent folder _and all subdirectories_.
 
+**Config file switches defined in [fsactivity] section**
+
+`Show_filenames`  (bool, default False)
+- If True, log output includes the full path to the newest found file.
+- If False, the directory or file path from the config file is logged.
+
 <br/>
 
 ---
