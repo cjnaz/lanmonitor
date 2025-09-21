@@ -37,7 +37,7 @@ except:
     import importlib_metadata
     __version__ = importlib_metadata.version(__package__ or __name__)
 
-from cjnfuncs.core import logging, set_toolname, set_logging_level
+from cjnfuncs.core import logging, set_toolname, set_logging_level, periodic_log
 from cjnfuncs.configman import config_item
 from cjnfuncs.timevalue import timevalue
 from cjnfuncs.mungePath import mungePath
@@ -51,11 +51,14 @@ sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      
 
 
 # Configs / Constants
-TOOLNAME =                  'lanmonitor'
-CONFIG_FILE_DEFAULT =       'lanmonitor.cfg'
-PRINT_LOG_LENGTH_DEFAULT =  40
-STARTUP_DELAY_DEFAULT =     '0s'
-SERVICE_LOOPTIME_DEFAULT=   '10s'
+TOOLNAME =                      'lanmonitor'
+CONFIG_FILE_DEFAULT =           'lanmonitor.cfg'
+PRINT_LOG_LENGTH_DEFAULT =      40
+LOOP_INTERVAL_DEFAULT =         '30s'
+STARTUP_DELAY_DEFAULT =         '0s'
+SERVICE_LOOPTIME_DEFAULT =      '10s'
+DISREGARD_LOGLEVEL_DEFAULT=     30
+DISREGARD_LOG_INTERVAL_DEFAULT= '1h'
 
 
 #=====================================================================================
@@ -89,26 +92,34 @@ def main():
     # Run monitor items that have matches in the item name or u@h:p field (dict or str format)
     checked_have_LAN_access = have_LAN_access = False               # Checked run_item()
 
-    for item in globvars.args.Items:                                # Given CLI Items:  [ 'apt', 'host3' ]
-        item = item.lower()
+    while 1:
+        for item in globvars.args.Items:                                # Given CLI Items:  [ 'apt', 'host3' ]
+            item = item.lower()
 
-        for mon_item in monitor_items_list:
-            runit = False
+            for mon_item in monitor_items_list:
+                runit = False
 
-            if item in mon_item.lower():
-                runit = True
-            elif isinstance(globvars.config.cfg[mon_item], dict):   # dict format
-                uhp = globvars.config.cfg[mon_item].get('u@h:p', ''.lower())
-                if item in uhp:
+                if item in mon_item.lower():
                     runit = True
-            else:                                                   # str format
-                uhp = globvars.config.cfg[mon_item].split(maxsplit=1)[0].lower()
-                if item in uhp:
-                    runit = True
-    
-            if runit:
-                logging.debug ("")
-                run_item(mon_item)
+                elif isinstance(globvars.config.cfg[mon_item], dict):   # dict format
+                    uhp = globvars.config.cfg[mon_item].get('u@h:p', ''.lower())
+                    if item in uhp:
+                        runit = True
+                else:                                                   # str format
+                    uhp = globvars.config.cfg[mon_item].split(maxsplit=1)[0].lower()
+                    if item in uhp:
+                        runit = True
+        
+                if runit:
+                    logging.debug ("")
+                    run_item(mon_item)
+        
+        if not globvars.args.loop:
+            break
+        else:
+            inst_dict = {}
+            time.sleep (timevalue(globvars.args.loop).seconds)
+            print (f'\n{datetime.datetime.now().replace(microsecond=0)}')
 
     cleanup()
     return 0
@@ -123,6 +134,7 @@ def main():
 def service():
     global inst_dict
     global checked_have_LAN_access, have_LAN_access
+    global disregard_loglevel, disregard_log_interval
 
     first = True
     inst_dict = {}
@@ -168,6 +180,10 @@ def service():
             setup_notif_handlers()                  # Refresh the notifications handlers
             inst_dict.clear()                       # Clear out all current instances, forcing re-setup
             set_print_lengths()                     # Set pretty print field widths
+
+            # Set control vars
+            disregard_loglevel =                  globvars.config.getcfg('Disregard_LogLevel',     DISREGARD_LOGLEVEL_DEFAULT)
+            disregard_log_interval =    timevalue(globvars.config.getcfg('Disregard_log_interval', DISREGARD_LOG_INTERVAL_DEFAULT)).seconds
 
 
         # --------------- TOP OF CHECK LOOP (NON-FIRST/RELOAD) ---------------
@@ -280,6 +296,7 @@ def set_print_lengths():
 #=====================================================================================
 
 def run_item(item_key):                                                     # Given item_key:  'Host_hostxyz'
+        # Returned value are not used in main() or service()
         global notif_handlers_list
         global inst_dict
         global checked_have_LAN_access, have_LAN_access
@@ -369,18 +386,22 @@ def run_item(item_key):                                                     # Gi
                     monline['rest_of_line'] =       yy.split(maxsplit=1)[1]
 
 
-                # Do setup()
+                # Call setup()
                 item_inst = plugin.monitor()
-                rslt = item_inst.setup(monline)             # <<<<  setup() call
-                logging.debug (f"{item_key} - setup() returned:  {rslt}")
+                setup_result = item_inst.setup(monline)
+                logging.debug (f"{item_key} - setup() returned:  {setup_result}")
                     # setup successful returns RTN_PASS - remembered in inst_dict as instance pointer
                     # setup hard fail  returns RTN_FAIL - remembered in inst_dict as False
                     # Some plugins may need to interrogate the target host during setup.
                     #   If the interrogation fails (i.e., can't access), then the plugin.setup should return
                     #   RTN_WARNING.  The warning is logged, but no entry in the inst_dict is made 
                     #   so that setup is retried on each iteration.
+                    # setup may return RTN_DISREGARD which causes this code to periodic_log the event but ignore the 
+                    # call result and retry on the next iteration.  Effectively this is the same as RTN_WARNING
+                    # but not sent to the notification handlers.  DISREGARD_LOGLEVEL_DEFAULT= 30 and 
+                    # DISREGARD_LOG_INTERVAL_DEFAULT = '1h' may be overridden in the config file.
 
-                if rslt == lanmonfuncs.RTN_FAIL:
+                if setup_result == lanmonfuncs.RTN_FAIL:
                     _msg = f"MONITOR SETUP FOR <{item_key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
                     for notif_handler in notif_handlers_list:
                         notif_handler.log_event({'rslt':lanmonfuncs.RTN_WARNING, 'notif_key':item_key,
@@ -388,18 +409,24 @@ def run_item(item_key):                                                     # Gi
                     inst_dict[item_key] = False
                     return lanmonfuncs.RTN_FAIL
 
-                elif rslt == lanmonfuncs.RTN_WARNING:
+                elif setup_result == lanmonfuncs.RTN_WARNING:
                     _msg = f"MONITOR SETUP FOR <{item_key}> FAILED.  WILL RETRY."
                     for notif_handler in notif_handlers_list:
                         notif_handler.log_event({'rslt':lanmonfuncs.RTN_WARNING, 'notif_key':item_key,
                                     'message':f"  WARNING: {item_key} - {monline['host']} - {_msg}"})
                     return lanmonfuncs.RTN_WARNING
 
-                elif rslt == lanmonfuncs.RTN_PASS:
+                elif setup_result == lanmonfuncs.RTN_DISREGARD:
+                    _msg = f"MONITOR SETUP FOR <{item_key}> RESIGNED.  WILL RETRY."
+                    _cat = item_key + 'setup_resigned'
+                    periodic_log (_msg, category=_cat, log_interval=disregard_log_interval, log_level=disregard_loglevel)
+                    return lanmonfuncs.RTN_DISREGARD
+
+                elif setup_result == lanmonfuncs.RTN_PASS:
                     inst_dict[item_key] = item_inst
 
                 else:
-                    logging.error (f"Setup for <{item_key}> returned illegal value {rslt}.  Aborting.")
+                    logging.error (f"Setup for <{item_key}> returned illegal value {setup_result}.  Aborting.")
                     cleanup()
                     sys.exit(1)
 
@@ -409,7 +436,7 @@ def run_item(item_key):                                                     # Gi
                 return lanmonfuncs.RTN_FAIL
 
 
-        # Check monitor item status
+        # Check monitor item status - call eval_status()
         item_inst = inst_dict.get(item_key, False)
         if item_inst is not False:                      # See above setup() call notes
             if datetime.datetime.now() < item_inst.next_run:
@@ -440,13 +467,18 @@ def run_item(item_key):                                                     # Gi
                     else:
                         logging.debug(f"LAN access confirmed - proceeding with checks run on remote hosts")
 
-                # Do the check
+                # Call eval_status()
                 if item_inst.host == 'local' or have_LAN_access: 
-                    rslt = item_inst.eval_status()          # <<<<  eval_status() call
-                    logging.debug (f"{item_key} - eval_status() returned:  {rslt}")
+                    eval_result = item_inst.eval_status()
+                    logging.debug (f"{item_key} - eval_status() returned:  {eval_result}")
 
-                    for notif_handler in notif_handlers_list:
-                        notif_handler.log_event(rslt)
+                    if eval_result['rslt'] == lanmonfuncs.RTN_DISREGARD:
+                        _msg = f"MONITOR EVAL_STATUS() CALL FOR <{item_key}> RESIGNED:  <{eval_result}>"
+                        _cat = item_key + 'eval_status_resigned'
+                        periodic_log (_msg, category=_cat, log_interval=disregard_log_interval, log_level=disregard_loglevel)
+                    else:
+                        for notif_handler in notif_handlers_list:
+                            notif_handler.log_event(eval_result)
 
 
 
@@ -498,6 +530,8 @@ def cli():
                         help=f"Print the tail end of the log file (default last {PRINT_LOG_LENGTH_DEFAULT} lines).")
     parser.add_argument('--verbose', '-v', action='count',
                         help="Display OK items in non-service mode. (-vv for debug logging)")
+    parser.add_argument('--loop', nargs='?', const=LOOP_INTERVAL_DEFAULT, type=str,
+                        help=f"Loop on Items indefinately (default interval {LOOP_INTERVAL_DEFAULT}).")
     parser.add_argument('--config-file', '-c', type=str, default=CONFIG_FILE_DEFAULT,
                         help=f"Path to the config file (Default <{CONFIG_FILE_DEFAULT})> in user/site config directory.")
     parser.add_argument('--service', action='store_true',
@@ -566,6 +600,8 @@ def cli():
             globvars.args.verbose = 1
         return service()
     else:
+        if globvars.args.loop:                  # Disable notifications when looping
+            globvars.config.cfg['SMTP']['DontEmail'] = True
         return main()                           # Interactive mode for specified items
 
     

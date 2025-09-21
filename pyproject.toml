@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "4.0rc1"
+version = "4.0rc2"
+    # 4.0rc2 - cli loop, pinghost_plugin consec timeout support, RTN_DISREGARD
     # 4.0rc1 - feature complete, no known bugs, fixed print host length calc, added cli host match, fsactivity Show_filenames switch
     # 4.0b5 - env support, Command_timeout default chain, template lanmonitor.cfg updated
     # 4.0b4 - --print-log switch accepts count, ServiceLoopTime default, lanmonfuncs logic final, plugins and tests updated, docs updated

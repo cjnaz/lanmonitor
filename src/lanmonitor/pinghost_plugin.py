@@ -10,14 +10,28 @@ Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or 
     # Host_<friendly_name>      =  <local or user@host>  [CRITICAL]  <check_interval>  <IPaddress_or_hostname>
     Host_local_to_testhost2     =  local    CRITICAL   1h   testhost2
     Host_testhost2_to_yahoo.com =  {'u@h:p':'me@testhost2', 'recheck':'10m', 'rol':'yahoo.com'}
+    Host_SmartPlug5             =  {'u@h:p':'local',        'recheck':'10m', 'rol':'2 smartplug5.lan'}
 
 **Plugin-specific _rest-of-line_ params:**
+
+`consecutive_timeout_count` (int, optional, default 1)
+- If included (eg, '2' in the Host_SmartPlug5 example), this number of failing consecutive timeout calls results in a fail event.  
+If fewer than this number of consecutive timeout calls then RTN_DISREGARD is returned, resulting in the timeout event(s) 
+being logged but no notifications are sent.
+- If not included then the `consecutive_timeout_count` defaults to 1, meaning that the first ping timeout results in a fail event.
 
 `IPaddress_or_hostname` (str)
 
 **Plugin-specific fail response:**
 
-- If the ping of the `IPaddress_or_hostname` times out then 'Cannot contact target host' is the fail message.
+- If the ping of the `IPaddress_or_hostname` times out then `PING OF <host> FAILED - CommandTimedOut: Command did not complete 
+within <n> seconds!` is the fail message if the ping was originated from local.  If originated from a remote host (via aysncssh)
+the timeout message is `PING OF <host> FAILED`.  Both cases return RTN_FAIL and notifications are sent.
+
+**Note:** Many hosts handle ICMP requests at a low priority, resulting in intermittent ping timeouts.  If the 
+`consecutive_timeout_count` feature is problematic (i.e., due to increased real problem latency or too many false alarms), then 
+consider a different method to confirm that a host is available, perhaps if the host offers a web interface, 
+or allows an ssh connection (then use service_plugin, process_plugin, or ...).
 """
 
 __version__ = '4.0'
@@ -26,7 +40,7 @@ __version__ = '4.0'
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 4.0 250911 - Updated to lanmonitor V4.0.
+# 4.0 250911 - Updated to lanmonitor V4.0.  Added consecutive_timeout_count support.
 # 3.3 240805 - Updated to lanmonitor V3.3.  Removed pinghost_plugin_timeout.
 # 3.1 230320 - Added config param pinghost_plugin_timeout, Warning for ssh fail to remote
 # 3.0 230301 - Packaged
@@ -36,7 +50,7 @@ __version__ = '4.0'
 import datetime
 import re
 import lanmonitor.globvars as globvars
-from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTNCODE_COMMAND_TIMEOUT, RTNCODE_CONNECT_ATTEMPT_FAILED, cmd_check
+from lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL, RTN_DISREGARD, RTNCODE_CONNECT_ATTEMPT_FAILED, cmd_check
 from cjnfuncs.core import logging
 from cjnfuncs.timevalue import timevalue
 import lanmonitor.globvars as globvars
@@ -84,7 +98,20 @@ class monitor:
         self.check_interval = item['check_interval']
         self.cmd_timeout    = item['cmd_timeout']                   # ^^^^ These items don't need to be modified
 
-        self.ip_or_hostname = item['rest_of_line'].strip()
+        try:
+            xx = item['rest_of_line'].split(maxsplit=1)
+            if len(xx) == 2:
+                self.max_consec_timeout = int(xx[0])
+                self.timeout_count = 0
+                self.ip_or_hostname = xx[1].strip()
+            else:
+                self.max_consec_timeout = 1
+                self.timeout_count = 0
+                self.ip_or_hostname = item['rest_of_line'].strip()
+        except Exception as e:
+            logging.error (f"  ERROR: <{self.key}> CAN'T PARSE SETTINGS <{item['rest_of_line']}>")
+            return RTN_FAIL
+
         if (IP_RE.match(self.ip_or_hostname) is None)  and  (HOSTNAME_RE.match(self.ip_or_hostname) is None):
             logging.error (f"  ERROR:  <{self.key}> CAN'T PARSE IP OR HOSTNAME <{self.ip_or_hostname}>")
             return RTN_FAIL
@@ -119,13 +146,20 @@ class monitor:
                 error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
             else:
                 error_msg = f'PING OF <{self.ip_or_hostname}> FAILED'
+                self.timeout_count += 1
             if '__*****__' in rslt[1].stderr:
                 error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
-            return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
+            
+            if self.timeout_count == self.max_consec_timeout:
+                self.timeout_count = 0
+                return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
+            else:
+                return {'rslt':RTN_DISREGARD, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
 
         
         else:       # cmd_check RTN_PASS case
             ping_rslt = PING_RESPONSE_RE.search(rslt[1].stdout)
+            self.timeout_count = 0
             if ping_rslt:
                 return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - <{self.ip_or_hostname}> ({ping_rslt.group(1)} / {ping_rslt.group(2)} ms)"}
             else:

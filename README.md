@@ -45,6 +45,7 @@ for plugin implementation details.
   - Persistent SSH connections to remote hosts, greatly speeding up checks and eliminating SSH reconnects.
   - Refactored the item execution core/engine using `invoke` for local checks and `asyncssh` for remote checks.
   - Enhanced the fsactivity_plugin with support for directory tree recursion and wildcard in filenames.
+  - Enhanced the pinghost_plugin with support for intermittent access to the target host (RTN_DISREGARD support).
 <br/>
 
 ---
@@ -137,6 +138,8 @@ $ lanmonitor --verbose
   `DailyRuntime` | Optional | The run time for monitored items that run at daily or longer check intervals.  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
   `Gateway` | Optional | IP or Hostname used for checking for network access as a gate for checks to be run on non-local hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be pinged.  If not defined then remote-based checks are always run.
   `Gateway_timeout` | 1.0s | The max time for checking the Gateway for LAN access health
+  `Disregard_LogLevel` | 30/WARNING | Log level for periodic_log events where the plugin indicates to disregard the returned value
+  `Disregard_log_interval` | 1h | Disregarded responses are periodic logged once at this interval
   `LogLevel` | 30/WARNING | --service mode logging level - LogLevel 30 logs only warning/fail/critical events. LogLevel 20 logs passing events also. The command line --verbose switch applies in interactive mode and overrides the config LogLevel in service mode.
   `LogFile` | Optional | --service mode log file - If not specified then --service mode output goes to the console.  For interactive usage (non --service mode) logging goes to the console, overriding any `LogFile` specified in the config file. The path may be absolute or relative to the default config file directory (eg, ~/.config/lanmonitor). 
 
@@ -160,8 +163,8 @@ $ lanmonitor --verbose
    In case 2, `me@myhost1.lan` fully specifies the username and hostname to run the check on.  The port number defaults to 22 if not specified. 
    The remaining `Connection_` settings use values from the config file `[DEFAULT]` section, or their default values if not specified.
 
-   In case 3, `myhost2` (without a `username@`) refers to a section in the config file where each of the following settings may be specified, or f
-   alling back to the `[DEFAULT]` section, or their default values if not specified.
+   In case 3, `myhost2` (without a `username@`) refers to a section in the config file where each of the following settings may be specified, or 
+   falling back to the `[DEFAULT]` section, or their default values if not specified.
    At a minimum, the `hostname` and `username` must be specified, for example:
 
       [myhost2]
@@ -169,7 +172,7 @@ $ lanmonitor --verbose
       username = me
 
 
-   These parameters may be defined on a per-host section basis, or in a `[DEFAULT]` section and optionally overridden a per-host section.
+   These parameters may be defined on a per-host section basis, or in a `[DEFAULT]` section and optionally overridden within a per-host section.
    The Default values apply if the param is not specified in the config file:
 
    Config param | Default | Description
@@ -187,7 +190,7 @@ $ lanmonitor --verbose
    `Command_nTries` | 2 | Max number of attempts to execute a command
    `Command_retry_interval` | 0.5s | Time to wait between command execution attempts
 
-   ** Note that a keepalive connection loss is not logged until the next attempt to run a monitor item what tries to access the remote host.
+   ** Note that a keepalive connection loss is not logged until the next attempt to run a monitor item that tries to access the remote host.
 
 <br/>
 
@@ -226,7 +229,8 @@ $ lanmonitor --verbose
 - stock_notif also sends a periodic summary report listing any current warnings/fails/criticals, or that all is well.  Summaries are typically sent as email messages.
 - **NOTE timevalues:**  All timevalues in the config file may be entered with a `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks) suffix.  For example `6.5h` is 6.5 hours.  If no suffix is provided the time value is taken as seconds.
 - **NOTE static leases:**  You may wish to set static leases for hosts that you will be accessing by name, otherwise you may get HOST \<xxx> IS NOT KNOWN warnings until that host renews its IP address after a router (DHCP / DNS resolver) reboot.
-- **NOTE remote commands missing:**  Some remote hosts may not have needed commands available for ssh login.  This is a known issue for the interface_plugin: the ifconfig command is not available on a Raspberry Pi via ssh.  To resolve this issue, add the missing command's path to /etc/ssh/sshd_config, eg:
+- **NOTE remote commands missing:**  Some remote hosts may not have needed commands available for ssh login.  This is a known issue for the interface_plugin - the `ifconfig` command is not available on a Raspberry Pi via ssh.  One solution is to enable setting the PATH environment variable
+in the target host's sshd_config (`AcceptEnv PATH`), and then setting the full PATH using the target host's section `Connection_env` parameter.  Alternately, add the missing command's path to `SetEnv PATH=` within the target host's sshd_config, eg:
 
       $ ssh user@host env
       ...
@@ -496,14 +500,28 @@ Ping the specified host. The `IPaddress_or_hostname` may be on the local LAN or 
     # Host_<friendly_name>      =  <local or user@host>  [CRITICAL]  <check_interval>  <IPaddress_or_hostname>
     Host_local_to_testhost2     =  local    CRITICAL   1h   testhost2
     Host_testhost2_to_yahoo.com =  {'u@h:p':'me@testhost2', 'recheck':'10m', 'rol':'yahoo.com'}
+    Host_SmartPlug5             =  {'u@h:p':'local',        'recheck':'10m', 'rol':'2 smartplug5.lan'}
 
 **Plugin-specific _rest-of-line_ params:**
+
+`consecutive_timeout_count` (int, optional, default 1)
+- If included (eg, '2' in the Host_SmartPlug5 example), this number of failing consecutive timeout calls results in a fail event.  
+If fewer than this number of consecutive timeout calls then RTN_DISREGARD is returned, resulting in the timeout event(s) 
+being logged but no notifications are sent.
+- If not included then the `consecutive_timeout_count` defaults to 1, meaning that the first ping timeout results in a fail event.
 
 `IPaddress_or_hostname` (str)
 
 **Plugin-specific fail response:**
 
-- If the ping of the `IPaddress_or_hostname` times out then 'Cannot contact target host' is the fail message.
+- If the ping of the `IPaddress_or_hostname` times out then `PING OF <host> FAILED - CommandTimedOut: Command did not complete 
+within <n> seconds!` is the fail message if the ping was originated from local.  If originated from a remote host (via aysncssh)
+the timeout message is `PING OF <host> FAILED`.  Both cases return RTN_FAIL and notifications are sent.
+
+**Note:** Many hosts handle ICMP requests at a low priority, resulting in intermittent ping timeouts.  If the 
+`consecutive_timeout_count` feature is problematic (i.e., due to increased real problem latency or too many false alarms), then 
+consider a different method to confirm that a host is available, perhaps if the host offers a web interface, 
+or allows an ssh connection (then use service_plugin, process_plugin, or ...).
 
 <br/>
 

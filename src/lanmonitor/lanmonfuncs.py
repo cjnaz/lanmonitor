@@ -6,7 +6,7 @@
 #
 #  Chris Nelson, Copyright 2021-2025
 #
-# 3.5 250911 - asyncssh and invoke incorporation for remote/local command execution in cmd_check
+# 4.0 250911 - asyncssh and invoke incorporation for remote/local command execution in cmd_check, RTN_DISREGARD
 # 3.3 240805 - Reworked debug level logging in cmd_check, Added cmd_timeout for each monitored item.
 # 3.1 230320 - Added cfg param SSH_timeout, fixed cmd_check command fail retry bug, 
 #   cmd_check returns RTN_PASS, RTN_FAIL, RTN_WARNING (for remote ssh access issues)
@@ -42,13 +42,14 @@ RTN_PASS =                                  0
 RTN_WARNING =                               1
 RTN_FAIL =                                  2
 RTN_CRITICAL =                              3
+RTN_DISREGARD =                             4
 
 RTNCODE_REMOTE_CONNECTION_DOWN =            250
 RTNCODE_COMMAND_TIMEOUT =                   251
 RTNCODE_ERROR =                             252
 RTNCODE_CONNECT_ATTEMPT_FAILED =            253
 
-
+RTN_DISREGARD_LOG_INTERVAL =                '1h'
 GATEWAY_TIMEOUT_DEFAULT =                   '1.0s'
 
 CONNECTION_TIMEOUT_DEFAULT =                '2.0s'
@@ -296,7 +297,6 @@ def cmd_check(cmd, user_host_port, return_type, cmd_timeout, check_line_text=Non
 
 
     # Run the command, with retries
-
     _cmd_timeout = host_connections.connections[uhp]['command_timeout']  if cmd_timeout is None  else cmd_timeout
 
     for nTry in range (host_connections.connections[uhp]['command_ntries']):

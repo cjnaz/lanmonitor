@@ -73,6 +73,7 @@ class notif_class:
                 RTN_WARNING  - Logged and included in summary, but no notification.
                 RTN_FAIL     - Logged & notified
                 RTN_CRITICAL - Logged & notified, with periodic renotification
+                (RTN_DISREGARD events are not passed to the notification handlers)
             message     - Message text from the monitor plugin
         All notifications are disabled if config NotifList is not defined.
         """

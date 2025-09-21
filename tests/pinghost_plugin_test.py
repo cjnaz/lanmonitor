@@ -63,8 +63,9 @@ set_logging_level(logging.DEBUG)
 # --------------------------------------------------------------------
 
 def dotest (tnum, desc, test):
+    global last_inst
     print(f"\nTest {tnum} - {desc} {'-'*50}")
-    inst = monitor()
+    last_inst = inst = monitor()
     setup_rslt = inst.setup(test)
     logging.debug (f"{test['key']} - setup() returned:  {setup_rslt}")
     if setup_rslt == RTN_PASS:
@@ -126,6 +127,18 @@ tnum = '9'
 if args.test == '0'  or  args.test == tnum:
         dotest (tnum, "Attempt to run on known unavailable remote - WARNING",
                 {'key':'Host_Unavailable_remote', 'tag':'Unavailable_to_Known', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':False, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'testhost'})
+
+tnum = '10'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Pass with consecutive timeout = 2",
+                {'key':'Host_Pass_consec_timeout_2', 'tag':'Pass_consec_timeout_2', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'2 testhost2'})
+
+tnum = '11'
+if args.test == '0'  or  args.test == tnum:
+        dotest (tnum, "Timeouts with consecutive timeout = 2",
+                {'key':'Host_Fail_consec_timeout_#1', 'tag':'Fail_consec_timeout_2', 'host':'local', 'user_host_port':'local', 'critical':False, 'cmd_timeout':1, 'check_interval':1, 'rest_of_line':'2 testhostX'})
+        logging.debug (f"Host_Fail_consec_timeout_#2 - eval_status() returned:  {last_inst.eval_status()}")
+
 
 tnum = '50'
 if args.test == tnum:
