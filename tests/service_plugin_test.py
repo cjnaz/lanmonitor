@@ -4,7 +4,10 @@
 Produce / compare to golden results:
     ./service_plugin_test.py | diff service_plugin_test.golden -
         Expected differences:
-            None
+            Test 5:
+                On Debian (Raspberry Pi Bullseye) returns "TimeoutError" (this is the golden file result)
+                On RHEL 9 returns "OSError: [Errno 113] Connect call failed"
+                Both result in "setup() returned:  1"
 """
 
 #==========================================================

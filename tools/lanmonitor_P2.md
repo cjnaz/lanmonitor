@@ -16,7 +16,7 @@
 ## Usage
 ```
 $ lanmonitor -h
-usage: lanmonitor [-h] [--print-log [PRINT_LOG]] [--verbose] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V] [Items ...]
+usage: lanmonitor [-h] [--print-log [PRINT_LOG]] [--verbose] [--loop [LOOP]] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V] [Items ...]
 
 LAN monitor
 
@@ -26,8 +26,9 @@ See README.md for descriptions of available plugins.
 Operates interactively or as a service (loop forever and controlled via systemd or other).
 
 CLI (interactive) modes
-    No Items positional arg:  Run all monitor items once
-    Given Items positional arg "xyz host":  Run all monitor items containing either 'xyz' or 'host' substrings (case insensitive)
+   - No Items positional arg:  Run all monitor items once
+   - Given Items positional arg "xyz host":  Run all monitor items containing either 'xyz' or 'host' substrings (case insensitive)
+     in the monitor item name or the u@h:p field
 
 In service mode
     kill -SIGUSR1 <pid>   outputs a summary to the log file
@@ -40,14 +41,16 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   --print-log [PRINT_LOG], -p [PRINT_LOG]
-                        Print the tail end of the log file (default last 40 lines).
+                        Print the tail end of the log file, eg --print-log 100 (default last 40 lines).
   --verbose, -v         Display OK items in non-service mode. (-vv for debug logging)
+  --loop [LOOP]         Loop on Items indefinately (default interval 30s).
   --config-file CONFIG_FILE, -c CONFIG_FILE
                         Path to the config file (Default <lanmonitor.cfg)> in user/site config directory.
   --service             Enter endless loop for use as a systemd service.
   --setup-user          Install starter files in user space.
   --setup-site          Install starter files in system-wide space. Run with root prev.
   -V, --version         Return version number and exit.
+
 ```
 
 <br/>
@@ -98,7 +101,7 @@ $ lanmonitor --verbose
   --|--|--
   `ServiceLoopTime` | 10s | How long between schedule checks in service mode.  Set to a fraction (eg: 25%) of the shortest item check_interval.
   `StartupDelay` | 0s | The wait time when starting in `--service mode` to allow everything to come up fully (or crash) at system boot before checking starts.
-  `DailyRuntime` | Optional | The run time for monitored items that run at daily or longer check intervals.  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
+  `DailyRuntime` | Optional | The run time for monitored items that run at daily or longer check intervals.  This setting allows for controlling what time-of-day the infrequent checks are run.  Set this to a few minutes before the `SummaryTime` so that summaries are current.  Generally, don't tag daily+ items as `critical` since this will cause critical renotifications but with infrequent rechecks to clear the item.  If `DailyRuntime` is not defined, daily+ items are checked at the time-of-day that lanmonitor was started.
   `Gateway` | Optional | IP or Hostname used for checking for network access as a gate for checks to be run on non-local hosts.  For example, the above `Process_tempmon` item will only run if the `Gateway` host can be pinged.  If not defined then remote-based checks are always run.
   `Gateway_timeout` | 1.0s | The max time for checking the Gateway for LAN access health
   `Disregard_LogLevel` | 30/WARNING | Log level for periodic_log events where the plugin indicates to disregard the returned value

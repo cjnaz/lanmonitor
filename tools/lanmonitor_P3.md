@@ -19,7 +19,7 @@
 ---
 
 ## Version history
-- 4.0 250907 - New CLI features, refactored lanmonfuncs for improved ssh to remotes handling, incorporated invoke and asyncssh, Enhanced fsactivity_plugin with recursion and wildcard support.
+- 4.0 250930 - New CLI features, refactored lanmonfuncs for improved ssh to remotes handling, incorporated invoke and asyncssh, Enhanced fsactivity_plugin with recursion and wildcard support.
 - 3.3.2 250706 - cjnfuncs 3.0 dependency
 - 3.3.1 240823 - yum_update_history_plugin added '--cacheonly' to yum command to avoid timeout
 - 3.3 240805 - Tolerate temporarily missing config file, support dictionary-style monitor item definitions, support cmd_timeout per monitored item, extract plugin descriptions from plugin docstring, New freemem_plugin.

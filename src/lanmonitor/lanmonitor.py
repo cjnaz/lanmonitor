@@ -45,7 +45,7 @@ from cjnfuncs.deployfiles import deploy_files
 import cjnfuncs.core as core
 
 import lanmonitor.globvars as globvars
-import lanmonitor.lanmonfuncs as lanmonfuncs
+from   lanmonitor.lanmonfuncs import RTN_PASS, RTN_WARNING, RTN_DISREGARD, RTN_FAIL, check_LAN_access, split_user_host_port, host_connections
 
 sys.path.append (os.path.join(os.path.dirname(os.path.abspath(__file__))))      # Supplied plugins are in same folder
 
@@ -73,8 +73,8 @@ def main():
 
     set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.INFO), save=False)
     inst_dict = {}
-    setup_notif_handlers()                                          # Refresh the notifications handlers
-    set_print_lengths()                                             # Set pretty print field widths
+    setup_notif_handlers()                                              # Refresh the notifications handlers
+    set_print_lengths()                                                 # Set pretty print field widths
 
     # Build list of all possible monitor items
         # Given in config file:
@@ -82,15 +82,15 @@ def main():
         # Freemem_host3 =         {'u@h:p':'local', 'recheck':'30m', 'rol':'20%'} # 20%'}
     monitor_items_list = []
     for key in globvars.config.cfg:
-        if key.startswith('MonType_'):                              # 'MonType_Freemem'
-            montype_tag = key.split('_')[1] + '_'                   # 'Freemem_'
+        if key.startswith('MonType_'):                                  # 'MonType_Freemem'
+            montype_tag = key.split('_')[1] + '_'                       # 'Freemem_'
             for key2 in globvars.config.cfg:
                 if key2.startswith(montype_tag):
                     monitor_items_list.append(key2)
 
 
     # Run monitor items that have matches in the item name or u@h:p field (dict or str format)
-    checked_have_LAN_access = have_LAN_access = False               # Checked run_item()
+    checked_have_LAN_access = have_LAN_access = False                   # Checked run_item()
 
     while 1:
         for item in globvars.args.Items:                                # Given CLI Items:  [ 'apt', 'host3' ]
@@ -280,7 +280,7 @@ def set_print_lengths():
                             uhp = item_def.split(maxsplit=1)[0] # str format
 
                         if '@' in uhp:                          # not reference to host section
-                            _, uhp, _ = lanmonfuncs.split_user_host_port(uhp)
+                            _, uhp, _ = split_user_host_port(uhp)
 
                         if (xx := len(uhp)) > globvars.hostlen:
                             globvars.hostlen = xx
@@ -296,7 +296,6 @@ def set_print_lengths():
 #=====================================================================================
 
 def run_item(item_key):                                                     # Given item_key:  'Host_hostxyz'
-        # Returned value are not used in main() or service()
         global notif_handlers_list
         global inst_dict
         global checked_have_LAN_access, have_LAN_access
@@ -350,7 +349,7 @@ def run_item(item_key):                                                     # Gi
                             uhp = item_def[line_key]
                             monline['user_host_port'] =     monline['host'] =  uhp
                             if '@' in uhp:
-                                _, monline['host'], _ =     lanmonfuncs.split_user_host_port(uhp)
+                                _, monline['host'], _ =     split_user_host_port(uhp)
                         elif line_key.lower() == 'critical':
                             monline['critical'] =           item_def[line_key]
                         elif line_key.lower() == 'timeout':
@@ -375,7 +374,7 @@ def run_item(item_key):                                                     # Gi
                     uhp = item_def[0]
                     monline['user_host_port'] =     monline['host'] =  uhp
                     if '@' in uhp:
-                        _, monline['host'], _ =     lanmonfuncs.split_user_host_port(uhp)
+                        _, monline['host'], _ =     split_user_host_port(uhp)
                     monline['critical'] =           False
                     yy = item_def[1]
                     if yy.lower().startswith('critical'):
@@ -401,28 +400,29 @@ def run_item(item_key):                                                     # Gi
                     # but not sent to the notification handlers.  DISREGARD_LOGLEVEL_DEFAULT= 30 and 
                     # DISREGARD_LOG_INTERVAL_DEFAULT = '1h' may be overridden in the config file.
 
-                if setup_result == lanmonfuncs.RTN_FAIL:
+
+                if setup_result == RTN_FAIL:
                     _msg = f"MONITOR SETUP FOR <{item_key}> FAILED.  THIS RESOURCE IS NOT MONITORED."
                     for notif_handler in notif_handlers_list:
-                        notif_handler.log_event({'rslt':lanmonfuncs.RTN_WARNING, 'notif_key':item_key,
+                        notif_handler.log_event({'rslt':RTN_WARNING, 'notif_key':item_key,
                                     'message':f"  WARNING: {item_key} - {monline['host']} - {_msg}"})
                     inst_dict[item_key] = False
-                    return lanmonfuncs.RTN_FAIL
+                    return
 
-                elif setup_result == lanmonfuncs.RTN_WARNING:
+                elif setup_result == RTN_WARNING:
                     _msg = f"MONITOR SETUP FOR <{item_key}> FAILED.  WILL RETRY."
                     for notif_handler in notif_handlers_list:
-                        notif_handler.log_event({'rslt':lanmonfuncs.RTN_WARNING, 'notif_key':item_key,
+                        notif_handler.log_event({'rslt':RTN_WARNING, 'notif_key':item_key,
                                     'message':f"  WARNING: {item_key} - {monline['host']} - {_msg}"})
-                    return lanmonfuncs.RTN_WARNING
+                    return
 
-                elif setup_result == lanmonfuncs.RTN_DISREGARD:
-                    _msg = f"MONITOR SETUP FOR <{item_key}> RESIGNED.  WILL RETRY."
-                    _cat = item_key + 'setup_resigned'
+                elif setup_result == RTN_DISREGARD:
+                    _msg = f"MONITOR SETUP FOR <{item_key}> DISREGARDED.  WILL RETRY."
+                    _cat = item_key + 'setup_disregarded'
                     periodic_log (_msg, category=_cat, log_interval=disregard_log_interval, log_level=disregard_loglevel)
-                    return lanmonfuncs.RTN_DISREGARD
+                    return
 
-                elif setup_result == lanmonfuncs.RTN_PASS:
+                elif setup_result == RTN_PASS:
                     inst_dict[item_key] = item_inst
 
                 else:
@@ -433,12 +433,12 @@ def run_item(item_key):                                                     # Gi
             except Exception as e:
                 logging.exception (f"Malformed monitor item <{item_key}>.  Skipped.\n  {type(e).__name__}: {e}")
                 inst_dict[item_key] = False
-                return lanmonfuncs.RTN_FAIL
+                return
 
 
         # Check monitor item status - call eval_status()
         item_inst = inst_dict.get(item_key, False)
-        if item_inst is not False:                      # See above setup() call notes
+        if item_inst is not False:                      # See above setup() call notes for RTN_FAIL
             if datetime.datetime.now() < item_inst.next_run:
                 logging.debug (f"{item_key} - Not due, skipped")
             else:
@@ -458,23 +458,27 @@ def run_item(item_key):                                                     # Gi
                         sys.exit(1)
                 logging.debug(f"{item_key} - Next runtime: {item_inst.next_run}")
 
-                # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host, if defined.  Do only once per active serviceloop.
+                # For checks to be run on remote hosts, ensure LAN access by pinging the config Gateway host, if defined.  Do only once per serviceloop.
                 if item_inst.host != 'local'  and  not checked_have_LAN_access:
                     checked_have_LAN_access = True
-                    have_LAN_access = lanmonfuncs.check_LAN_access()
+                    have_LAN_access = check_LAN_access()
                     if not have_LAN_access:
                         logging.warning(f"WARNING:  NO ACCESS TO LAN ({globvars.config.getcfg('Gateway')}) - Checks run on remote hosts are skipped for this iteration.")
                     else:
                         logging.debug(f"LAN access confirmed - proceeding with checks run on remote hosts")
 
                 # Call eval_status()
+                    # Plugin eval_status returns dictionary with these keys:
+                    #     rslt            Integer status:  RTN_PASS, RTN_WARNING, RTN_DISREGARD, RTN_FAIL, RTN_CRITICAL
+                    #     notif_key       Unique handle for tracking active notifications in the notification handler
+                    #     message         String with status and context details
                 if item_inst.host == 'local' or have_LAN_access: 
                     eval_result = item_inst.eval_status()
                     logging.debug (f"{item_key} - eval_status() returned:  {eval_result}")
 
-                    if eval_result['rslt'] == lanmonfuncs.RTN_DISREGARD:
-                        _msg = f"MONITOR EVAL_STATUS() CALL FOR <{item_key}> RESIGNED:  <{eval_result}>"
-                        _cat = item_key + 'eval_status_resigned'
+                    if eval_result['rslt'] == RTN_DISREGARD:
+                        _msg = f"MONITOR EVAL_STATUS() CALL FOR <{item_key}> DISREGARDED:  <{eval_result}>"
+                        _cat = item_key + 'eval_status_disregarded'
                         periodic_log (_msg, category=_cat, log_interval=disregard_log_interval, log_level=disregard_loglevel)
                     else:
                         for notif_handler in notif_handlers_list:
@@ -489,7 +493,7 @@ def run_item(item_key):                                                     # Gi
 #=====================================================================================
 
 def cleanup():
-    lanmonfuncs.host_connections.close('all')
+    host_connections.close('all')
 
 
 #=====================================================================================
@@ -527,7 +531,7 @@ def cli():
     parser.add_argument('Items', nargs='*',
                         help=f"Run the individual check item(s) or MonTypes")
     parser.add_argument('--print-log', '-p', nargs='?', const=PRINT_LOG_LENGTH_DEFAULT, type=int,
-                        help=f"Print the tail end of the log file (default last {PRINT_LOG_LENGTH_DEFAULT} lines).")
+                        help=f"Print the tail end of the log file, eg --print-log 100 (default last {PRINT_LOG_LENGTH_DEFAULT} lines).")
     parser.add_argument('--verbose', '-v', action='count',
                         help="Display OK items in non-service mode. (-vv for debug logging)")
     parser.add_argument('--loop', nargs='?', const=LOOP_INTERVAL_DEFAULT, type=str,

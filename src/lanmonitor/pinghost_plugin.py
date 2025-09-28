@@ -29,7 +29,7 @@ within <n> seconds!` is the fail message if the ping was originated from local. 
 the timeout message is `PING OF <host> FAILED`.  Both cases return RTN_FAIL and notifications are sent.
 
 **Note:** Many hosts handle ICMP requests at a low priority, resulting in intermittent ping timeouts.  If the 
-`consecutive_timeout_count` feature is problematic (i.e., due to increased real problem latency or too many false alarms), then 
+`consecutive_timeout_count` feature is problematic (i.e., due to increased real problem notification latency or too many false alarms), then 
 consider a different method to confirm that a host is available, perhaps if the host offers a web interface, 
 or allows an ssh connection (then use service_plugin, process_plugin, or ...).
 """

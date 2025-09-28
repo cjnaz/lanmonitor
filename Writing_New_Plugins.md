@@ -22,9 +22,10 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
 
 The best examples to follow:
 - `service_plugin.py` demos running commands from setup() code (determines the system manager type for the target host).
-- `pinghost_plugin.py` has the standard template structure for a `eval_status() return_type='cmdrun'` plugin.
+- `interface_plugin.py` has the standard template structure for a `eval_status() return_type='cmdrun'` plugin.
+- `pinghost_plugin.py` demonstrates `eval_status() return_type='cmdrun'` with `RTN_DISREGARD` support.
 - `webpage_plugin.py` has the standard template structure for a `eval_status() return_type='check_string` plugin.
-- `fsactivity_plugin.py` demos a plugin module configuration/mode switch (control whether filename full paths are logged).
+- `fsactivity_plugin.py` demonstrates a plugin module configuration/mode switch (control whether filename full paths are logged).
 - `fsactivity_plugin_test.py` has the latest features for running individual tests via the command line.
 
 <br/>
@@ -42,18 +43,22 @@ The best examples to follow:
             cmd_timeout     Max time in seconds allowed for the command execution in cmd_check()
             rest_of_line    Remainder of line (plugin specific formatting)
 
-    - setup() must return RTN_PASS, RTN_WARNING, or RTN_FAIL.  If RTN_FAIL the setup failure is permanent and the item will not be monitored (but setup() will be retried again after a config file edit).  If RTN_WARNING the setup will be retried on the next checking iteration, thus allowing for intermittent issues during setup.  Warnings and Fails are logged.
+    - setup() must return RTN_PASS, RTN_WARNING, RTN_DISREGARD or RTN_FAIL.  If RTN_FAIL the setup failure is permanent and the item will not be monitored (but setup() will be retried again after a config file edit).  If RTN_WARNING or RTN_DISREGARD the setup call was not successful and will be retried on the next checking iteration, thus allowing for intermittent issues during setup.  RTN_DISREGARD is similar to  RTN_WARNING, but the notification handlers are not called.  RTN_WARNING, RTN_DISREGARD, and RTN_FAIL returned cases are logged.
+
     - Within setup(), commands may optionally be executed on the target machine for determining setup specifics (see `service_plugin.py` for an example).  NOTE that `check_LAN_access` (see next section) is NOT called before the setup() calls, so setup() failures might be due to no network access, or due to ssh access issues to the target machine.
 
 2. The `eval_status()` function is called on each checking iteration.  The plugin needs to return a dictionary with 3 keys:
 
         eval_status() returns dictionary with these keys:
-            rslt            Integer status:  RTN_PASS, RTN_WARNING, RTN_FAIL, RTN_CRITICAL
+            rslt            Integer status:  RTN_PASS, RTN_WARNING, RTN_DISREGARD, RTN_FAIL, RTN_CRITICAL
             notif_key       Unique handle for tracking active notifications in the notification handler 
             message         String with status and context details
 
-      - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your code can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`lanmonitor -vv`, or run the plugin's `..._test.py` script)
+      - `cmd_check()` in `lanmonfuncs.py` provides checking features such as command execution with retries, ssh for remote hosts, and check strings in the command response.  The raw command output is also returned so that your plugin can construct specific checks. Uncomment the `logging.debug()` call after the cmd_check() call and run with debugging logging (`lanmonitor -vv`, or run the plugin's `..._test.py` script)
       to see the available cmd_check() response data. See `lanmonfuncs.py` for cmd_check feature details and the return structure.
+
+      - `rslt = RTN_DISREGARD` may be returned by your plugin to indicate to the lanmonitor core that the results of this iteration should be discarded - the plugin response is periodically logged (see the config `Disregard_LogLevel` and `Disregard_log_interval` params) but the notification plugin(s) are not called.  The pinghost_plugin uses this feature.
+
       - If the host is not `local` then the lanmonitor core will optionally check that the local machine has access to the LAN by pinging the the `Gateway` host defined in the config file.  This `check_LAN_access()` check is performed only once per check iteration.  Thus, your eval_status() code can assume that the LAN is accessible.  It is recommended that you include a `Host_<myhost>` check (using the pinghost plugin) earlier in the config file to limit fail ambiguity.
 
 3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `'check_interval':1` as a placeholder.)
@@ -90,6 +95,9 @@ One or more notification handlers may be specified in the configuration file lin
 The following functions within each listed notification handler are called.  The functionality as provided by `stock_notif` is describe here.  NOTE that the stock_notif handler module need not be used.
 
 - `log_event()` - Called after every monitored item, passing the dictionary returned by eval_status() (see above) onto log_event().  The stock_notif handler sends notifications on new FAIL and CRITICAL items, and clears any fail history of now-passing items.
+
 - `each_loop()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any general code here that needs to be executed on every iteration.  Unused by stock_notif.
+
 - `renotif()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any code here related to sending additional notifications for items that remain broken.  stock_notif sends repeat notification messages for any critical items on every `CriticalReNotificationInterval` period.  All still-broken critical items are bundled into a single message so as to minimize text messages being sent.
+
 - `summary()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any code here related to scheduling and producing a periodic report.  The lanmonfuncs.py module provides `next_summary_timestring()`, which uses `SummaryTime` and `SummaryDays` in the config file, for summary scheduling.  stock_notif's summary simply emails a list of any current WARNING, FAIL, or CRITICAL items, or an "All is well" message to provide a periodic _lanmonitor-is-alive_ message.
