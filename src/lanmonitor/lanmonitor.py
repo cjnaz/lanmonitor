@@ -148,7 +148,7 @@ def service():
             # the cfg will have been flushed and only partially reloaded, likely leading to a crash.
             reloaded = globvars.config.loadconfig(flush_on_reload=True,
                                          tolerate_missing=True,
-                                         call_logfile_wins=call_logfile_override) #, ldcfg_ll=20)
+                                         call_logfile_wins=call_logfile_override) #, ldcfg_ll=10)
             if reloaded == -1:      # config file not found
                 if not missing_config_file:
                     missing_config_file = True
@@ -571,7 +571,7 @@ def cli():
     call_logfile_override = True  if not globvars.args.service  else False
     try:
         globvars.config = config_item(globvars.args.config_file)
-        globvars.config.loadconfig(call_logfile_wins=call_logfile_override)
+        globvars.config.loadconfig(call_logfile_wins=call_logfile_override) #, ldcfg_ll=10)
     except Exception as e:
         logging.error(f"Failed loading config file <{globvars.args.config_file}>. \
 \n  Run with  '--setup-user' or '--setup-site' to install starter files.  Aborting.\n  {type(e).__name__}: {e}")

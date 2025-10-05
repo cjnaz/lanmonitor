@@ -6,3 +6,5 @@ log*.txt
 *.egg-info/
 SE/
 turds/
+copy_project.sh
+tests/junk.txt

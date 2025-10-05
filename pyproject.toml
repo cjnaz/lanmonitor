@@ -5,39 +5,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lanmonitor"
-version = "4.0rc3"
-    # 4.0rc3 - lanmonitor.py cleanup
-    # 4.0rc2 - cli loop, pinghost_plugin consec timeout support, RTN_DISREGARD
-    # 4.0rc1 - feature complete, no known bugs, fixed print host length calc, added cli host match, fsactivity Show_filenames switch
-    # 4.0b5 - env support, Command_timeout default chain, template lanmonitor.cfg updated
-    # 4.0b4 - --print-log switch accepts count, ServiceLoopTime default, lanmonfuncs logic final, plugins and tests updated, docs updated
-    # 4.0b3 - cleanup
-    # 4.0b2 - connection fail debug, doc work, cleanup
-    # 4.0b1 - stuff to do
-        #   4.0 in all core, plugin, test files
-        #   clean lanmonitor, lanmonfuncs
-        #   clean deployment_files
-        #   touch .md doc files for config changes, changes since prior release, add CLI section
-    # 3.5a11 - Refreshed all checker plugins and their tests
-    # 3.5a10 - lanmonfuncs, funcs_test.py cleanup
-    # 3.5a9 - invoke for local.  fsactivity updated, tests passing.
-    # 3.5a8 - cleanup touches, shlex in fsactivity and debug of backup folder protection
-    # 3.5a7 - Update plugin tests part 1, rewrote fsactivity_plugin
-    # 3.5a6 - More cleanup.  Tests refreshed/passing
-    # 3.5a5 - Cleanup, config file params for connect
-    # 3.5a4 - asyncssh further integeration & cleanup.  Split connect from run.
-    # 3.5a3 - asyncssh integration (removed fabric) - initial version dirty
-    # 3.5a2 - lanmonfuncs.cmd_check() revamp & tests - clean
-    # 3.5a1 - Fabric/paramiko incorporation - functional
-    # 3.4rc1 - Cleanup
-    # 3.4a2 - Refactored lanmonitor.py, added cli sub-string match mode
-    # 3.4a1 - command line run individual check items initial working version
+version = "4.0"
+    # 4.0 - release
     # 3.3.2 - yum_update_history_plugin - Added '--cacheonly', cjnfuncs 3.0 dependency, release
     # 3.3
-    #   New freemem_plugin
-    #   Dictionary-style monitor item definitions
-    #   Support for cmd_timeout per monitored item
-    #   Tolerate temporarily missing config file
 description = "Monitor the state of services, processes, web pages, file system, etc. on your server and LAN"
 readme = "README.md"
 requires-python = ">=3.9"       # RHEL 9 uses 3.9

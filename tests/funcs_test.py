@@ -604,9 +604,12 @@ if check_tnum('9d'):
 
 # Dropped / recovered network test
 # - Run from testhost2.  Loops test on testhost.  Cycle testhost network down and up.
-# - On testhost network down there will be 4 attempts to run cmd resulting in RTN_FAIL retruncode=251 TimeoutError,
-#   then the network connection to testhost will be closed.
-# - Further connection attempts with testhost network down result in RTN_WARNING returncode=250 ConnectionError/TimeoutError
+# - On testhost network down there will be 4 attempts to run cmd resulting in
+#     retruncode=RTNCODE_COMMAND_TIMEOUT (251) TimeoutError when the timeout count is less than the Connection_command_max_timeouts limit
+#     retruncode=RTNCODE_REMOTE_CONNECTION_DOWN (250) ConnectionError/TimeoutError when the Connection_command_max_timeouts limit 
+#       count has been reached and the connection has been closed
+#     returncode=RTNCODE_CONNECT_ATTEMPT_FAILED (253) ConnectionError/TimeoutError on continued connection attempts while the network 
+#       is still down
 # - Once testhost network is back up the connection will be reestablished and return to RTN_PASS returncode=0 Hello!!
 
 tnum = '20'
@@ -626,9 +629,12 @@ if args.test == tnum:
 
 
 # Remote connection keepalive fail test
-# - Run from testhost2.  Loops test on testhost with long interval.  Cycle testhost network down and up.
-# - Two keepalive attempts fail and connection is closed by asyncssh.
-# - cmd_check returns stderr='ConnectionError: Command execution error on <me@testhost:22> - ConnectionLost:   __*****__ChannelOpenError: SSH connection closed')
+# - Run from testhost2.  Loops test on testhost with long interval.  Cycle testhost network down between test loops.
+# - Between test loops, two keepalive attempts fail and connection is closed in the background by asyncssh.
+#     On the next access attempt: retruncode=RTNCODE_REMOTE_CONNECTION_DOWN (250) ConnectionError/ChannelOpenError: SSH connection closed
+#       and cmd_check disposes of the cached connection, result in...
+#     On successive attempts with the network down: returncode=RTNCODE_CONNECT_ATTEMPT_FAILED (253) ConnectionError/TimeoutError
+# - Once testhost network is back up the connection will be reestablished and return to RTN_PASS returncode=0 Hello!!
 
 tnum = '21'
 if args.test == tnum:
@@ -645,6 +651,9 @@ if args.test == tnum:
         logging.info (f"Loop {loop_count}, is_connected: {lanmonfuncs.host_connections.is_connected('me@testhost:22')}")
         time.sleep (4)
 
+
+#---------------------------------------------------------
+# Experimental tests
 
 tnum = '50'
 if args.test == tnum:
