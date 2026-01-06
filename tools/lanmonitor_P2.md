@@ -265,7 +265,7 @@ As of version 3.3, an alternate monitored items setup format is supported in the
       Same definition while utilizing the defaults:
       Host_testhost2    {'critical':True, 'recheck':'5m', 'rol':'testhost2.lan'}
 
-- The dictionary format supports setting the `Cmd_timeout` setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string-style format.
+- The dictionary format supports setting the `Command_timeout` setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string-style format.
 - The dictionary format is parsed directly by Python, and thus follows all of the formatting rules, notably:
   - Key:Value terms are separated by `:`, and Key:Value pairs are separated by `,`.  Keys are quoted.  String values are quoted, while boolean, integer, and float values are unquoted.  The order of key:value pairs is flexible (versus fixed in the string-sytle format).  lanmonitor also supports default values for several of the terms
 - Notable aspects of each Key:Value pair:
@@ -274,7 +274,7 @@ As of version 3.3, an alternate monitored items setup format is supported in the
    -- | -- | -- |--
    `u@h:p` | `local or user@host[:port]` | `local` | 
    `critical` | `CRITICAL` | `False` | Boolean True or False (unquoted)
-   `timeout` | NA | `Cmd_timeout` value in the config file | Not supported using the string-style format
+   `timeout` | NA | `Command_timeout` value in the config file | Not supported using the string-style format
    `recheck` | `check_interval` | Required | timevalue string (eg: '5m'), or integer or float seconds
    `rol` | `rest_of_line` | Required | Plugin-specific settings/content
 

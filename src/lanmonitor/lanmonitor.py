@@ -418,7 +418,7 @@ def run_item(item_key):                                                     # Gi
 
                 elif setup_result == RTN_DISREGARD:
                     _msg = f"MONITOR SETUP FOR <{item_key}> DISREGARDED.  WILL RETRY."
-                    _cat = item_key + 'setup_disregarded'
+                    _cat = item_key + '_setup_disregarded'
                     periodic_log (_msg, category=_cat, log_interval=disregard_log_interval, log_level=disregard_loglevel)
                     return
 
@@ -478,7 +478,7 @@ def run_item(item_key):                                                     # Gi
 
                     if eval_result['rslt'] == RTN_DISREGARD:
                         _msg = f"MONITOR EVAL_STATUS() CALL FOR <{item_key}> DISREGARDED:  <{eval_result}>"
-                        _cat = item_key + 'eval_status_disregarded'
+                        _cat = item_key + '_eval_status_disregarded'
                         periodic_log (_msg, category=_cat, log_interval=disregard_log_interval, log_level=disregard_loglevel)
                     else:
                         for notif_handler in notif_handlers_list:
@@ -570,6 +570,7 @@ def cli():
     # Load config file and setup logging
     call_logfile_override = True  if not globvars.args.service  else False
     try:
+        # logging.getLogger('cjnfuncs.configman').setLevel(logging.DEBUG)
         globvars.config = config_item(globvars.args.config_file)
         globvars.config.loadconfig(call_logfile_wins=call_logfile_override) #, ldcfg_ll=10)
     except Exception as e:

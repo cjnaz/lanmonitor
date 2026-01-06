@@ -1,10 +1,7 @@
-*devenv*/
 *__pycache__*
 build/
 dist/
-log*.txt
 *.egg-info/
-SE/
-turds/
-copy_project.sh
+mylive/
+mydev/
 tests/junk.txt
