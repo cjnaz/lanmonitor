@@ -70,6 +70,11 @@ DISREGARD_LOG_INTERVAL_DEFAULT= '1h'
 def main():
     global inst_dict
     global checked_have_LAN_access, have_LAN_access
+    global disregard_loglevel, disregard_log_interval
+
+    # Set control vars
+    disregard_loglevel =                  globvars.config.getcfg('Disregard_LogLevel',     DISREGARD_LOGLEVEL_DEFAULT)
+    disregard_log_interval =    timevalue(globvars.config.getcfg('Disregard_log_interval', DISREGARD_LOG_INTERVAL_DEFAULT)).seconds
 
     set_logging_level ({1:logging.INFO, 2:logging.DEBUG}.get(globvars.args.verbose, logging.INFO), save=False)
     inst_dict = {}
@@ -540,6 +545,8 @@ def cli():
                         help=f"Path to the config file (Default <{CONFIG_FILE_DEFAULT})> in user/site config directory.")
     parser.add_argument('--service', action='store_true',
                         help="Enter endless loop for use as a systemd service.")
+    parser.add_argument('--log-console', '-z', action='store_true',
+                        help="Force logging to the console, overriding config LogFile param")
     parser.add_argument('--setup-user', action='store_true',
                         help=f"Install starter files in user space.")
     parser.add_argument('--setup-site', action='store_true',
@@ -568,7 +575,7 @@ def cli():
 
 
     # Load config file and setup logging
-    call_logfile_override = True  if not globvars.args.service  else False
+    call_logfile_override = True  if (not globvars.args.service  or  globvars.args.log_console)  else False
     try:
         # logging.getLogger('cjnfuncs.configman').setLevel(logging.DEBUG)
         globvars.config = config_item(globvars.args.config_file)

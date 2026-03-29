@@ -138,19 +138,32 @@ class monitor:
 
         # cmd_check RTN_PASS case
         out = SPACE_RE.search(rslt[1].stdout)
+        # if out:
+        #     if self.free_type == 'absolute':
+        #         abs_free = int(out.group(1))
+        #         if abs_free > self.minfree:
+        #             return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
+        #         else:
+        #             return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
+        #     else:   # percent case
+        #         percent_free = 100 - int(out.group(2))
+        #         if percent_free > self.minfree:
+        #             return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
+        #         else:
+        #             return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
         if out:
             if self.free_type == 'absolute':
-                abs_free = int(out.group(1))
+                abs_free = float(out.group(1))
                 if abs_free > self.minfree:
-                    return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
+                    return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {abs_free:6.1f}  (minfree {self.minfree:6.1f})  {self.path}"}
                 else:
-                    return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {abs_free}  (minfree {self.minfree})  {self.path}"}
+                    return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {abs_free:6.1f}  (minfree {self.minfree:6.1f})  {self.path}"}
             else:   # percent case
-                percent_free = 100 - int(out.group(2))
+                percent_free = 100.0 - float(out.group(2))
                 if percent_free > self.minfree:
-                    return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
+                    return {'rslt':RTN_PASS, 'notif_key':self.key, 'message':f"{self.key_padded}  OK - {self.host_padded} - free {percent_free:5.1f}%  (minfree {self.minfree:5.1f}%)  {self.path}"}
                 else:
-                    return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {percent_free}%  (minfree {self.minfree}%)  {self.path}"}
+                    return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - free {percent_free:5.1f}%  (minfree {self.minfree:5.1f}%)  {self.path}"}
         else:
             logging.debug (f"df of <{self.path}> not parsable - returned\n  {rslt[1].stdout}")
             return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - df OF PATH <{self.path}> not parsable"}
