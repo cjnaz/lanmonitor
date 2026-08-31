@@ -542,7 +542,7 @@ def cli():
     parser.add_argument('--verbose', '-v', action='count',
                         help="Display OK items in non-service mode. (-vv for debug logging)")
     parser.add_argument('--loop', nargs='?', const=LOOP_INTERVAL_DEFAULT, type=str,
-                        help=f"Loop on Items indefinately (default interval {LOOP_INTERVAL_DEFAULT}).")
+                        help=f"Loop on Items indefinitely (default interval {LOOP_INTERVAL_DEFAULT}).")
     parser.add_argument('--config-file', '-c', type=str, default=CONFIG_FILE_DEFAULT,
                         help=f"Path to the config file (Default <{CONFIG_FILE_DEFAULT})> in user/site config directory.")
     parser.add_argument('--service', action='store_true',

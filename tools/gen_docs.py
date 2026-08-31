@@ -31,6 +31,7 @@ plugin_modules = [
     {'module_name':'interface_plugin',              'oneliner':"Checks that a given network interface (i.e., eth2) is up and running"},
     {'module_name':'pinghost_plugin',               'oneliner':"Checks that a given host can be pinged, as an indicator that the machine is alive on your network"},
     {'module_name':'process_plugin',                'oneliner':"Checks that a given process is alive on a target host"},
+    {'module_name':'runcmd_plugin',                 'oneliner':"Run an arbitrary command on the target host, optionally checking the text response"},
     {'module_name':'selinux_plugin',                'oneliner':"Checks that selinux reports the expected 'enforcing' or 'permissive'"},
     {'module_name':'service_plugin',                'oneliner':"Checks that the given init.d or systemd service reports that it's up and running"},
     {'module_name':'webpage_plugin',                'oneliner':"Checks that the given URL responds with an expected string of text, as an indicator that that the web page is alive"},

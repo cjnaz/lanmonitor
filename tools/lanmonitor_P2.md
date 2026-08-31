@@ -2,7 +2,15 @@
 
 ---
 
-## Notable changes since prior release
+## Notable changes since prior release (V3.3.2)
+- V4.1
+  - Added `runcmd_plugin` which can be used to run any arbitrary command locally or on remote hosts (via ssh).
+    A simple use-case is to confirm the accessibility of a remote host by running an `echo Hello` command, but
+    almost any command can be run, such as cleaning a database, rebooting, checking ssl certificate status, etc.
+    With this change, now any arbitrary key may be passed from the user config file to a plugin.  The runcmd_plugin
+    optionally accepts the `expected_text`, `check_line_text`, `not_text` used by `cmd_check()` for testing the
+    return text from the command execution.
+
 - V4.0
   - Added command line interface for targeted runs, eg: `lanmonitor service` runs all system services checks.
   - Persistent SSH connections to remote hosts, greatly speeding up checks and eliminating SSH reconnects.
@@ -278,3 +286,6 @@ As of version 3.3, an alternate monitored items setup format is supported in the
    `recheck` | `check_interval` | Required | timevalue string (eg: '5m'), or integer or float seconds
    `rol` | `rest_of_line` | Required | Plugin-specific settings/content
 
+As of version 4.1, the dictionary-style definition accepts any arbitrary keys, as defined by the respective plugin.  For 
+example, the `runcmd_plugin` optionally supports these extra keys for testing the response output (stdout) of the executed command:
+`expected_text`, `check_line_text`, and `not_text` - if provided, these keys are passed to the `cmd_check()` call.

@@ -25,6 +25,7 @@ fsactivity_plugin | Checks that a target file or directory has at least one file
 interface_plugin | Checks that a given network interface (i.e., eth2) is up and running
 pinghost_plugin | Checks that a given host can be pinged, as an indicator that the machine is alive on your network
 process_plugin | Checks that a given process is alive on a target host
+runcmd_plugin | Run an arbitrary command on the target host, optionally checking the text response
 selinux_plugin | Checks that selinux reports the expected 'enforcing' or 'permissive'
 service_plugin | Checks that the given init.d or systemd service reports that it's up and running
 webpage_plugin | Checks that the given URL responds with an expected string of text, as an indicator that that the web page is alive
@@ -39,7 +40,15 @@ for plugin implementation details.
 
 ---
 
-## Notable changes since prior release
+## Notable changes since prior release (V3.3.2)
+- V4.1
+  - Added `runcmd_plugin` which can be used to run any arbitrary command locally or on remote hosts (via ssh).
+    A simple use-case is to confirm the accessibility of a remote host by running an `echo Hello` command, but
+    almost any command can be run, such as cleaning a database, rebooting, checking ssl certificate status, etc.
+    With this change, now any arbitrary key may be passed from the user config file to a plugin.  The runcmd_plugin
+    optionally accepts the `expected_text`, `check_line_text`, `not_text` used by `cmd_check()` for testing the
+    return text from the command execution.
+
 - V4.0
   - Added command line interface for targeted runs, eg: `lanmonitor service` runs all system services checks.
   - Persistent SSH connections to remote hosts, greatly speeding up checks and eliminating SSH reconnects.
@@ -302,7 +311,7 @@ As of version 3.3, an alternate monitored items setup format is supported in the
       Same definition while utilizing the defaults:
       Host_testhost2    {'critical':True, 'recheck':'5m', 'rol':'testhost2.lan'}
 
-- The dictionary format supports setting the `Cmd_timeout` setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string-style format.
+- The dictionary format supports setting the `Command_timeout` setting for each individual monitor item by specifying the `'timeout':<value>`.  This setting is not available in the string-style format.
 - The dictionary format is parsed directly by Python, and thus follows all of the formatting rules, notably:
   - Key:Value terms are separated by `:`, and Key:Value pairs are separated by `,`.  Keys are quoted.  String values are quoted, while boolean, integer, and float values are unquoted.  The order of key:value pairs is flexible (versus fixed in the string-sytle format).  lanmonitor also supports default values for several of the terms
 - Notable aspects of each Key:Value pair:
@@ -311,10 +320,13 @@ As of version 3.3, an alternate monitored items setup format is supported in the
    -- | -- | -- |--
    `u@h:p` | `local or user@host[:port]` | `local` | 
    `critical` | `CRITICAL` | `False` | Boolean True or False (unquoted)
-   `timeout` | NA | `Cmd_timeout` value in the config file | Not supported using the string-style format
+   `timeout` | NA | `Command_timeout` value in the config file | Not supported using the string-style format
    `recheck` | `check_interval` | Required | timevalue string (eg: '5m'), or integer or float seconds
    `rol` | `rest_of_line` | Required | Plugin-specific settings/content
 
+As of version 4.1, the dictionary-style definition accepts any arbitrary keys, as defined by the respective plugin.  For 
+example, the `runcmd_plugin` optionally supports these extra keys for testing the response output (stdout) of the executed command:
+`expected_text`, `check_line_text`, and `not_text` - if provided, these keys are passed to the `cmd_check()` call.
 
 
 <br/>
@@ -523,8 +535,8 @@ the timeout message is `PING OF <host> FAILED`.  Both cases return RTN_FAIL and 
 
 **Note:** Many hosts handle ICMP requests at a low priority, resulting in intermittent ping timeouts.  If the 
 `consecutive_timeout_count` feature is problematic (i.e., due to increased real problem notification latency or too many false alarms), then 
-consider a different method to confirm that a host is available, perhaps if the host offers a web interface, 
-or allows an ssh connection (then use service_plugin, process_plugin, or ...).
+consider a different method to confirm that a host is available; e.g., if the host offers a web interface try the webpage_plugin, or if the 
+host allows an ssh connection try the runcmd_plugin with 'echo Hello' run remotely.
 
 <br/>
 
@@ -545,6 +557,36 @@ Check that the specified process is alive by searching for the `executable_path`
 
 `executable_path` (str)
 - Full process path as shown in `ps`
+
+<br/>
+
+---
+
+### runcmd_plugin
+
+Run an arbitrary command on the u@h:p (locally or remotely).  One application of this plugin is as an alternative to the pinghost_plugin if the
+remote host intermittently responds to ping/ICMP traffic.  Note that this plugin only works with remote hosts that allow remote command execution
+via ssh, so it probably wont work with most IOT devices.
+
+**Typical string and dictionary-style config file lines:**
+
+    MonType_RunCmd =            runcmd_plugin
+    # RunCmd_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <command>
+    # RunCmd_<friendly_name> =  {'u@h:p':<'local' or 'user@host'>, 'critical':<True or False>, 'recheck':<check_interval>,     #                           'timeout':<timevalue>, 'rol':<'command'>,     #                           'log_stdout':<True or False>, 'expected_text':<str>, 'check_line_text':<str>, 'not_text':<str>}
+    RunCmd_local =              local  CRITICAL  1m  echo Hello
+    RunCmd_testhost2 =          {'u@h:p':'me@testhost2', 'recheck':'1m', 'rol':'echo Hello', 'log_stdout':False, 'expected_text':'Hello'}
+
+**Plugin-specific params:**
+
+String-style `command` / Dictionary-style `rol` (str)
+- Arbitrary command to be executed on target host/u@h:p
+
+`log_stdout` (dictionary-style only, bool, default True)
+- If True, the stdout response from the command execution is included in the log output
+- Set to False if the response is uninteresting or too long
+
+`expected_text`, `check_line_text`, `not_text` (dictionary-style only, str, default None)
+- Set these keys if using cmd_check's response checking features
 
 <br/>
 
