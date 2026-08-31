@@ -1,0 +1,192 @@
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1a - Simple echo Hello - Pass
+  GIVEN:      {'key': 'Command_Simple', 'tag': 'Simple', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Simple', 'message': 'Command_Simple  OK - local - Hello'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Simple - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Simple', 'tag': 'Simple', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Simple - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <local>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Simple', 'message': 'Command_Simple  OK - local - Hello'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1b - echo Hello check as expected_text, log_stdout=False - Pass
+  GIVEN:      {'key': 'Command_Hello_Check', 'tag': 'Hello_Check', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hello', 'log_stdout': False}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Hello_Check', 'message': 'Command_Hello_Check  OK - local'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Hello_Check - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Hello_Check', 'tag': 'Hello_Check', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hello', 'log_stdout': False}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Hello_Check - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Hello_Check', 'message': 'Command_Hello_Check  OK - local'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1c - Complex echo with expected_test and check_line_text, - Pass
+  GIVEN:      {'key': 'Command_Complex_Check', 'tag': 'Complex_Check', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo "My info is\nhostname: $(hostname)\nuptime: $(uptime)\n"', 'expected_text': 'test', 'check_line_text': 'hostname'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Complex_Check', 'message': 'Command_Complex_Check  OK - local - My info is
+hostname: testhost
+uptime:  09:35:05 up 2 days, 16:09,  1 user,  load average: 0.27, 0.24, 0.22'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Complex_Check - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Complex_Check', 'tag': 'Complex_Check', 'host': 'local', 'user_host_port': 'local', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo "My info is\nhostname: $(hostname)\nuptime: $(uptime)\n"', 'expected_text': 'test', 'check_line_text': 'hostname'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Complex_Check - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <echo "My info is
+hostname: $(hostname)
+uptime: $(uptime)
+">
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo "My info is\nhostname: $(hostname)\nuptime: $(uptime)\n"', returncode=0, stdout='My info is\nhostname: testhost\nuptime:  10:24:46 up 2 days, 16:58,  1 user,  load average: 0.12, 0.19, 0.20', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Complex_Check', 'message': 'Command_Complex_Check  OK - local - My info is\nhostname: testhost\nuptime:  10:24:46 up 2 days, 16:58,  1 user,  load average: 0.12, 0.19, 0.20'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 1d - Simple echo Hello via localhost - Pass
+  GIVEN:      {'key': 'Command_Simple_localhost', 'tag': 'Simple_localhost', 'host': 'localhost', 'user_host_port': 'localhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Simple_localhost', 'message': 'Command_Simple_localhost  OK - localhost - Hello'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Simple_localhost - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Simple_localhost', 'tag': 'Simple_localhost', 'host': 'localhost', 'user_host_port': 'localhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Simple_localhost - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@localhost:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@localhost:22>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@localhost:22>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Simple_localhost', 'message': 'Command_Simple_localhost  OK - localhost - Hello'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 2a - expected_text not found - Fail
+  GIVEN:      {'key': 'Command_Check_fail', 'tag': 'Check_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hillo'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Command_local_Hello_Check', 'message': '  CRITICAL: Command_local_Hello_Check - local - echo command failed'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Check_fail - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Check_fail', 'tag': 'Check_fail', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hillo'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Check_fail - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <local>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, CompletedProcess(args='echo Hello', returncode=1, stdout='Hello', stderr='expected_text <Hillo> not found in text_to_check'))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Command_Check_fail', 'message': '  CRITICAL: Command_Check_fail - local - command <echo Hello> failed'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3a - Simple echo Hello - Pass
+  GIVEN:      {'key': 'Command_Simple', 'tag': 'Simple', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Simple', 'message': 'Command_Simple  OK - testhost2 - Hello'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Simple - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Simple', 'tag': 'Simple', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Simple - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhost2:22>
+                        lanmonfuncs.cmd_check            -    DEBUG:  Connection (re)established:  <me@testhost2:22>
+        Connection timeout     <4.0s>, nTries <1>, Retry interval <0.0s>
+        Connection keepalive   <60.0s>, max count <3>
+        Connection environment <{}>
+        Command timeout        <1.0>, nTries <1>, Retry interval <0.0s>, Max consecutive timeouts <4>
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Simple', 'message': 'Command_Simple  OK - testhost2 - Hello'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3b - echo Hello check as expected_text, log_stdout=False - Pass
+  GIVEN:      {'key': 'Command_Hello_Check', 'tag': 'Hello_Check', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hello', 'log_stdout': False}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Hello_Check', 'message': 'Command_Hello_Check  OK - testhost2'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Hello_Check - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Hello_Check', 'tag': 'Hello_Check', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hello', 'log_stdout': False}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Hello_Check - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo Hello', returncode=0, stdout='Hello', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Hello_Check', 'message': 'Command_Hello_Check  OK - testhost2'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 3c - Complex echo with expected_test and check_line_text, - Pass
+  GIVEN:      {'key': 'Command_Complex_Check', 'tag': 'Complex_Check', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo "My info is\nhostname: $(hostname)\nuptime: $(uptime)\n"', 'expected_text': 'test', 'check_line_text': 'hostname'}
+  EXPECT:     {'rslt': 0, 'notif_key': 'Command_Complex_Check', 'message': 'Command_Complex_Check  OK - testhost2 - My info is
+hostname: testhost2
+uptime:  09:44:59 up 31 min,  0 users,  load average: 0.35, 0.26, 0.20'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Complex_Check - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Complex_Check', 'tag': 'Complex_Check', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': False, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo "My info is\nhostname: $(hostname)\nuptime: $(uptime)\n"', 'expected_text': 'test', 'check_line_text': 'hostname'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Complex_Check - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo "My info is
+hostname: $(hostname)
+uptime: $(uptime)
+">
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (0, CompletedProcess(args='echo "My info is\nhostname: $(hostname)\nuptime: $(uptime)\n"', returncode=0, stdout='My info is\nhostname: testhost2\nuptime:  10:24:50 up  1:11,  0 users,  load average: 0.33, 0.29, 0.28', stderr=''))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 0, 'notif_key': 'Command_Complex_Check', 'message': 'Command_Complex_Check  OK - testhost2 - My info is\nhostname: testhost2\nuptime:  10:24:50 up  1:11,  0 users,  load average: 0.33, 0.29, 0.28'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 4a - expected_text not found - Fail
+  GIVEN:      {'key': 'Command_Check_fail', 'tag': 'Check_fail', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hillo'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Command_Check_fail', 'message': '  CRITICAL: Command_Check_fail - testhost2 - command <echo Hello> failed'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Check_fail - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Check_fail', 'tag': 'Check_fail', 'host': 'testhost2', 'user_host_port': 'testhost2', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 'Hillo'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Check_fail - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs.cmd_check            -    DEBUG:  cmd try 1 on <me@testhost2:22>:  <echo Hello>
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, CompletedProcess(args='echo Hello', returncode=1, stdout='Hello', stderr='expected_text <Hillo> not found in text_to_check'))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Command_Check_fail', 'message': '  CRITICAL: Command_Check_fail - testhost2 - command <echo Hello> failed'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 13a - expected_text not str - Fail setup()
+  GIVEN:      {'key': 'Command_bad_expected_text', 'tag': 'bad_expected_text', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 5, 'check_line_text': 'my', 'not_text': '.te'}
+  EXPECT:     Command_bad_expected_text - expected_text must be type str (if provided)... setup() returned:  2
+                      runcmd_plugin.setup                -    DEBUG:  Command_bad_expected_text - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_bad_expected_text', 'tag': 'bad_expected_text', 'host': 'local', 'user_host_port': 'local', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello', 'expected_text': 5, 'check_line_text': 'my', 'not_text': '.te'}
+                      runcmd_plugin.setup                -    ERROR:  Command_bad_expected_text - expected_text must be type str (if provided)
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  2
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 13b - Unknown hostname
+  GIVEN:      {'key': 'Command_Unknown_hostname', 'tag': 'Unknown_hostname', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+  EXPECT:     {'rslt': 3, 'notif_key': 'Command_Unknown_hostname', 'message': '  CRITICAL: Command_Unknown_hostname - nosuchhost - command <echo Hello> failed - gaierror: [Errno -2] Name or service not known'}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Unknown_hostname - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Unknown_hostname', 'tag': 'Unknown_hostname', 'host': 'nosuchhost', 'user_host_port': 'me@nosuchhost', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Unknown_hostname - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, CompletedProcess(args='echo Hello', returncode=252, stdout='', stderr='Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known'))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 3, 'notif_key': 'Command_Unknown_hostname', 'message': '  CRITICAL: Command_Unknown_hostname - nosuchhost - command <echo Hello> failed - gaierror: [Errno -2] Name or service not known'}
+                 runcmd_plugin_test.dotest               -  WARNING:  
+
+==============================================================================================
+Test 13c - Host unavailable
+  GIVEN:      {'key': 'Command_Host_unavailable', 'tag': 'Host_unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+  EXPECT:     {'rslt': 1, 'notif_key': 'Command_Host_unavailable', 'message': "  WARNING: Command_Host_unavailable - testhostX - COULD NOT CONNECT TO EXECUTION HOST - OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}
+                      runcmd_plugin.setup                -    DEBUG:  Command_Host_unavailable - lanmonitor.runcmd_plugin.setup() called:
+  {'key': 'Command_Host_unavailable', 'tag': 'Host_unavailable', 'host': 'testhostX', 'user_host_port': 'me@testhostX', 'critical': True, 'cmd_timeout': 4, 'check_interval': 1, 'rest_of_line': 'echo Hello'}
+                 runcmd_plugin_test.dotest               -    DEBUG:  setup() returned:  0
+                      runcmd_plugin.eval_status          -    DEBUG:  Command_Host_unavailable - lanmonitor.runcmd_plugin.eval_status() called
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22>
+                        lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@testhostx:22> FAILED:  OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                        lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)
+                      runcmd_plugin.eval_status          -    DEBUG:  cmd_check returned:  (1, CompletedProcess(args='echo Hello', returncode=253, stdout='', stderr="Exception while connecting to me@testhostx:22: ConnectionError - Connection to <me@testhostx:22> FAILED after 1 attempts __*****__OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"))
+                 runcmd_plugin_test.dotest               -  WARNING:  
+  RETURNED:   {'rslt': 1, 'notif_key': 'Command_Host_unavailable', 'message': "  WARNING: Command_Host_unavailable - testhostX - COULD NOT CONNECT TO EXECUTION HOST - OSError: [Errno 113] Connect call failed ('192.168.15.41', 22)"}

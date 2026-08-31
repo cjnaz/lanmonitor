@@ -30,17 +30,17 @@ the timeout message is `PING OF <host> FAILED`.  Both cases return RTN_FAIL and 
 
 **Note:** Many hosts handle ICMP requests at a low priority, resulting in intermittent ping timeouts.  If the 
 `consecutive_timeout_count` feature is problematic (i.e., due to increased real problem notification latency or too many false alarms), then 
-consider a different method to confirm that a host is available, perhaps if the host offers a web interface, 
-or allows an ssh connection (then use service_plugin, process_plugin, or ...).
+consider a different method to confirm that a host is available; e.g., if the host offers a web interface try the webpage_plugin, or if the 
+host allows an ssh connection try the runcmd_plugin with 'echo Hello' run remotely.
 """
 
 __version__ = '4.0'
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2025
+#  Chris Nelson, Copyright 2021-2026
 #
-# 4.0 250911 - Updated to lanmonitor V4.0.  Added consecutive_timeout_count support.
+# 4.0 260830 - Updated to lanmonitor V4.0.  Added consecutive_timeout_count support.
 # 3.3 240805 - Updated to lanmonitor V3.3.  Removed pinghost_plugin_timeout.
 # 3.1 230320 - Added config param pinghost_plugin_timeout, Warning for ssh fail to remote
 # 3.0 230301 - Packaged

@@ -59,6 +59,7 @@ Show_filenames
 globvars.config = config_item()
 globvars.config.read_string(cfg)
 
+# set_toolname(TOOLNAME)
 setuplogging(ConsoleLogFormat="{module:>35}.{funcName:20} - {levelname:>8}:  {message}")
 set_logging_level(logging.DEBUG)
 

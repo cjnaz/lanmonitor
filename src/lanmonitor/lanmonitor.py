@@ -18,7 +18,7 @@ In service mode
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2025
+#  Chris Nelson, Copyright 2021-2026
 #
 #==========================================================
 
@@ -359,10 +359,12 @@ def run_item(item_key):                                                     # Gi
                             monline['critical'] =           item_def[line_key]
                         elif line_key.lower() == 'timeout':
                             monline['cmd_timeout'] =        timevalue(item_def[line_key]).seconds
-                        elif line_key.lower() in ['recheck', 'rol']:
-                            pass
                         else:
-                            raise ValueError (f"Error in line <{item_key}>:  Unknown key <{line_key}>")
+                            monline[line_key] = item_def[line_key]      # Pass through any other keys
+                        # elif line_key.lower() in ['recheck', 'rol']:
+                        #     pass
+                        # else:
+                        #     raise ValueError (f"Error in line <{item_key}>:  Unknown key <{line_key}>")
 
                 else:
                     # Monitor item str format

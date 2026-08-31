@@ -29,8 +29,9 @@ __version__ = '4.0'
 
 #==========================================================
 #
-#  Chris Nelson, Copyright 2021-2025
+#  Chris Nelson, Copyright 2021-2026
 #
+# 4.1 260829 - Limited stderr output length
 # 4.0 250911 - Updated to lanmonitor V4.0.
 # 3.3 240805 - Updated to lanmonitor V3.3
 # 3.1 230320 - Warning for ssh fail to remote
@@ -115,7 +116,7 @@ class monitor:
         elif rslt[0] == RTN_WARNING:
             error_msg = 'COULD NOT CONNECT TO EXECUTION HOST'
             if '__*****__' in rslt[1].stderr:
-                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+                error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1][0:30]
             return {'rslt':RTN_WARNING, 'notif_key':self.key, 'message':f"  WARNING: {self.key} - {self.host} - {error_msg}"}
 
         # cmd_check RTN_FAIL case
@@ -124,5 +125,5 @@ class monitor:
         else:
             error_msg = f"WEBPAGE <{self.url}> NOT AS EXPECTED"
         if '__*****__' in rslt[1].stderr:
-            error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1]
+            error_msg += ' - ' + rslt[1].stderr.split('__*****__')[1][0:30]
         return {'rslt':self.failtype, 'notif_key':self.key, 'message':f"  {self.failtext}: {self.key} - {self.host} - {error_msg}"}
