@@ -560,6 +560,7 @@ def cli():
 
     # Deploy template files
     if globvars.args.setup_user:
+        set_logging_level(logging.INFO, 'cjnfuncs.deployfiles')
         deploy_files([
             { 'source': CONFIG_FILE_DEFAULT,  'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
             { 'source': 'creds_SMTP',         'target_dir': 'USER_CONFIG_DIR', 'file_stat': 0o600},
@@ -568,6 +569,7 @@ def cli():
         return 0
 
     if globvars.args.setup_site:
+        set_logging_level(logging.INFO, 'cjnfuncs.deployfiles')
         deploy_files([
             { 'source': CONFIG_FILE_DEFAULT,  'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o644, 'dir_stat': 0o755},
             { 'source': 'creds_SMTP',         'target_dir': 'SITE_CONFIG_DIR', 'file_stat': 0o600},

@@ -24,8 +24,9 @@
 
 ## Usage
 ```
-$ lanmonitor -h
-usage: lanmonitor [-h] [--print-log [PRINT_LOG]] [--verbose] [--loop [LOOP]] [--config-file CONFIG_FILE] [--service] [--setup-user] [--setup-site] [-V] [Items ...]
+$ lanmonitor --help
+usage: lanmonitor [-h] [--print-log [PRINT_LOG]] [--verbose] [--loop [LOOP]] [--config-file CONFIG_FILE] [--service] [--log-console] [--setup-user] [--setup-site] [-V]
+                  [Items ...]
 
 LAN monitor
 
@@ -42,7 +43,7 @@ CLI (interactive) modes
 In service mode
     kill -SIGUSR1 <pid>   outputs a summary to the log file
     kill -SIGUSR2 <pid>   outputs monitored items current status to the log file
-4.0
+4.1
 
 positional arguments:
   Items                 Run the individual check item(s) or MonTypes
@@ -52,14 +53,14 @@ options:
   --print-log [PRINT_LOG], -p [PRINT_LOG]
                         Print the tail end of the log file, eg --print-log 100 (default last 40 lines).
   --verbose, -v         Display OK items in non-service mode. (-vv for debug logging)
-  --loop [LOOP]         Loop on Items indefinately (default interval 30s).
+  --loop [LOOP]         Loop on Items indefinitely (default interval 30s).
   --config-file CONFIG_FILE, -c CONFIG_FILE
                         Path to the config file (Default <lanmonitor.cfg)> in user/site config directory.
   --service             Enter endless loop for use as a systemd service.
+  --log-console, -z     Force logging to the console, overriding config LogFile param
   --setup-user          Install starter files in user space.
   --setup-site          Install starter files in system-wide space. Run with root prev.
   -V, --version         Return version number and exit.
-
 ```
 
 <br/>
