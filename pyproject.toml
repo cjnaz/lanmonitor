@@ -1,6 +1,7 @@
 [project]
 name = 'lanmonitor'
-version = '4.1rc2'
+version = '4.1rc3'
+    # 4.1rc3 - tests passing, doc work
     # 4.1rc2 - doc work
     # 4.1rc1 - runcmd_plugin, log-console switch, freespace x.1f format, bug disregard_loglevel, disregard_log_interval set up in main()
     # 4.0.1 - Doc typo fixes, pyproject.toml tuning, periodic_log typo
@@ -13,7 +14,7 @@ requires-python = '>=3.9'       # RHEL 9 uses 3.9
 authors = [ {name = 'Chris Nelson', email = 'github@cjnaz.com'} ]
 license = 'MIT'
 dependencies = [
-    'cjnfuncs >= 3.1.1',
+    'cjnfuncs >= 3.2.1',
     'asyncssh >= 2.21.0',
     'invoke >= 2.2.0',
     ]

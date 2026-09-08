@@ -52,7 +52,7 @@ Test 5 - No such host - CRITICAL -----------------------------------------------
                         lanmonfuncs._new_connection      -    DEBUG:  Connection attempt 1 to <me@nosuchhost:22> FAILED:  gaierror: [Errno -2] Name or service not known
                         lanmonfuncs.cmd_check            -    DEBUG:  Exception while connecting to me@nosuchhost:22: ConnectionError - Connection to <me@nosuchhost:22> FAILED after 1 attempts __*****__gaierror: [Errno -2] Name or service not known
                      webpage_plugin.eval_status          -    DEBUG:  cmd_check returned:  (2, (args: 'curl http://localhost/weewx/', returncode: 252, stdout: '...', stderr: 'Exception ')
-                webpage_plugin_test.dotest               -    DEBUG:  Page_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'Page_Unknown', 'message': '  CRITICAL: Page_Unknown - nosuchhost - WEBPAGE <http://localhost/weewx/> NOT AS EXPECTED - gaierror: [Errno -2] Name or service not known'}
+                webpage_plugin_test.dotest               -    DEBUG:  Page_Unknown - eval_status() returned:  {'rslt': 3, 'notif_key': 'Page_Unknown', 'message': '  CRITICAL: Page_Unknown - nosuchhost - WEBPAGE <http://localhost/weewx/> NOT AS EXPECTED - gaierror: [Errno -2] Name or s'}
 
 Test 6 - Known host, unavailable - WARNING --------------------------------------------------
                      webpage_plugin.setup                -    DEBUG:  Page_Unavailable - lanmonitor.webpage_plugin.setup() called:

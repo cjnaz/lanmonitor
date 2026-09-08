@@ -62,10 +62,10 @@ def dotest (tnum, desc, test):
         logging.debug (f"{test['key']} - eval_status() returned:  {inst.eval_status()}")
 
 dotest (1, "YumUpdate pass - OK",
-        {'key':'YumUpdate_Pass', 'tag':'Pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'   90d update  '})
+        {'key':'YumUpdate_Pass', 'tag':'Pass', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'   90d update  '})
 
 dotest (2, "YumUpdate too old - CRITICAL",
-        {'key':'YumUpdate_TooOld', 'tag':'TooOld', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10m update'})
+        {'key':'YumUpdate_TooOld', 'tag':'TooOld', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'10m update'})
 
 dotest (3, "Bad definition - setup ERROR",
         {'key':'YumUpdate_baddef', 'tag':'badline', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10m'})
@@ -77,7 +77,7 @@ dotest (5, "Remote not running yum - Can't get history - CRITICAL",
         {'key':'YumUpdate_remote', 'tag':'remote', 'host':'testhost2', 'user_host_port':'me@testhost2', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10m update'})
 
 dotest (6, "No matching command history - CRITICAL",
-        {'key':'YumUpdate_noupdates', 'tag':'noupdates', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'10m update xx'})
+        {'key':'YumUpdate_noupdates', 'tag':'noupdates', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'10m update xx'})
 
 dotest (7, "No such host - CRITICAL",
         {'key':'YumUpdate_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'90d update'})

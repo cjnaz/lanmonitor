@@ -4,7 +4,7 @@
 Produce / compare to golden results:
     ./pinghost_plugin_test.py | diff pinghost_plugin_test.golden -
         Expected differences:
-            test 1/2/3 ping values will vary
+            test 1/2/3/10 ping values will vary
 """
 
 #==========================================================

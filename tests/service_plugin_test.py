@@ -4,9 +4,13 @@
 Produce / compare to golden results:
     ./service_plugin_test.py | diff service_plugin_test.golden -
         Expected differences:
+            Tests 1/2/3: the stdout setup time values may vary
+            Test 1:
+                Raspbian Bullseye returns 'ssh.service - OpenBSD'
+                RHEL 9 returns 'sshd.service - OpenSSH'
             Test 5:
-                On Debian (Raspberry Pi Bullseye) returns "TimeoutError" (this is the golden file result)
-                On RHEL 9 returns "OSError: [Errno 113] Connect call failed"
+                On Debian (Raspbian Bullseye) returns "OSError: [Errno 113] Connect call failed" (this is the golden file result)
+                On RHEL 9 returns "TimeoutError" 
                 Both result in "setup() returned:  1"
 """
 

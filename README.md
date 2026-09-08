@@ -7,8 +7,9 @@ critical items, such as firewalld being down, and summary reports are generated 
 - A configuration file is used for all setups - no coding required for use.  The config file may be modified on-th-fly while lanmonitor is running as a service.
 - Checks may be executed from the local machine, or from any remote host (with ssh access).  For example, you can check the health of a service running on another machine, or check that a webpage is accessible from another machine.
 
-Supports Python 3.9+.
+lanmonitor only works on Linux.  Supports Python 3.9+.
 
+Tested on RedHat Enterprise Linux 9 and Raspbian Bullseye.
 <br/>
 
 ---
@@ -565,8 +566,9 @@ Check that the specified process is alive by searching for the `executable_path`
 ### runcmd_plugin
 
 Run an arbitrary command on the u@h:p (locally or remotely).  One application of this plugin is as an alternative to the pinghost_plugin if the
-remote host intermittently responds to ping/ICMP traffic.  Note that this plugin only works with remote hosts that allow remote command execution
-via ssh, so it probably wont work with most IOT devices.
+remote host intermittently responds to ping/ICMP traffic (see RunCmd_testhost2_Hello, below).  Note that this plugin only works with 
+remote hosts that allow remote command execution via ssh, so it probably wont work with most IOT devices.
+Pass/fail is determined either by the return code from running the command, or by the string check features (e.g., 'expected_text').
 
 **Typical string and dictionary-style config file lines:**
 
@@ -574,7 +576,12 @@ via ssh, so it probably wont work with most IOT devices.
     # RunCmd_<friendly_name> =  <local or user@host>  [CRITICAL]  <check_interval>  <command>
     # RunCmd_<friendly_name> =  {'u@h:p':<'local' or 'user@host'>, 'critical':<True or False>, 'recheck':<check_interval>,     #                           'timeout':<timevalue>, 'rol':<'command'>,     #                           'log_stdout':<True or False>, 'expected_text':<str>, 'check_line_text':<str>, 'not_text':<str>}
     RunCmd_local =              local  CRITICAL  1m  echo Hello
-    RunCmd_testhost2 =          {'u@h:p':'me@testhost2', 'recheck':'1m', 'rol':'echo Hello', 'log_stdout':False, 'expected_text':'Hello'}
+
+    # Check that a remote system is responsive
+    RunCmd_testhost2_Hello =    {'u@h:p':'me@testhost2', 'recheck':'1m', 'rol':'echo Hello', 'log_stdout':False, 'expected_text':'Hello'}
+
+    # Log the uptime of a remote system (no checks, other than command execution success)
+    RunCmd_testhost2_uptime =   {'u@h:p':'me@testhost2', 'recheck':'1d', 'rol':'uptime'}
 
 **Plugin-specific params:**
 

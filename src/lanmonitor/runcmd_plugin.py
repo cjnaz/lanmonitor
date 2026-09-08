@@ -3,8 +3,9 @@
 ### runcmd_plugin
 
 Run an arbitrary command on the u@h:p (locally or remotely).  One application of this plugin is as an alternative to the pinghost_plugin if the
-remote host intermittently responds to ping/ICMP traffic.  Note that this plugin only works with remote hosts that allow remote command execution
-via ssh, so it probably wont work with most IOT devices.
+remote host intermittently responds to ping/ICMP traffic (see RunCmd_testhost2_Hello, below).  Note that this plugin only works with
+remote hosts that allow remote command execution via ssh, so it probably wont work with most IOT devices.
+Pass/fail is determined either by the return code from running the command, or by the string check features (e.g., 'expected_text').
 
 **Typical string and dictionary-style config file lines:**
 
@@ -14,7 +15,12 @@ via ssh, so it probably wont work with most IOT devices.
     #                           'timeout':<timevalue>, 'rol':<'command'>, \
     #                           'log_stdout':<True or False>, 'expected_text':<str>, 'check_line_text':<str>, 'not_text':<str>}
     RunCmd_local =              local  CRITICAL  1m  echo Hello
-    RunCmd_testhost2 =          {'u@h:p':'me@testhost2', 'recheck':'1m', 'rol':'echo Hello', 'log_stdout':False, 'expected_text':'Hello'}
+
+    # Check that a remote system is responsive
+    RunCmd_testhost2_Hello =    {'u@h:p':'me@testhost2', 'recheck':'1m', 'rol':'echo Hello', 'log_stdout':False, 'expected_text':'Hello'}
+
+    # Log the uptime of a remote system (no checks, other than command execution success)
+    RunCmd_testhost2_uptime =   {'u@h:p':'me@testhost2', 'recheck':'1d', 'rol':'uptime'}
 
 **Plugin-specific params:**
 

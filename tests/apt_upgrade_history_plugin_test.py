@@ -7,6 +7,7 @@ Produce / compare to golden results:
     ./apt_upgrade_history_plugin_test.py | diff apt_upgrade_history_plugin_test.golden -
         Expected differences:
             Ages in test 1/2/4/5 vary
+            Start-Date in tests 1/2/3/4/5 can vary
 """
 
 #==========================================================

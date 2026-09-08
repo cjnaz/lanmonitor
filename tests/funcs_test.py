@@ -5,8 +5,9 @@ Produce / compare to golden results:
     ./funcs_test.py | diff funcs_test-golden.txt -
         Differences:
             test 1b/3b ping values will vary
+            test 2c path to bash command may be listed as 'bash' or '/bin/bash'
             test 7d varies between 'gaierror: [Errno -2] Name or service not known' and 'gaierror: [Errno -5] No address associated with hostname'
-            test 7e/7f object addresses will vary
+            test 7e/7f/7g object addresses will vary
 """
 
 #==========================================================

@@ -268,6 +268,8 @@ if check_tnum('6b2'):
 if check_tnum('6c'):
     subprocess.run(['ssh', 'me@testhost2', 'rm', '-rf', '/mnt/RAMDRIVE/fsactivity'],
                     capture_output=True, text=True)
+    a4file = './plugin_test_trees/fsactivity/recursive tests/a4file'
+    subprocess.run(['touch', a4file, '-d', '-5minutes'])
     subprocess.run(['scp', '-rp', './plugin_test_trees/fsactivity', 'me@testhost2:/mnt/RAMDRIVE/'],
                     capture_output=True, text=True)
     dotest ("Remote recursive find",
