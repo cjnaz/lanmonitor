@@ -10,11 +10,12 @@ New plugins may be added easily.  The core lanmonitor code provides a framework 
 - Adjust the \<newitem> comment block to describe the functionality and config file details.
 - Within the `setup()` function:
   - Adjust the `rest_of_line` parsing, creating new vars as needed.
+  - Handle any additional keys that mynewitem_plugin supports including default values if not provided, as appropriate.
   - Add any checker code to validate these new values.
 - Within the `eval_status()` function:
   - Adjust the `cmd` for your needed command execution call.
   - The `cmd_check()` function can check the returncode or return text.  It also returns the full command execution call response.  _See the cmd_check function within the lanmonfuncs.py module for built-in checking features._  Uncomment the `# logging.debug (f"cmd_check returned:  ({rslt[0]}, {rslt[1]})")` line to see the full command execution response and what's available for building response checker code.
-  - Adjust the `if rslt[0] == RTN_PASS: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
+  - Adjust the `if rslt[0] == RTN_xxxx: … return` lines for the PASS, FAIL/CRITICAL return text.  The `key_padded` and `host_padded` vars are used on the PASSing line for pretty printing.
 - Create a companion `mynewitem_plugin_test.py` by copying from the lanmonitor/tests directory, and create `dotest()` calls to exercise all possible good, bad, and invalid conditions.
 - Debug and validate the new plugin module by running standalone (`./mynewitem_plugin_test.py`).
 - Add the `MonType_<your_monitor_type> <abs_path_to>/mynewitem_plugin>` line and specific monitor items to your config file.
@@ -63,22 +64,28 @@ The best examples to follow:
 
 3. The plugin module may be tested by running the companion `..._test.py` script.  Add tests to exercise your checking logic for both local and remote hosts, and for any warning/error traps.  (Note that the checking interval scheduling is handled in the lanmonitor core, so in the `dotest()` calls just set `'check_interval':1` as a placeholder.)
 
-        dotest (1, "SELinux local - OK",
+        if check_tnum('1'):
+            dotest ("SELinux local - OK",
                 {'key':'SELinux_local', 'tag':'local', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'  enforcing  '})
 
-        dotest (2, "SELinux remote not running - ERROR",
+        if check_tnum('2'):
+            dotest ("SELinux remote not running - ERROR",
                 {'key':'SELinux_remote', 'tag':'remote', 'host':'testhost', 'user_host_port':'me@testhost', 'critical':False, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcing'})
 
-        dotest (3, "SELinux remote not running - CRITICAL",
+        if check_tnum('3'):
+            dotest ("SELinux remote not running - CRITICAL",
                 {'key':'SELinux_remote_CRIT', 'tag':'remote_CRIT', 'host':'testhost', 'user_host_port':'me@testhost', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcing'})
 
-        dotest (4, "SELinux expected badmode - setup ERROR",
+        if check_tnum('4'):
+            dotest ("SELinux expected badmode - setup ERROR",
                 {'key':'SELinux_badmode', 'tag':'badmode', 'host':'local', 'user_host_port':'local', 'critical':True, 'cmd_timeout':2, 'check_interval':1, 'rest_of_line':'enforcingX'})
 
-        dotest (5, "No such host - WARNING",
+        if check_tnum('5'):
+            dotest ("No such host - WARNING",
                 {'key':'SELinux_Unknown', 'tag':'Unknown', 'host':'nosuchhost', 'user_host_port':'me@nosuchhost', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'enforcing'})
 
-        dotest (6, "Known host, unavailable - WARNING",
+        if check_tnum('6'):
+            dotest ("Known host, unavailable - WARNING",
                 {'key':'SELinux_Unavailable', 'tag':'Unavailable', 'host':'testhostX', 'user_host_port':'me@testhostX', 'critical':True, 'cmd_timeout':4, 'check_interval':1, 'rest_of_line':'enforcing'})
 
 
@@ -94,7 +101,7 @@ One or more notification handlers may be specified in the configuration file lin
 
 The following functions within each listed notification handler are called.  The functionality as provided by `stock_notif` is describe here.  NOTE that the stock_notif handler module need not be used.
 
-- `log_event()` - Called after every monitored item, passing the dictionary returned by eval_status() (see above) onto log_event().  The stock_notif handler sends notifications on new FAIL and CRITICAL items, and clears any fail history of now-passing items.
+- `log_event()` - Called after every monitored item, passing the dictionary returned by eval_status() (see above) along to log_event().  The stock_notif handler sends notifications on new FAIL and CRITICAL items, and clears any fail history of now-passing items.
 
 - `each_loop()` - Called on every lanmonitor core _service loop_ (per ServiceLoopTime).  Place any general code here that needs to be executed on every iteration.  Unused by stock_notif.
 

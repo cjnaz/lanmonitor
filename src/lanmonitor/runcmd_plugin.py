@@ -43,8 +43,6 @@ __version__ = '4.1'
 #
 # 4.1 260831 - New
 #
-# TODO make work with Windows
-#
 #==========================================================
 
 import datetime

@@ -4,4 +4,4 @@ dist/
 *.egg-info/
 mylive/
 mydev/
-tests/junk.txt
+tests/testrun.txt

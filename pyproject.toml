@@ -1,9 +1,7 @@
 [project]
 name = 'lanmonitor'
-version = '4.1rc3'
-    # 4.1rc3 - tests passing, doc work
-    # 4.1rc2 - doc work
-    # 4.1rc1 - runcmd_plugin, log-console switch, freespace x.1f format, bug disregard_loglevel, disregard_log_interval set up in main()
+version = '4.1'
+    # 4.1 - 260908 - Release
     # 4.0.1 - Doc typo fixes, pyproject.toml tuning, periodic_log typo
     # 4.0 - release
     # 3.3.2 - yum_update_history_plugin - Added '--cacheonly', cjnfuncs 3.0 dependency, release

@@ -7,7 +7,8 @@
   - Added `runcmd_plugin` which can be used to run any arbitrary command locally or on remote hosts (via ssh).
     A simple use-case is to confirm the accessibility of a remote host by running an `echo Hello` command, but
     almost any command can be run, such as cleaning a database, rebooting, checking ssl certificate status, etc.
-    With this change, now any arbitrary key may be passed from the user config file to a plugin.  The runcmd_plugin
+    With this change, now any arbitrary key may be passed from the user config file to a plugin (assuming the
+    plugin is designed to use it).  The runcmd_plugin
     optionally accepts the `expected_text`, `check_line_text`, `not_text` used by `cmd_check()` for testing the
     return text from the command execution.
 

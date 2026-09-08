@@ -19,6 +19,7 @@
 ---
 
 ## Version history
+- 4.1 260908 - runcmd_plugin, log-console switch, freespace x.1f format, bug disregard_loglevel, disregard_log_interval set up in main()
 - 4.0 250930 - New CLI features, refactored lanmonfuncs for improved ssh to remotes handling, incorporated invoke and asyncssh, Enhanced fsactivity_plugin with recursion and wildcard support.
 - 3.3.2 250706 - cjnfuncs 3.0 dependency
 - 3.3.1 240823 - yum_update_history_plugin added '--cacheonly' to yum command to avoid timeout
